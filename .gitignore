@@ -1,0 +1,3 @@
+.DS_Store
+# Local coinswapd checkout / fork — keep out of this repo (clone beside or use your fork’s remote)
+research/coinswapd/
