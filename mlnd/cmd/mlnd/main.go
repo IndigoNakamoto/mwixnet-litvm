@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
 )
 
 func main() {
@@ -26,7 +27,21 @@ func main() {
 		log.Fatal("MLND_OPERATOR_ADDR is required")
 	}
 
-	watcher, err := litvm.NewWatcher(wsURL, courtAddr, operatorAddr)
+	dbPath := os.Getenv("MLND_DB_PATH")
+	if dbPath == "" {
+		dbPath = "mlnd.db"
+	}
+	dbStore, err := store.NewStore(dbPath)
+	if err != nil {
+		log.Fatalf("database: %v", err)
+	}
+	defer func() {
+		if err := dbStore.Close(); err != nil {
+			log.Printf("database close: %v", err)
+		}
+	}()
+
+	watcher, err := litvm.NewWatcher(wsURL, courtAddr, operatorAddr, dbStore)
 	if err != nil {
 		log.Fatalf("init watcher: %v", err)
 	}

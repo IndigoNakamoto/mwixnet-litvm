@@ -31,10 +31,12 @@ type Watcher struct {
 	client       *ethclient.Client
 	courtAddr    common.Address
 	operatorAddr common.Address
+	receipts     ReceiptLookup
 }
 
 // NewWatcher dials wsURL (WebSocket JSON-RPC) and returns a watcher for courtAddr / operatorAddr.
-func NewWatcher(wsURL, courtHex, operatorHex string) (*Watcher, error) {
+// receipts may be nil to skip evidence lookups (log-only).
+func NewWatcher(wsURL, courtHex, operatorHex string, receipts ReceiptLookup) (*Watcher, error) {
 	client, err := ethclient.Dial(wsURL)
 	if err != nil {
 		return nil, fmt.Errorf("dial %q: %w", wsURL, err)
@@ -43,6 +45,7 @@ func NewWatcher(wsURL, courtHex, operatorHex string) (*Watcher, error) {
 		client:       client,
 		courtAddr:    common.HexToAddress(courtHex),
 		operatorAddr: common.HexToAddress(operatorHex),
+		receipts:     receipts,
 	}, nil
 }
 
@@ -89,6 +92,18 @@ func (w *Watcher) Start(ctx context.Context) error {
 			}
 			log.Printf("mlnd: GrievanceOpened grievanceId=%s accuser=%s accused=%s epochId=%s evidenceHash=%s deadline=%s",
 				ev.GrievanceID.Hex(), ev.Accuser.Hex(), ev.Accused.Hex(), ev.EpochID.String(), ev.EvidenceHash.Hex(), ev.Deadline.String())
+
+			if w.receipts != nil {
+				receipt, err := w.receipts.GetByEvidenceHash(ev.EvidenceHash)
+				if err != nil {
+					log.Printf("mlnd: [CRITICAL] cannot defend grievance %s: %v", ev.GrievanceID.Hex(), err)
+					continue
+				}
+				log.Printf("mlnd: receipt found for evidenceHash=%s nextHop=%s (defenseData + transactor TODO)",
+					ev.EvidenceHash.Hex(), receipt.NextHopPubkey)
+				// TODO: encode defenseData and submit defendGrievance(tx, ev.GrievanceID, defenseData)
+				_ = receipt
+			}
 		}
 	}
 }
