@@ -1,0 +1,54 @@
+name: Full Stack CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  full-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install Python dependencies (Nostr scripts)
+        run: |
+          python3 -m pip install --user -q python-nostr pysha3
+
+      - name: Start Anvil in background (LitVM local testnet)
+        run: |
+          anvil --host 0.0.0.0 --port 8545 > anvil.log 2>&1 &
+          sleep 3
+          echo "ANVIL_PID=$!" >> $GITHUB_ENV
+
+      - name: Deploy contracts to local Anvil
+        run: ./scripts/deploy-local-anvil.sh
+
+      - name: Run grievance smoke test
+        run: make test-grievance
+
+      - name: Run full-stack test (grievance + Nostr tools)
+        run: make test-full-stack
+
+      - name: Run makers listener (dry-run + help check)
+        run: python3 scripts/listen_makers.py --help
+
+      - name: Cleanup Anvil
+        if: always()
+        run: kill $ANVIL_PID || true
+
+      - name: Upload Anvil logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anvil-logs
+          path: anvil.log

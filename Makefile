@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -35,3 +35,17 @@ test-full-stack:
 	@echo "Grievance test passed. Publishing sample Nostr event (use your own privkey):"
 	@echo "python3 scripts/publish_grievance.py 5020b346b84d8c1da9aee82130e634fcbc120062e87eaaf9fe9f160bb921dcb3 42 2d4d7ae96f39e2d5037f21782bc831874261ffe22743f74bbf865a39ec4df112 <YOUR_NOSTR_PRIVKEY_HEX>"
 	@echo "Done. Phase 2 Nostr integration is now testable."
+
+listen-makers:
+	@echo "=== Building maker-ad subscription filters (kind 30001) ==="
+	python3 scripts/listen_makers.py --help
+	@echo "Tip: run with --stake 0x<registryAddress> to focus by litvm-stake tag."
+
+listen-demo:
+	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io
+
+test-full-stack-with-nostr:
+	@echo "=== Full MLN Stack with live Nostr demo ==="
+	./scripts/test-grievance-local.sh
+	@echo "Grievance test passed. Starting combined Nostr demo..."
+	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io --stake 0x000000000000000000000000000000000000bEef
