@@ -10,13 +10,14 @@ import {GrievanceCourt} from "../src/GrievanceCourt.sol";
 contract Deploy is Script {
     function run() external {
         uint256 minStake = vm.envOr("MIN_STAKE", uint256(0.1 ether));
+        uint256 cooldownPeriod = vm.envOr("COOLDOWN_PERIOD", uint256(48 hours));
         uint256 challengeWindow = vm.envOr("CHALLENGE_WINDOW", uint256(24 hours));
         uint256 grievanceBondMin = vm.envOr("GRIEVANCE_BOND_MIN", uint256(0.01 ether));
 
         uint256 pk = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(pk);
 
-        MwixnetRegistry registry = new MwixnetRegistry(minStake);
+        MwixnetRegistry registry = new MwixnetRegistry(minStake, cooldownPeriod);
         GrievanceCourt court = new GrievanceCourt(registry, challengeWindow, grievanceBondMin);
         registry.setGrievanceCourt(address(court));
 

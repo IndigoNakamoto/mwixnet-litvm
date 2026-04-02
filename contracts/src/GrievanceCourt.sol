@@ -3,12 +3,13 @@ pragma solidity ^0.8.24;
 
 import {MwixnetRegistry} from "./MwixnetRegistry.sol";
 import {EvidenceLib} from "./EvidenceLib.sol";
+import {IGrievanceCourtExit} from "./interfaces/IGrievanceCourtExit.sol";
 
 /// @title GrievanceCourt
 /// @notice Judicial layer: bonds, grievance lifecycle, stake freeze signals. Does not verify MWEB or mix execution.
 /// @dev `evidenceHash` is computed off-chain per PRODUCT_SPEC.md appendix 13 (packed preimage then keccak256). This contract
 ///      only stores the bytes32; it does not re-hash preimage fields on-chain.
-contract GrievanceCourt {
+contract GrievanceCourt is IGrievanceCourtExit {
     enum GrievancePhase {
         None,
         Open,
@@ -34,6 +35,9 @@ contract GrievanceCourt {
 
     mapping(bytes32 grievanceId => Grievance) public grievances;
 
+    /// @notice Number of grievances in `Open` or `Defended` phase against this accused maker (resolved cases decrement).
+    mapping(address accused => uint256) public openGrievanceCountAgainst;
+
     event GrievanceOpened(
         bytes32 indexed grievanceId,
         address indexed accuser,
@@ -51,6 +55,7 @@ contract GrievanceCourt {
     error NotAccused();
     error TooEarly();
     error AlreadyExists();
+    error InvariantOpenCount();
 
     constructor(MwixnetRegistry registry_, uint256 challengeWindow_, uint256 grievanceBondMin_) {
         registry = registry_;
@@ -81,6 +86,7 @@ contract GrievanceCourt {
         });
 
         registry.freezeStake(accused);
+        openGrievanceCountAgainst[accused]++;
         emit GrievanceOpened(
             grievanceId, msg.sender, accused, epochId, evidenceHash, openedAt + challengeWindow
         );
@@ -105,6 +111,7 @@ contract GrievanceCourt {
         if (g.phase == GrievancePhase.Open) {
             if (block.timestamp < g.deadline) revert TooEarly();
             g.phase = GrievancePhase.ResolvedSlash;
+            _decrementOpenAgainst(g.accused);
             registry.unfreezeStake(g.accused);
             emit ResolvedSlash(grievanceId);
             _refundBond(g.accuser, g.bondAmount);
@@ -113,6 +120,7 @@ contract GrievanceCourt {
 
         if (g.phase == GrievancePhase.Defended) {
             g.phase = GrievancePhase.ResolvedExonerate;
+            _decrementOpenAgainst(g.accused);
             registry.unfreezeStake(g.accused);
             emit ResolvedExonerate(grievanceId);
             _refundBond(g.accuser, g.bondAmount);
@@ -126,6 +134,14 @@ contract GrievanceCourt {
         if (amount == 0) return;
         (bool ok,) = payable(to).call{value: amount}("");
         require(ok, "bond refund");
+    }
+
+    function _decrementOpenAgainst(address accused) private {
+        uint256 n = openGrievanceCountAgainst[accused];
+        if (n == 0) revert InvariantOpenCount();
+        unchecked {
+            openGrievanceCountAgainst[accused] = n - 1;
+        }
     }
 
     receive() external payable {}

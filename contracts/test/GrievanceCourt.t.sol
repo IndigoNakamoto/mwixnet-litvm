@@ -13,11 +13,12 @@ contract GrievanceCourtTest is Test {
     address internal accused = address(0xB22);
 
     uint256 internal constant MIN_STAKE = 1 ether;
+    uint256 internal constant COOLDOWN = 48 hours;
     uint256 internal constant BOND = 0.1 ether;
     uint256 internal constant WINDOW = 1 days;
 
     function setUp() public {
-        registry = new MwixnetRegistry(MIN_STAKE);
+        registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         court = new GrievanceCourt(registry, WINDOW, BOND);
         registry.setGrievanceCourt(address(court));
 
@@ -38,6 +39,7 @@ contract GrievanceCourtTest is Test {
         court.openGrievance{value: BOND}(accused, epochId, evidenceHash);
 
         assertTrue(registry.stakeFrozen(accused));
+        assertEq(court.openGrievanceCountAgainst(accused), 1);
 
         bytes32 gid = keccak256(abi.encodePacked(accuser, accused, epochId, evidenceHash));
         vm.warp(block.timestamp + WINDOW + 1);
@@ -63,6 +65,7 @@ contract GrievanceCourtTest is Test {
         assertEq(bondAmt_, BOND);
         assertLe(openedAt_, deadline_);
         assertFalse(registry.stakeFrozen(accused));
+        assertEq(court.openGrievanceCountAgainst(accused), 0);
     }
 
     function test_defend_then_exonerate() public {
@@ -97,6 +100,7 @@ contract GrievanceCourtTest is Test {
         assertEq(evidenceHash_, keccak256("evidence2"));
         assertEq(bondAmt_, BOND);
         assertFalse(registry.stakeFrozen(accused));
+        assertEq(court.openGrievanceCountAgainst(accused), 0);
     }
 
     function test_resolve_reverts_before_deadline_if_open() public {
@@ -108,5 +112,38 @@ contract GrievanceCourtTest is Test {
 
         vm.expectRevert(GrievanceCourt.TooEarly.selector);
         court.resolveGrievance(gid);
+    }
+
+    function test_requestWithdrawal_reverts_when_open_grievance() public {
+        bytes32 evidenceHash = keccak256("evidence4");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 10, evidenceHash);
+
+        vm.prank(accused);
+        vm.expectRevert(MwixnetRegistry.OpenGrievanceBlocksExit.selector);
+        registry.requestWithdrawal();
+    }
+
+    function test_withdrawStake_blocked_until_grievance_resolved() public {
+        vm.prank(accused);
+        registry.requestWithdrawal();
+        vm.warp(block.timestamp + COOLDOWN);
+
+        bytes32 evidenceHash = keccak256("late");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 11, evidenceHash);
+
+        vm.prank(accused);
+        vm.expectRevert(MwixnetRegistry.StakeFrozen_.selector);
+        registry.withdrawStake();
+
+        bytes32 gid = keccak256(abi.encodePacked(accuser, accused, uint256(11), evidenceHash));
+        vm.warp(block.timestamp + WINDOW + 1);
+        vm.prank(accuser);
+        court.resolveGrievance(gid);
+
+        vm.prank(accused);
+        registry.withdrawStake();
+        assertEq(registry.stake(accused), 0);
     }
 }

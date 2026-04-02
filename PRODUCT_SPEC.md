@@ -51,13 +51,21 @@ LitVM is **not** a replacement for Nostr or Tor: blockchains are public, costly,
 
 | Role                 | Responsibility                                                                                                                                         |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Taker (user)**     | Builds MWixnet onion / swap request; pays fees per agreed model; may initiate grievances with evidence.                                                |
+| **Taker (user)**     | Confirms amount and policy; wallet auto-selects hop list, builds MWixnet onion / swap request; pays MWEB routing fees per agreed model; may initiate grievances with evidence. |
 | **Maker (mix node)** | Participates in multi-hop processing, range proofs, sorting, kernel leg per protocol; registers stake on LitVM; publishes reachability/fees via Nostr. |
 | **Swap server (N1)** | In classic MWixnet, entry node accepting `swap` API; validates inputs against UTXO set (adapt to MWEB rules).                                          |
 | **Mixers (N2…Nn)**   | Transform and sort commitments; forward inner onion layers.                                                                                            |
 
 
 **Multi-taker batches:** Privacy scales with **anonymity set size**; the protocol targets batched epochs (time- and/or size-based), not isolated pairwise swaps, aligned with the [forum proposal](https://forum.grin.mw/t/mimblewimble-coinswap-proposal/8322).
+
+### 4.1 User stories, taker UX, and coordination
+
+Product-level **user stories**, the **coordination model** (batched epochs, taker queue, dynamic makers), **epoch semantics** (schedule, timezone, and `epochId` mapping for grievances), and **wallet automatic route policy** (PoC defaults) are documented in [`research/USER_STORIES_MLN.md`](research/USER_STORIES_MLN.md). In short:
+
+- **Takers** seek to break input/output linkability with **minimal steps** and **low MWEB fees**; the **wallet** auto-builds hop lists from **Nostr** discovery and **LitVM** stake verification rather than manual hop selection.
+- **Makers** publish replaceable advertisements on Nostr; **stake** and identity binding remain authoritative on LitVM.
+- **Epochs** may be time-based (e.g. daily midnight, implementation-defined) and/or size-based; **`epochId`** used in grievances and in the appendix 13 preimage must match the same convention in wallet and node software (see research note).
 
 ---
 
@@ -67,7 +75,33 @@ LitVM is **not** a replacement for Nostr or Tor: blockchains are public, costly,
 
 - Makers **deposit** a minimum stake in a registry contract (e.g. `MwixnetRegistry`-class), denominated in **bridged LTC / `zkLTC`** on LitVM testnet.
 - Registration binds **identity used off-chain** (e.g. Nostr public key, Tor onion URL) to an **on-chain stake record** so wallets can filter “verified” operators by stake size and lock duration.
-- Optional: **time-lock** on withdrawal to align long-term liveness incentives.
+- **Timelocked exit queue (maker unstaking):** Under optimistic execution, a maker must **not** be able to **instant-withdraw** stake after misbehaving in an epoch and before takers can file grievances. The registry therefore uses a **cooldown** between **exit intent** and **final withdrawal**, combined with the grievance challenge window (section 6).
+
+#### 5.1.1 Unstaking lifecycle (product + contract sketch)
+
+1. **Signal exit — `requestWithdrawal()`**  
+   - **Off-chain:** The maker stops publishing their `mln_maker_ad` to Nostr relays so wallets no longer route new onions through them in future epochs.  
+   - **On-chain:** The maker calls `requestWithdrawal()` on `MwixnetRegistry`. Stake remains locked; an **unlock time** is set at `block.timestamp + T_cooldown`. Open grievances against the maker must be **absent** (and the judicial contract must be wired).
+
+2. **Cooldown — `T_cooldown`**  
+   Stake stays locked for a mandatory period. **Parameter constraint:** `T_cooldown` must be **strictly greater** than the **maximum epoch length** plus the **challenge window** `T_challenge` (section 6.5). Example: if the longest epoch is 24 hours and `T_challenge` is 24 hours, then `T_cooldown` ≥ 48 hours. This ensures that if the maker sabotaged their last epoch before exiting, affected parties still have time to open an `openGrievance` while stake remains subject to slash policy.
+
+3. **Settlement — `withdrawStake()`**  
+   - **Clean exit:** If no open grievance froze the stake and `block.timestamp` ≥ unlock time, the maker calls `withdrawStake()` and receives remaining `zkLTC` (full balance in the current scaffold; production may deduct protocol fees). Registration and exit state are cleared.  
+   - **Interrupted exit:** If a grievance opens while the maker is exiting, **stake is frozen** (via `GrievanceCourt`) and final withdrawal waits until `resolveGrievance`. If the maker is slashed, only the **remainder** after bounty/burn/treasury would be withdrawable once implemented; the reference contracts currently model **freeze/unfreeze** and bond handling, not full slash splits.
+
+**Non-makers:** Addresses that **deposit** but never call `registerMaker` may **partial-withdraw** without the exit queue (testing and non-operator liquidity). Once registered as a maker, **partial instant withdraw is disabled**; only `requestWithdrawal` → cooldown → `withdrawStake` applies.
+
+Reference implementation: [`contracts/src/MwixnetRegistry.sol`](contracts/src/MwixnetRegistry.sol) (`cooldownPeriod`, `requestWithdrawal`, `withdrawStake`), with [`contracts/src/GrievanceCourt.sol`](contracts/src/GrievanceCourt.sol) exposing `openGrievanceCountAgainst` for exit gating.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    Active --> Exiting: requestWithdrawal
+    Exiting --> Frozen: openGrievance_freezes_stake
+    Frozen --> Exiting: resolveGrievance_unfreeze
+    Exiting --> Withdrawn: withdrawStake
+```
 
 ### 5.2 Fee payment problem (taker → makers)
 
@@ -224,6 +258,10 @@ function resolveGrievance(bytes32 grievanceId) external;
 - **No single human batcher** is required for *authority*; **epoch scheduling** can be **contract-gated**, **time-based**, or **Nostr-agreed** (open participation).
 - **Nostr relays** provide **message transport** (bulletin board), not trusted ordering of MWEB state.
 - **LitVM** can hold **round parameters** (epoch id, merkle root of participant commitments) if needed without stuffing high-frequency discovery data on-chain.
+
+### 7.1 Epoch scheduling and `epochId`
+
+Implementations must define how **calendar or counter epochs** map to the **`epochId`** field used in `openGrievance`, the appendix 13 **`evidenceHash`** preimage, and wallet/node batching so that disputes bind to the correct round. **Normative guidance** (timezone anchor, cutover instant, optional ordinal vs time-bucket `epochId`) lives in [`research/USER_STORIES_MLN.md`](research/USER_STORIES_MLN.md) (“Epoch semantics”).
 
 ---
 

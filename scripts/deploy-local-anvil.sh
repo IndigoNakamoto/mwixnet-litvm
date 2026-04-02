@@ -24,9 +24,9 @@ case "$RPC" in
 esac
 export PRIVATE_KEY="${ANVIL_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
 
-cast_docker() {
-  docker run --rm --add-host=host.docker.internal:host-gateway \
-    -v "$ROOT/contracts:/work" -w /work --entrypoint cast "$IMAGE" "$@"
+forge_docker() {
+  docker run --rm -e PRIVATE_KEY -e MIN_STAKE -e COOLDOWN_PERIOD -e CHALLENGE_WINDOW -e GRIEVANCE_BOND_MIN \
+    -v "$ROOT/contracts:/work" -w /work "$IMAGE" --entrypoint forge "$@"
 }
 
 forge_docker() {

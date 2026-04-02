@@ -44,8 +44,8 @@ LitVM **testnet** broadcast remains blocked until [official RPC / chain ID](http
 | Path | Description |
 |------|-------------|
 | `src/EvidenceLib.sol` | Pure `evidenceHash` (appendix 13.5) and `grievanceId` (matches `GrievanceCourt`) |
-| `src/MwixnetRegistry.sol` | Stake (native), `registerMaker`, freeze/unfreeze for judicial contract |
-| `src/GrievanceCourt.sol` | `openGrievance`, `defendGrievance`, `resolveGrievance` — not audited |
+| `src/MwixnetRegistry.sol` | Stake (native), `registerMaker`, timelocked `requestWithdrawal` / `withdrawStake`, freeze/unfreeze for judicial contract |
+| `src/GrievanceCourt.sol` | `openGrievance`, `defendGrievance`, `resolveGrievance`, `openGrievanceCountAgainst` — not audited |
 | `script/Deploy.s.sol` | Deploy registry → court → `setGrievanceCourt` |
 | `test/` | Unit + fuzz tests |
 | `deployments/anvil-local.example.json` | Example recorded addresses after local deploy |

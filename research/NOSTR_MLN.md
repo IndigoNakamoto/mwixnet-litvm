@@ -154,3 +154,7 @@ Some deployments use **31240–31246** for **round request → coordinator bid �
   "phase_hint": "Open"
 }
 ```
+
+## See also
+
+- [`USER_STORIES_MLN.md`](USER_STORIES_MLN.md) — User stories, coordination model, epoch semantics, wallet auto-route policy (PoC).

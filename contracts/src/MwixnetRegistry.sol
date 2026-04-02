@@ -1,21 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
+import {IGrievanceCourtExit} from "./interfaces/IGrievanceCourtExit.sol";
+
 /// @title MwixnetRegistry
 /// @notice Stake and maker registration on LitVM (zkLTC native token). See PRODUCT_SPEC.md sections 5–6.
-/// @dev Not audited. Withdrawal and freeze semantics are minimal scaffolding for Phase 1.
+/// @dev Not audited. Registered makers use a timelocked exit queue (`requestWithdrawal` / `withdrawStake`) per PRODUCT_SPEC.
 contract MwixnetRegistry {
     uint256 public immutable minStake;
+    /// @notice Cooldown after `requestWithdrawal` before `withdrawStake`. Must exceed max epoch length + challenge window in production.
+    uint256 public immutable cooldownPeriod;
     address public owner;
     address public grievanceCourt;
 
     mapping(address => uint256) public stake;
     mapping(address => bool) public stakeFrozen;
     mapping(address => bytes32) public makerNostrKeyHash;
+    /// @notice Timestamp when `withdrawStake` becomes callable; 0 if not in exit queue.
+    mapping(address => uint256) public exitUnlockTime;
 
     event StakeDeposited(address indexed maker, uint256 amount);
     event MakerRegistered(address indexed maker, bytes32 nostrKeyHash);
     event Withdrawn(address indexed maker, uint256 amount);
+    event ExitRequested(address indexed maker, uint256 unlockTime);
+    event StakeWithdrawnAfterExit(address indexed maker, uint256 amount);
     event StakeFrozen(address indexed maker);
     event StakeUnfrozen(address indexed maker);
     event GrievanceCourtSet(address indexed court);
@@ -27,6 +35,14 @@ contract MwixnetRegistry {
     error ZeroAddress();
     error StakeFrozen_();
     error InsufficientStake();
+    error RegisteredMakerMustUseExitQueue();
+    error NotRegisteredMaker();
+    error AlreadyInExitQueue();
+    error GrievanceCourtNotSet();
+    error OpenGrievanceBlocksExit();
+    error NotInExitQueue();
+    error CooldownNotComplete();
+    error InExitQueue();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -38,8 +54,9 @@ contract MwixnetRegistry {
         _;
     }
 
-    constructor(uint256 minStake_) {
+    constructor(uint256 minStake_, uint256 cooldownPeriod_) {
         minStake = minStake_;
+        cooldownPeriod = cooldownPeriod_;
         owner = msg.sender;
     }
 
@@ -59,19 +76,60 @@ contract MwixnetRegistry {
 
     /// @notice Register as maker after meeting `minStake`. `nostrKeyHash` binds off-chain Nostr identity (opaque bytes32).
     function registerMaker(bytes32 nostrKeyHash) external {
+        if (exitUnlockTime[msg.sender] != 0) revert InExitQueue();
         if (stake[msg.sender] < minStake) revert BelowMinStake();
         if (stakeFrozen[msg.sender]) revert StakeFrozen_();
         makerNostrKeyHash[msg.sender] = nostrKeyHash;
         emit MakerRegistered(msg.sender, nostrKeyHash);
     }
 
+    /// @notice Partial withdraw only for addresses that have **not** registered as a maker (no `makerNostrKeyHash`).
     function withdraw(uint256 amount) external {
+        if (makerNostrKeyHash[msg.sender] != bytes32(0)) revert RegisteredMakerMustUseExitQueue();
         if (stakeFrozen[msg.sender]) revert StakeFrozen_();
         if (stake[msg.sender] < amount) revert InsufficientStake();
         stake[msg.sender] -= amount;
         (bool ok,) = payable(msg.sender).call{value: amount}("");
         require(ok, "withdraw transfer");
         emit Withdrawn(msg.sender, amount);
+    }
+
+    /// @notice Begin timelocked exit: stop advertising off-chain, then wait `cooldownPeriod` before `withdrawStake`.
+    function requestWithdrawal() external {
+        if (makerNostrKeyHash[msg.sender] == bytes32(0)) revert NotRegisteredMaker();
+        if (exitUnlockTime[msg.sender] != 0) revert AlreadyInExitQueue();
+        address court = grievanceCourt;
+        if (court == address(0)) revert GrievanceCourtNotSet();
+        if (IGrievanceCourtExit(court).openGrievanceCountAgainst(msg.sender) != 0) {
+            revert OpenGrievanceBlocksExit();
+        }
+        if (stakeFrozen[msg.sender]) revert StakeFrozen_();
+
+        uint256 unlock = block.timestamp + cooldownPeriod;
+        exitUnlockTime[msg.sender] = unlock;
+        emit ExitRequested(msg.sender, unlock);
+    }
+
+    /// @notice After cooldown and with no open grievance freeze, withdraw full stake and clear maker registration.
+    function withdrawStake() external {
+        uint256 unlock = exitUnlockTime[msg.sender];
+        if (unlock == 0) revert NotInExitQueue();
+        if (block.timestamp < unlock) revert CooldownNotComplete();
+        if (stakeFrozen[msg.sender]) revert StakeFrozen_();
+
+        address court = grievanceCourt;
+        if (court != address(0) && IGrievanceCourtExit(court).openGrievanceCountAgainst(msg.sender) != 0) {
+            revert OpenGrievanceBlocksExit();
+        }
+
+        uint256 amount = stake[msg.sender];
+        stake[msg.sender] = 0;
+        makerNostrKeyHash[msg.sender] = bytes32(0);
+        exitUnlockTime[msg.sender] = 0;
+
+        (bool ok,) = payable(msg.sender).call{value: amount}("");
+        require(ok, "withdrawStake transfer");
+        emit StakeWithdrawnAfterExit(msg.sender, amount);
     }
 
     function freezeStake(address maker) external onlyGrievanceCourt {

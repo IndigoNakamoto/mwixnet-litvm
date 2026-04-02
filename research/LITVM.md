@@ -17,7 +17,7 @@ Native gas token on LitVM is **`zkLTC`** per docs. The contracts in this repo us
 Public **RPC / chain ID / faucet** may still be [TBA](https://docs.litvm.com/get-started-on-testnet/add-to-wallet). Until then:
 
 - **CI / Docker:** `make contracts-test` or `make contracts-build` from the repo root ([`Makefile`](../Makefile)).
-- **Anvil deploy:** start Anvil, then run [`scripts/deploy-local-anvil.sh`](../scripts/deploy-local-anvil.sh) (see [`contracts/README.md`](../contracts/README.md)).
+- **Anvil deploy:** start Anvil, then run [`scripts/deploy-local-anvil.sh`](../scripts/deploy-local-anvil.sh) (see [`contracts/README.md`](../contracts/README.md)). Optional env: `COOLDOWN_PERIOD` (seconds) for registry maker exit cooldown; default in `Deploy.s.sol` is 48 hours.
 - **Hash alignment:** [`contracts/src/EvidenceLib.sol`](../contracts/src/EvidenceLib.sol) matches `PRODUCT_SPEC.md` appendix 13.5; tests in `contracts/test/EvidenceHash.t.sol`.
 
 ## Foundry via Docker (no host install)

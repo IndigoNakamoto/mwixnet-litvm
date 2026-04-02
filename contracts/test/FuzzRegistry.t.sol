@@ -7,9 +7,10 @@ import {MwixnetRegistry} from "../src/MwixnetRegistry.sol";
 contract FuzzRegistryTest is Test {
     MwixnetRegistry internal registry;
     uint256 internal constant MIN = 1 ether;
+    uint256 internal constant COOLDOWN = 48 hours;
 
     function setUp() public {
-        registry = new MwixnetRegistry(MIN);
+        registry = new MwixnetRegistry(MIN, COOLDOWN);
     }
 
     function testFuzz_deposit_increases_stake(address user, uint96 amount) public {

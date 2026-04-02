@@ -36,7 +36,7 @@ contract EvidenceHashTest is Test {
     }
 
     function test_grievanceId_matches_openGrievance_storage_key() public {
-        MwixnetRegistry registry = new MwixnetRegistry(1 ether);
+        MwixnetRegistry registry = new MwixnetRegistry(1 ether, 48 hours);
         GrievanceCourt court = new GrievanceCourt(registry, 1 days, 0.01 ether);
         registry.setGrievanceCourt(address(court));
 

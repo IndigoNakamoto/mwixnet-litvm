@@ -8,13 +8,14 @@ import {GrievanceCourt} from "../src/GrievanceCourt.sol";
 
 contract FuzzGrievanceCourtTest is Test {
     uint256 internal constant MIN_STAKE = 1 ether;
+    uint256 internal constant COOLDOWN = 48 hours;
     uint256 internal constant BOND_MIN = 0.01 ether;
     uint256 internal constant WINDOW = 1 days;
 
     function testFuzz_open_reverts_if_bond_below_min(uint72 bondWei) public {
         bondWei = uint72(bound(uint256(bondWei), 0, BOND_MIN - 1));
 
-        MwixnetRegistry registry = new MwixnetRegistry(MIN_STAKE);
+        MwixnetRegistry registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         GrievanceCourt court = new GrievanceCourt(registry, WINDOW, BOND_MIN);
         registry.setGrievanceCourt(address(court));
 
@@ -39,7 +40,7 @@ contract FuzzGrievanceCourtTest is Test {
         vm.assume(accuser != address(0) && accused != address(0));
         vm.assume(accuser != accused);
 
-        MwixnetRegistry registry = new MwixnetRegistry(MIN_STAKE);
+        MwixnetRegistry registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         GrievanceCourt court = new GrievanceCourt(registry, WINDOW, BOND_MIN);
         registry.setGrievanceCourt(address(court));
 
