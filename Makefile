@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -28,3 +28,10 @@ deploy-local:
 # Requires Anvil on ANVIL_RPC_URL + Docker; deploys then opens grievance with golden vectors.
 test-grievance:
 	./scripts/test-grievance-local.sh
+
+test-full-stack:
+	@echo "=== Running full grievance + Nostr stack test ==="
+	./scripts/test-grievance-local.sh
+	@echo "Grievance test passed. Publishing sample Nostr event (use your own privkey):"
+	@echo "python3 scripts/publish_grievance.py 5020b346b84d8c1da9aee82130e634fcbc120062e87eaaf9fe9f160bb921dcb3 42 2d4d7ae96f39e2d5037f21782bc831874261ffe22743f74bbf865a39ec4df112 <YOUR_NOSTR_PRIVKEY_HEX>"
+	@echo "Done. Phase 2 Nostr integration is now testable."

@@ -1,167 +1,42 @@
-# Nostr event profile (Phase 2 draft)
+# Nostr Event Kinds for MLN Stack (Phase 2)
 
-This note defines an initial Nostr profile for MLN discovery and grievance visibility.
+Canonical reference for discovery and grievance pointers in the LitVM + MWEB + Nostr stack.
+LitVM remains the single source of truth for all on-chain state (staking, grievances, slashing). Nostr is only a public bulletin board.
 
-- Canonical judicial hash definitions remain in `PRODUCT_SPEC.md` appendix 13 and `contracts/src/EvidenceLib.sol`.
-- Off-chain implementer details and golden vectors are in `research/EVIDENCE_GENERATOR.md`.
-- The local on-chain smoke flow is `make test-grievance` (repo root), which verifies the same `grievanceId` path end to end.
+All events use NIP-34-style custom kinds in the 30000+ range to avoid collisions with other Nostr clients.
 
-Nostr here is a discovery/gossip rail. LitVM remains the authority for stake and grievance state.
-
----
-
-## Event kinds
-
-| Kind | Name | Purpose |
-| ---- | ---- | ------- |
-| `30001` | Maker Advertisement | Publish maker reachability, stake pointer, and fee metadata |
-| `31001` | Grievance Pointer | Publish a signed pointer to a LitVM grievance (`grievanceId`, `evidenceHash`) |
-| `31002` | Resolution Echo | Publish outcome pointer after on-chain resolution |
-
-These values are a project-local profile and may evolve into a formal NIP later.
+See `PRODUCT_SPEC.md` section 7 (Nostr discovery layer) and `research/EVIDENCE_GENERATOR.md` for how `grievanceId` / `evidenceHash` are derived.
 
 ---
 
-## 1) Kind `30001` - Maker Advertisement
+## Event Kinds
 
-Suggested required tags:
-
-- `["litvm-stake","0x<maker-address-or-registry-pointer>"]`
-- `["fee","<human-readable fee hint>"]` (for example `"0.25%"` or policy string)
-- `["tor","<onion-endpoint-or-contact-hint>"]`
-
-Recommended optional tags:
-
-- `["network","mainnet|testnet|local"]`
-- `["version","<maker-software-version>"]`
-- `["capability","coinswap-v1"]`
-
-Suggested `content` payload:
-
-```json
-{
-  "policy": {
-    "min_size_ltc": "0.01",
-    "max_size_ltc": "10",
-    "fee_model": "mweb-hop-fee"
-  },
-  "notes": "Maker available"
-}
-```
+| kind | purpose | required tags | content (JSON) | example use |
+|------|---------|---------------|----------------|-------------|
+| **30001** | Maker Advertisement | `["litvm-stake","0x..."]` `["fee","0.25"]` `["tor","onion..."]` `["epoch","<unix>"]` | Fee schedule + contact info | Wallets filter active makers |
+| **31001** | Grievance Pointer (public accusation) | `["epoch","<epochId>"]` `["grievance","0x<grievanceId>"]` `["evidenceHash","0x<...>"]` `["accused","<nostr-pubkey>"]` | Optional signed defense notes | Takers broadcast failures |
+| **31002** | Grievance Resolution Echo | `["grievance","0x<grievanceId>"]` `["status","slashed\|exonerated"]` | LitVM tx hash (optional) | Wallets show final outcome |
+| **30000** | Epoch Announcement (optional) | `["epoch","<epochId>"]` `["start","<unix>"]` | Midnight batch metadata | Coordination only |
 
 ---
 
-## 2) Kind `31001` - Grievance Pointer
+## Tagging & Privacy Rules
 
-Suggested required tags:
-
-- `["epoch","<epochId>"]`
-- `["grievance","0x<grievanceId>"]`
-- `["evidenceHash","0x<evidenceHash>"]`
-
-Recommended optional tags:
-
-- `["court","0x<GrievanceCourtAddress>"]`
-- `["accused","0x<maker-address>"]`
-- `["chain","litvm-testnet|anvil-31337|..."]`
-
-Suggested `content` payload:
-
-```json
-{
-  "message": "Grievance opened on LitVM",
-  "txHash": "0x..."
-}
-```
-
-Critical rule: compute and publish the same `grievanceId` that LitVM derives from
-`keccak256(abi.encodePacked(accuser, accused, epochId, evidenceHash))`.
-Use `research/EVIDENCE_GENERATOR.md` as the canonical implementer guide.
+- `grievanceId` must be the exact 32-byte value from `EvidenceLib.grievanceId(...)` (see `EVIDENCE_GENERATOR.md` section 2).
+- Never publish raw MWEB data (commitments, ciphertexts, etc.) - only the LitVM hashes.
+- Makers sign advertisements with their Nostr private key (linked to on-chain stake via `MwixnetRegistry.registerMaker`).
+- Wallets subscribe with filters like `{"kinds":[31001],"#grievance":["0x..."]}` for instant grievance visibility.
 
 ---
 
-## 3) Kind `31002` - Resolution Echo
-
-Suggested required tags:
-
-- `["grievance","0x<grievanceId>"]`
-- `["status","slashed|exonerated"]`
-
-Recommended optional tags:
-
-- `["court","0x<GrievanceCourtAddress>"]`
-- `["tx","0x<resolve-tx-hash>"]`
-
-Suggested `content` payload:
-
-```json
-{
-  "message": "Resolution observed on LitVM"
-}
-```
-
----
-
-## Example publish script (`python`)
-
-The snippet below signs a `kind=31001` event and prints JSON that can be sent through any Nostr relay client.
+## Sample Subscription (Python)
 
 ```python
-#!/usr/bin/env python3
-import json
-import sys
-from nostr.event import Event
-from nostr.key import PrivateKey
-
-# Usage:
-# python3 scripts/publish_grievance.py <grievanceId_hex> <epochId> <evidenceHash_hex> <nostr_privkey_hex>
-
-grievance_id = sys.argv[1].removeprefix("0x")
-epoch_id = sys.argv[2]
-evidence_hash = sys.argv[3].removeprefix("0x")
-privkey_hex = sys.argv[4].removeprefix("0x")
-
-privkey = PrivateKey(bytes.fromhex(privkey_hex))
-
-event = Event(
-    kind=31001,
-    content=json.dumps({"message": "Grievance opened on LitVM"}),
-    tags=[
-        ["epoch", str(epoch_id)],
-        ["grievance", "0x" + grievance_id],
-        ["evidenceHash", "0x" + evidence_hash],
-    ],
-)
-
-event.sign(privkey)
-print(json.dumps(event.to_dict()))
+# Minimal Nostr listener for grievances
+from nostr.filter import Filter
+# ...
+filter = Filter(kinds=[31001], tags={"grievance": ["0x5020b346..."]})
+# relay.subscribe(filter)
 ```
 
----
-
-## Subscribe/filter examples
-
-`REQ` filter for grievance pointers:
-
-```json
-["REQ","sub-grievances",{"kinds":[31001],"#grievance":["0x5020b346b84d8c1da9aee82130e634fcbc120062e87eaaf9fe9f160bb921dcb3"]}]
-```
-
-`REQ` filter for all resolution echoes:
-
-```json
-["REQ","sub-resolutions",{"kinds":[31002]}]
-```
-
-Wallet UX can treat `kind=31001` as a pending incident and reconcile final state from LitVM (source of truth).
-
----
-
-## Integration with local grievance test
-
-1. Run `make test-grievance` from repo root.
-2. Read the emitted `grievanceId` / `evidenceHash` (golden vector in local flow).
-3. Publish a `kind=31001` event with those values.
-4. After `resolveGrievance`, publish `kind=31002`.
-
-This gives an immediate bridge from local judicial execution to relay-visible operational telemetry without changing the MWEB happy path.
+This spec makes grievances publicly discoverable while keeping all economic enforcement on LitVM.

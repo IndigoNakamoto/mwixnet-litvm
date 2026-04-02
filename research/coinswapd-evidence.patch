@@ -1,0 +1,86 @@
+diff --git a/config/config.go b/config/config.go
+index abc1234..def5678 100644
+--- a/config/config.go
++++ b/config/config.go
+@@ -45,6 +45,9 @@ type Config struct {
+ 	// ... existing fields
++	LitVMEnabled   bool   `long:"litvm-enabled" description:"Enable LitVM grievance logging and evidence generation"`
++	GrievanceCourt string `long:"grievance-court" description:"GrievanceCourt contract address (optional)"`
++	EvidenceLogDir string `long:"evidence-log-dir" description:"Directory to write grievance JSON files" default:"evidence-logs"`
+ }
+
+diff --git a/evidence/evidence.go b/evidence/evidence.go
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/evidence/evidence.go
+@@ -0,0 +1,68 @@
++package evidence
++
++import (
++	"math/big"
++
++	"golang.org/x/crypto/sha3"
++)
++
++func keccak256(data []byte) []byte {
++	h := sha3.NewLegacyKeccak256()
++	h.Write(data)
++	return h.Sum(nil)
++}
++
++// EvidenceHashAndID — copied verbatim from research/EVIDENCE_GENERATOR.md §4
++func EvidenceHashAndID(
++	epochID *big.Int,
++	accuser, accusedMaker [20]byte,
++	hopIndex uint8,
++	peeledCommitment [32]byte,
++	forwardCiphertext []byte,
++) (evHash, grievanceID [32]byte) {
++	epochBytes := make([]byte, 32)
++	epochID.FillBytes(epochBytes)
++
++	forwardCTHash := keccak256(forwardCiphertext)
++
++	// evidence preimage (137 bytes) — exact match to EvidenceLib.sol
++	preimage := append([]byte{}, epochBytes...)
++	preimage = append(preimage, accuser[:]...)
++	preimage = append(preimage, accusedMaker[:]...)
++	preimage = append(preimage, hopIndex)
++	preimage = append(preimage, peeledCommitment[:]...)
++	preimage = append(preimage, forwardCTHash...)
++	if len(preimage) != 137 {
++		panic("evidence preimage must be exactly 137 bytes")
++	}
++	copy(evHash[:], keccak256(preimage))
++
++	// grievance preimage (104 bytes)
++	gidPre := append([]byte{}, accuser[:]...)
++	gidPre = append(gidPre, accusedMaker[:]...)
++	gidPre = append(gidPre, epochBytes...)
++	gidPre = append(gidPre, evHash[:]...)
++	if len(gidPre) != 104 {
++		panic("grievance preimage must be exactly 104 bytes")
++	}
++	copy(grievanceID[:], keccak256(gidPre))
++
++	return evHash, grievanceID
++}
+diff --git a/swap/swap.go b/swap/swap.go
+index 9876543..fedcba9 100644
+--- a/swap/swap.go
++++ b/swap/swap.go
+@@ -120,6 +120,13 @@ func (s *SwapService) handleForward(...) {
+ 	// ... existing peelOnions + commit2 calculation ...
++
++	if cfg.LitVMEnabled && len(forwardCiphertext) > 0 {
++		evHash, gid := evidence.EvidenceHashAndID(epochID, accuserAddr, accusedMakerAddr, hopIndex, peeledCommitment, forwardCiphertext)
++		log.WithFields(log.Fields{
++			"epoch":        epochID,
++			"grievanceId":  hex.EncodeToString(gid[:]),
++			"evidenceHash": hex.EncodeToString(evHash[:]),
++		}).Error("mix failure — evidence ready for grievance")
++	}
++
+ 	// existing forward logic...
+ }
