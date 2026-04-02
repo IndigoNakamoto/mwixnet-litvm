@@ -249,6 +249,8 @@ See **`contracts/README.md`** for **`make test`** (full suite) and Foundry insta
 | `evidenceHash` | `2d4d7ae96f39e2d5037f21782bc831874261ffe22743f74bbf865a39ec4df112` |
 | `grievanceId` | `5020b346b84d8c1da9aee82130e634fcbc120062e87eaaf9fe9f160bb921dcb3` |
 
+For a full local Anvil + on-chain submission check using these vectors, run `make test-grievance` from the repo root.
+
 ---
 
 ## 6. Nostr / coinswapd (pointers)

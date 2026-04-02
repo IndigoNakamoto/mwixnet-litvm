@@ -61,6 +61,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
 | [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance` |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |
+| [`research/NOSTR_EVENTS.md`](research/NOSTR_EVENTS.md) | Draft Nostr event kinds (`30001`, `31001`, `31002`) for maker ads and grievance visibility |
 | [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md) | Map of `coinswapd` (RPCs, onion shape, `ltcd` boundary) |
 
 ## Local reference code (optional)
