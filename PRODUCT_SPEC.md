@@ -123,6 +123,7 @@ Parameters are **governance/engineering knobs**, not fixed in this draft.
 
 - **Not** source of truth for stake (LitVM is).  
 - **Carries** signed operational events: heartbeats, fee schedules, **public accusations with hashes** pointing to on-chain cases, optional reputation summaries computed by wallets.
+- **Normative wire (event kinds, JSON schemas, identity binding to `makerNostrKeyHash`):** see `research/NOSTR_MLN.md` (Phase 2 draft).
 
 ### 6.5 LitVM challenge window (judicial layer only)
 

@@ -1,0 +1,20 @@
+name: nostr-fixtures
+
+on:
+  push:
+    paths:
+      - "nostr/**"
+      - ".github/workflows/nostr-fixtures.yml"
+  pull_request:
+    paths:
+      - "nostr/**"
+      - ".github/workflows/nostr-fixtures.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate MLN Nostr fixtures
+        run: python3 nostr/validate_fixtures.py

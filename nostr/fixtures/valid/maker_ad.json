@@ -1,0 +1,9 @@
+{
+  "kind": 31250,
+  "tags": [
+    ["d", "mln:v1:31337:0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"],
+    ["t", "mln-maker-ad"],
+    ["client", "mln-fixture", "0"]
+  ],
+  "content": "{\"v\":1,\"litvm\":{\"chainId\":\"31337\",\"registry\":\"0x5fbdb2315678afecb367f032d93f642f64180aa3\",\"grievanceCourt\":\"0xe7f1725e7734ce288f8367e1bb143e90bb3f0512\"},\"fees\":{\"unit\":\"sat_per_hop\",\"min\":1,\"max\":99},\"capabilities\":[\"mweb-coinswap-v0\"]}"
+}
