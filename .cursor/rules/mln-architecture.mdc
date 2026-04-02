@@ -4,11 +4,13 @@ alwaysApply: false
 globs:
   - PRODUCT_SPEC.md
   - research/**/*
+  - contracts/**/*
 ---
 
 # MLN architecture (project rule)
 
 - **Canonical spec:** `PRODUCT_SPEC.md` — product intent, layered architecture, roadmap, open questions; **§13** = `evidenceHash` preimage + wire bytes; **§14** = MWEB transaction / onion baseline vs Grin for the `coinswapd` path.
+- **LitVM:** `contracts/` (Foundry) + `research/LITVM.md` — registry and grievance scaffolding; not audited.
 - **Reference implementation map:** `research/COINSWAPD_TEARDOWN.md` — actual `coinswapd` RPC names, onion JSON shape, and file-level entry points; use before asserting how the ltcmweb reference behaves.
 - **Stack split:** MWEB = mixing + default routing fees; LitVM = stake, bonds, slashing, grievance lifecycle; Nostr = discovery / gossip; Tor = transport. Do not put high-frequency discovery or rich routing metadata on LitVM as permanent state (see spec §3–5).
 - **Judicial vs happy path:** On-chain contracts handle **accusations, defenses, resolution** — not re-verifying every successful mix. Per-hop fees in the baseline design stay on **MWEB** unless the spec explicitly adds another rail.

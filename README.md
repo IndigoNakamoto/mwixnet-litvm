@@ -25,9 +25,17 @@ The MLN Stack intentionally isolates the four pillars of a trustless mixing netw
 Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, section 9); milestones here are a summary.
 
 - **[x] Phase 0 — Protocol clarity** — MWEB transaction layer vs Grin baseline ([appendix 14](PRODUCT_SPEC.md)), native fee path via [`ltcmweb/coinswapd`](https://github.com/ltcmweb/coinswapd), and **canonical `evidenceHash` preimage** in [appendix 13](PRODUCT_SPEC.md) (validate against nodes before freezing registry ABIs).
-- **[ ] Phase 1 — LitVM testnet** *(current focus)* — Registry and grievance-style contracts (e.g. `MwixnetRegistry`, `openGrievance`; see section 6.5 in the spec). **Expand this section once Solidity is in-repo.**
+- **[ ] Phase 1 — LitVM testnet** *(current focus)* — Foundry project in [`contracts/`](contracts/) (`MwixnetRegistry`, `GrievanceCourt`). Tooling and RPC notes: [`research/LITVM.md`](research/LITVM.md). Deploy to testnet when official RPC/chain ID are published.
 - **[ ] Phase 2 — Nostr profile** — Event kinds / NIPs for maker ads and discovery.
 - **[ ] Phase 3 — End-to-end integration** — Nostr discovery → Tor → MWixnet round → L2 settlement / slash path.
+
+### Next steps (pickup after a break)
+
+1. **LitVM testnet** — When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/add-to-wallet) are published, fund a throwaway deployer with testnet `zkLTC`, copy [`contracts/.env.example`](contracts/.env.example) → `contracts/.env`, and run [`forge script`](contracts/README.md) with `--broadcast`. Record deployed addresses (README or a small `contracts/deployments/` note).
+2. **Spec ↔ contracts** — Re-read [appendix 13](PRODUCT_SPEC.md) and confirm off-chain `evidenceHash` matches [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) (only `bytes32` on-chain). Adjust ABIs or spec if anything diverges.
+3. **Judicial economics** — [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) is a **scaffold**: bond handling and slash/bounty splits are minimal. Either harden for a testnet demo or explicitly label as **non-production** until reviewed.
+4. **Tooling** — Optionally run `forge fmt` and a static analyzer (e.g. Slither) on `contracts/src/`.
+5. **Phase 2** — Nostr event profile / NIPs once registry + deploy story are stable, so ads and stake pointers do not churn.
 
 ---
 
@@ -39,6 +47,8 @@ This repository holds the **product specification**, research notes, and Cursor 
 | -------- | ------- |
 | [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Full architecture, economics, roadmap, evidence preimage (appendix 13), MWEB appendix (14), open questions |
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
+| [`contracts/README.md`](contracts/README.md) | Solidity layout, `forge build` / test |
+| [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, links |
 | [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md) | Map of `coinswapd` (RPCs, onion shape, `ltcd` boundary) |
 
 ## Local reference code (optional)

@@ -10,6 +10,7 @@
 |--------|------------------|
 | Product, layers, roadmap, open questions | `PRODUCT_SPEC.md` |
 | Grievance `evidenceHash` preimage (LitVM correlators) | `PRODUCT_SPEC.md` §13 |
+| LitVM Foundry contracts and testnet notes | `contracts/`, `research/LITVM.md` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
 
@@ -30,7 +31,9 @@ The teardown documents **entry points** and the **`ltcd`** dependency boundary (
 
 ## Current phase
 
-Focus on **protocol clarity and MWEB-specific gaps** (roughly P0 in `PRODUCT_SPEC.md` §9) before freezing ABIs, Nostr event kinds, or full end-to-end demos. **`evidenceHash` preimage** is specified in `PRODUCT_SPEC.md` §13 — validate field byte rules against the forked node before freezing registry ABIs; **L1 inclusion proof format** for defenses remains TBD (`PRODUCT_SPEC.md` §10).
+Solidity scaffolding lives in `contracts/` (Foundry); see `research/LITVM.md` and **Next steps** in `README.md` for what to do when resuming (testnet deploy, evidence alignment, hardening, then Nostr).
+
+Earlier focus: **protocol clarity** (`PRODUCT_SPEC.md` §9). **`evidenceHash` preimage** is in `PRODUCT_SPEC.md` §13 — validate against nodes before freezing registry ABIs; **L1 inclusion proof format** for defenses remains TBD (`PRODUCT_SPEC.md` §10).
 
 ## Editing norms
 

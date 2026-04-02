@@ -1,3 +1,11 @@
 .DS_Store
+# Local Foundry install (foundryup)
+.foundry/
 # Local coinswapd checkout / fork — keep out of this repo (clone beside or use your fork’s remote)
 research/coinswapd/
+
+# Foundry (contracts/)
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/.env
