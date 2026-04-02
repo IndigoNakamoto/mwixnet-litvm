@@ -4,18 +4,28 @@ Contracts implementing a **maker registry** (`MwixnetRegistry`), **grievance / j
 
 ## Quick start
 
-With Foundry installed, from `contracts/`:
+**Makefile targets** (`contracts-test` uses Docker Foundry) can be run from **repo root** or from **`contracts/`** (see `contracts/Makefile` wrapper). The root `Makefile` resolves the `contracts/` path from its own location, not from `PWD`, so Docker always mounts the real project dir.
+
+With **Docker** (Docker Desktop running):
 
 ```bash
+# from repo root or from contracts/
+make contracts-test
+make contracts-test-match MATCH=EvidenceGoldenVectorsTest
+# from contracts/ only — same as test-match line above
+make test-golden
+```
+
+With **Foundry on your PATH** (after `curl -L https://foundry.paradigm.xyz | bash`, run `source ~/.zshenv` or open a new terminal, then `foundryup`):
+
+```bash
+cd contracts
 forge build
 forge test -vv
+forge test --match-contract EvidenceGoldenVectorsTest
 ```
 
-From repo root using **Docker** (no local `forge`):
-
-```bash
-make contracts-test
-```
+If `foundryup` is “command not found” right after install, your shell has not loaded PATH yet — use `source ~/.zshenv` or `export PATH="$HOME/.foundry/bin:$PATH"` before `foundryup`.
 
 ## Phase 1 (local, no LitVM testnet RPC)
 

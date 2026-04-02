@@ -38,6 +38,8 @@ func (s *swapService) Swap(onion onion.Onion) error {
 
 These are invoked via `rpc.Client.Call(nil, "swap_forward", data)` / `"swap_backward"` (`swap.go`) — i.e. **opaque binary blobs** after decryption, not JSON onions. The **forward** path sends **gob-encoded** sorted commitments + per-commitment `onionEtc`; the **backward** path sends outputs + kernels.
 
+For LitVM **`evidenceHash` / `forwardCiphertextHash`** correlators (exact bytes to hash, `peeledCommitment` from `commit2`), see **`research/EVIDENCE_GENERATOR.md`**.
+
 ---
 
 ## 2. Taker onion: exact JSON-oriented shape
