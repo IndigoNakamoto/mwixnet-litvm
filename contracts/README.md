@@ -33,7 +33,7 @@ You can complete build, test, and **Anvil deploy** without public LitVM paramete
 
 1. Run tests: `make contracts-test` or Docker `forge test` (see [`../research/LITVM.md`](../research/LITVM.md)).
 2. Start **Anvil** in a second terminal, e.g.  
-   `docker run --rm -p 8545:8545 ghcr.io/foundry-rs/foundry:latest anvil --host 0.0.0.0`
+   `docker run --rm -p 8545:8545 --entrypoint anvil ghcr.io/foundry-rs/foundry:latest --host 0.0.0.0`
 3. Run [`../scripts/deploy-local-anvil.sh`](../scripts/deploy-local-anvil.sh) or `make deploy-local`. Uses the default first Anvil private key — **local only**.
 4. Copy addresses from `broadcast/` into `deployments/anvil-local.json` if you want a stable record (see `deployments/anvil-local.example.json`; `anvil-local.json` is gitignored).
 

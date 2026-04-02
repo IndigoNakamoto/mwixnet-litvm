@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -24,3 +24,7 @@ contracts-fmt:
 
 deploy-local:
 	./scripts/deploy-local-anvil.sh
+
+# Requires Anvil on ANVIL_RPC_URL + Docker; deploys then opens grievance with golden vectors.
+test-grievance:
+	./scripts/test-grievance-local.sh
