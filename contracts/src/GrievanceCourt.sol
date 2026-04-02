@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {MwixnetRegistry} from "./MwixnetRegistry.sol";
+import {EvidenceLib} from "./EvidenceLib.sol";
 
 /// @title GrievanceCourt
 /// @notice Judicial layer: bonds, grievance lifecycle, stake freeze signals. Does not verify MWEB or mix execution.
@@ -59,9 +60,12 @@ contract GrievanceCourt {
 
     /// @notice Accuser opens a case; `evidenceHash` must match PRODUCT_SPEC.md appendix 13 (off-chain).
     /// @param accused Registry identity (maker address) being blamed.
-    function openGrievance(address accused, uint256 epochId, bytes32 evidenceHash) external payable {
+    function openGrievance(address accused, uint256 epochId, bytes32 evidenceHash)
+        external
+        payable
+    {
         if (msg.value < grievanceBondMin) revert InsufficientBond();
-        bytes32 grievanceId = keccak256(abi.encodePacked(msg.sender, accused, epochId, evidenceHash));
+        bytes32 grievanceId = EvidenceLib.grievanceId(msg.sender, accused, epochId, evidenceHash);
         if (grievances[grievanceId].phase != GrievancePhase.None) revert AlreadyExists();
 
         uint256 openedAt = block.timestamp;
@@ -77,7 +81,9 @@ contract GrievanceCourt {
         });
 
         registry.freezeStake(accused);
-        emit GrievanceOpened(grievanceId, msg.sender, accused, epochId, evidenceHash, openedAt + challengeWindow);
+        emit GrievanceOpened(
+            grievanceId, msg.sender, accused, epochId, evidenceHash, openedAt + challengeWindow
+        );
     }
 
     /// @notice Accused submits opaque defense calldata (receipts, signatures); verification is off-chain or future module.

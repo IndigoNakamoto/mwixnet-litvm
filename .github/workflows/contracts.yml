@@ -1,0 +1,29 @@
+name: contracts
+
+on:
+  push:
+    paths:
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
+  pull_request:
+    paths:
+      - "contracts/**"
+      - ".github/workflows/contracts.yml"
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Forge build
+        run: |
+          docker run --rm --entrypoint forge \
+            -v "$GITHUB_WORKSPACE/contracts:/work" -w /work \
+            ghcr.io/foundry-rs/foundry:latest build
+
+      - name: Forge test
+        run: |
+          docker run --rm --entrypoint forge \
+            -v "$GITHUB_WORKSPACE/contracts:/work" -w /work \
+            ghcr.io/foundry-rs/foundry:latest test -vv

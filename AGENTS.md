@@ -11,6 +11,8 @@
 | Product, layers, roadmap, open questions | `PRODUCT_SPEC.md` |
 | Grievance `evidenceHash` preimage (LitVM correlators) | `PRODUCT_SPEC.md` §13 |
 | LitVM Foundry contracts and testnet notes | `contracts/`, `research/LITVM.md` |
+| Appendix 13 hash helpers (`evidenceHash`, `grievanceId`) | `contracts/src/EvidenceLib.sol` |
+| Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
 
@@ -31,9 +33,11 @@ The teardown documents **entry points** and the **`ltcd`** dependency boundary (
 
 ## Current phase
 
-Solidity scaffolding lives in `contracts/` (Foundry); see `research/LITVM.md` and **Next steps** in `README.md` for what to do when resuming (testnet deploy, evidence alignment, hardening, then Nostr).
+**Phase 1 (local):** contracts, `EvidenceLib`, fuzz tests, `make contracts-test`, `scripts/deploy-local-anvil.sh`, GitHub Actions — see `README.md` roadmap. **Testnet broadcast** still pending public LitVM RPC.
 
-Earlier focus: **protocol clarity** (`PRODUCT_SPEC.md` §9). **`evidenceHash` preimage** is in `PRODUCT_SPEC.md` §13 — validate against nodes before freezing registry ABIs; **L1 inclusion proof format** for defenses remains TBD (`PRODUCT_SPEC.md` §10).
+**Phase 1 (testnet):** when LitVM publishes endpoints, broadcast and record addresses (`research/LITVM.md`).
+
+Earlier: **protocol clarity** (`PRODUCT_SPEC.md` §9). **`evidenceHash` preimage** — spec §13 + `EvidenceLib`; validate against nodes before freezing production ABIs. **L1 inclusion proofs** for defenses: TBD (`PRODUCT_SPEC.md` §10).
 
 ## Editing norms
 

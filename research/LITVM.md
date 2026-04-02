@@ -12,6 +12,14 @@ This project uses **[Foundry](https://book.getfoundry.sh/)** for Solidity under 
 
 Native gas token on LitVM is **`zkLTC`** per docs. The contracts in this repo use **native `msg.value`** for stake, bonds, and withdrawals—adjust if you later use an ERC-20 stake token.
 
+## Phase 1 without testnet (local)
+
+Public **RPC / chain ID / faucet** may still be [TBA](https://docs.litvm.com/get-started-on-testnet/add-to-wallet). Until then:
+
+- **CI / Docker:** `make contracts-test` or `make contracts-build` from the repo root ([`Makefile`](../Makefile)).
+- **Anvil deploy:** start Anvil, then run [`scripts/deploy-local-anvil.sh`](../scripts/deploy-local-anvil.sh) (see [`contracts/README.md`](../contracts/README.md)).
+- **Hash alignment:** [`contracts/src/EvidenceLib.sol`](../contracts/src/EvidenceLib.sol) matches `PRODUCT_SPEC.md` appendix 13.5; tests in `contracts/test/EvidenceHash.t.sol`.
+
 ## Foundry via Docker (no host install)
 
 Pull the official image and verify `forge` (one line):

@@ -1,0 +1,7 @@
+{
+  "chain": "anvil-local",
+  "rpc": "http://127.0.0.1:8545",
+  "comment": "Copy to anvil-local.json after deploy-local-anvil.sh; fill addresses from contracts/broadcast/",
+  "MwixnetRegistry": "0x0000000000000000000000000000000000000000",
+  "GrievanceCourt": "0x0000000000000000000000000000000000000000"
+}
