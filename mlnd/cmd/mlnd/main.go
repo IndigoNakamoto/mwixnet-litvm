@@ -8,7 +8,9 @@ import (
 	"syscall"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
+	mlnnostr "github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -57,8 +59,26 @@ func main() {
 		cancel()
 	}()
 
-	if err := watcher.Start(ctx); err != nil {
-		log.Fatalf("watcher: %v", err)
+	bc, err := mlnnostr.LoadBroadcasterFromEnv()
+	if err != nil {
+		log.Fatalf("nostr broadcaster config: %v", err)
+	}
+	if bc != nil {
+		log.Println("mlnd: Nostr maker-ad broadcaster enabled")
+	}
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		return watcher.Start(gctx)
+	})
+	if bc != nil {
+		g.Go(func() error {
+			return bc.Run(gctx)
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		log.Fatalf("run: %v", err)
 	}
 	log.Println("shutdown complete")
 }
