@@ -10,3 +10,5 @@ contracts/out/
 contracts/broadcast/
 contracts/.env
 contracts/deployments/anvil-local.json
+
+__pycache__/
