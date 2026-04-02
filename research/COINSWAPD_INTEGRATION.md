@@ -85,3 +85,50 @@ Confirm logs contain:
 3. Publish `kind=31001` pointers per `research/NOSTR_EVENTS.md`.
 
 This keeps the happy-path MWEB flow unchanged while enabling deterministic failure evidence for LitVM grievance handling.
+
+## 6) Fork + validate a live failure flow
+
+Use this when moving from local vectors to a real patched `coinswapd` fork.
+
+### Fork setup
+
+```bash
+# In your fork on GitHub first, then wire remotes locally.
+cd research/coinswapd
+git remote rename origin upstream
+git remote add origin git@github.com:<you>/coinswapd.git
+git fetch upstream
+git checkout -b mln/evidence-hooks upstream/main
+```
+
+### Re-apply patch on the fork branch
+
+```bash
+git apply ../coinswapd-evidence.patch || git apply --reject --whitespace=fix ../coinswapd-evidence.patch
+git status --short
+git diff -- config/config.go evidence/evidence.go swap/swap.go
+```
+
+### Build/test and run failure simulation
+
+```bash
+go build ./...
+go test ./...
+```
+
+Then run your local failure scenario with evidence logging enabled (for example, misconfigured/withheld broadcast on one maker hop) and capture generated evidence JSON.
+
+### Minimum capture checklist (grievance-ready)
+
+For at least one failed swap, confirm your logs include:
+
+- `grievanceId` (32-byte hex, `0x` prefixed)
+- `evidenceHash` (32-byte hex, `0x` prefixed)
+- epoch context used to derive `grievanceId` / preimage payload
+- accused maker identifier used in your local runbook
+
+Finally, bridge the result back into this repo flow:
+
+1. Open a local grievance via `make test-grievance` or `make test-full-stack`.
+2. Publish pointer data with `scripts/publish_grievance.py`.
+3. Verify relay visibility with `scripts/listen_grievances.py` and/or `scripts/listen_makers.py`.

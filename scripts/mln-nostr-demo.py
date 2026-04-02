@@ -15,10 +15,10 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        from nostr.client.client import Client
         from nostr.filter import Filter
+        from nostr.relay_manager import RelayManager
     except ImportError:
-        print("Install nostr dependency first: pip install python-nostr", file=sys.stderr)
+        print("Install nostr dependency first: pip install nostr", file=sys.stderr)
         return 1
 
     print(f"Connecting to {args.relay} ...")
@@ -47,8 +47,10 @@ def main() -> int:
         )
 
     print("\nAttempting relay connection...")
-    client = Client(args.relay)
-    client.connect()
+    relay_manager = RelayManager()
+    relay_manager.add_relay(args.relay)
+    relay_manager.open_connections()
+    relay_manager.close_connections()
     print("Connected. Subscribe with the filters above in your chosen client workflow.")
     return 0
 

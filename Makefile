@@ -46,6 +46,13 @@ listen-demo:
 
 test-full-stack-with-nostr:
 	@echo "=== Full MLN Stack with live Nostr demo ==="
-	./scripts/test-grievance-local.sh
-	@echo "Grievance test passed. Starting combined Nostr demo..."
+	@set -e; \
+	ANVIL_CONTAINER=mln-anvil; \
+	echo "Starting Docker Anvil container: $$ANVIL_CONTAINER"; \
+	docker rm -f $$ANVIL_CONTAINER >/dev/null 2>&1 || true; \
+	docker run --rm -d --name $$ANVIL_CONTAINER -p 8545:8545 --entrypoint anvil $(FOUNDRY_IMAGE) --host 0.0.0.0 --port 8545 >/dev/null; \
+	trap 'echo "Stopping Docker Anvil container: $$ANVIL_CONTAINER"; docker stop $$ANVIL_CONTAINER >/dev/null 2>&1 || true' EXIT; \
+	sleep 2; \
+	./scripts/test-grievance-local.sh; \
+	echo "Grievance test passed. Starting combined Nostr demo..."; \
 	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io --stake 0x000000000000000000000000000000000000bEef

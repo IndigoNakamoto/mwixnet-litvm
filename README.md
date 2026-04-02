@@ -27,7 +27,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[x] Phase 0 — Protocol clarity** — MWEB transaction layer vs Grin baseline ([appendix 14](PRODUCT_SPEC.md)), native fee path via [`ltcmweb/coinswapd`](https://github.com/ltcmweb/coinswapd), and **canonical `evidenceHash` preimage** in [appendix 13](PRODUCT_SPEC.md) (validate against nodes before freezing registry ABIs).
 - **[x] Phase 1 — LitVM contracts (local complete)** — Foundry project in [`contracts/`](contracts/): `MwixnetRegistry`, `GrievanceCourt`, [`EvidenceLib`](contracts/src/EvidenceLib.sol) (appendix 13.5), fuzz tests, [`Makefile`](Makefile), [`scripts/deploy-local-anvil.sh`](scripts/deploy-local-anvil.sh), [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml). **Not audited.**
 - **[ ] Phase 1 — LitVM testnet broadcast (pending)** — Needs [public RPC, chain ID, and zkLTC](https://docs.litvm.com/get-started-on-testnet/add-to-wallet). Then: `forge script` with [`contracts/.env`](contracts/.env.example), verify contracts, record addresses. See [`research/LITVM.md`](research/LITVM.md).
-- **[ ] Phase 2 — Nostr profile** — Event kinds / NIPs for maker ads and discovery.
+- **[~] Phase 2 — Nostr profile (in progress)** — Event kinds / NIPs for maker ads and grievance pointers are defined in [`research/NOSTR_EVENTS.md`](research/NOSTR_EVENTS.md); local full-stack validation is available via `make test-full-stack`.
 - **[ ] Phase 3 — End-to-end integration** — Nostr discovery → Tor → MWixnet round → L2 settlement / slash path.
 
 ### Phase 1 local (already shipped)
@@ -44,7 +44,7 @@ Handoff checklist for anyone picking up the repo:
 1. **LitVM testnet** — When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/add-to-wallet) are published, fund a throwaway deployer with testnet `zkLTC`, copy [`contracts/.env.example`](contracts/.env.example) → `contracts/.env`, and run [`forge script`](contracts/README.md) with `--broadcast`. Record deployed addresses.
 2. **Judicial economics** — [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) remains a **scaffold** (bond refunds, no real slash split). Harden for a testnet demo or keep **non-production** until reviewed.
 3. **Optional** — Static analysis (e.g. Slither) on `contracts/src/`.
-4. **Phase 2** — Nostr event profile / NIPs once testnet addresses and registry shape are stable.
+4. **Phase 2 (in progress)** — Nostr event profile landed in [`research/NOSTR_EVENTS.md`](research/NOSTR_EVENTS.md); run `make test-full-stack` for local grievance + Nostr pointer validation, then finalize addresses/tags once LitVM testnet registry values are stable.
 
 Appendix 13 hashing is implemented in [`contracts/src/EvidenceLib.sol`](contracts/src/EvidenceLib.sol) and covered by [`contracts/test/EvidenceHash.t.sol`](contracts/test/EvidenceHash.t.sol).
 
