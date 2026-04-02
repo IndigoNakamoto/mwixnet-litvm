@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {EvidenceLib} from "../src/EvidenceLib.sol";
 import {MwixnetRegistry} from "../src/MwixnetRegistry.sol";
 import {GrievanceCourt} from "../src/GrievanceCourt.sol";
 
@@ -11,6 +12,7 @@ contract GrievanceCourtTest is Test {
 
     address internal accuser = address(0xA11);
     address internal accused = address(0xB22);
+    address internal stranger = address(0xC33);
 
     uint256 internal constant MIN_STAKE = 1 ether;
     uint256 internal constant COOLDOWN = 48 hours;
@@ -24,6 +26,7 @@ contract GrievanceCourtTest is Test {
 
         vm.deal(accuser, 50 ether);
         vm.deal(accused, 50 ether);
+        vm.deal(stranger, 50 ether);
 
         vm.prank(accused);
         registry.deposit{value: 5 ether}();
@@ -41,7 +44,7 @@ contract GrievanceCourtTest is Test {
         assertTrue(registry.stakeFrozen(accused));
         assertEq(court.openGrievanceCountAgainst(accused), 1);
 
-        bytes32 gid = keccak256(abi.encodePacked(accuser, accused, epochId, evidenceHash));
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, epochId, evidenceHash);
         vm.warp(block.timestamp + WINDOW + 1);
 
         vm.prank(accuser);
@@ -75,7 +78,7 @@ contract GrievanceCourtTest is Test {
         vm.prank(accuser);
         court.openGrievance{value: BOND}(accused, epochId, evidenceHash);
 
-        bytes32 gid = keccak256(abi.encodePacked(accuser, accused, epochId, evidenceHash));
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, epochId, evidenceHash);
 
         vm.prank(accused);
         court.defendGrievance(gid, hex"abcd");
@@ -108,7 +111,7 @@ contract GrievanceCourtTest is Test {
         vm.prank(accuser);
         court.openGrievance{value: BOND}(accused, 9, evidenceHash);
 
-        bytes32 gid = keccak256(abi.encodePacked(accuser, accused, uint256(9), evidenceHash));
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(9), evidenceHash);
 
         vm.expectRevert(GrievanceCourt.TooEarly.selector);
         court.resolveGrievance(gid);
@@ -137,7 +140,7 @@ contract GrievanceCourtTest is Test {
         vm.expectRevert(MwixnetRegistry.StakeFrozen_.selector);
         registry.withdrawStake();
 
-        bytes32 gid = keccak256(abi.encodePacked(accuser, accused, uint256(11), evidenceHash));
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(11), evidenceHash);
         vm.warp(block.timestamp + WINDOW + 1);
         vm.prank(accuser);
         court.resolveGrievance(gid);
@@ -145,5 +148,98 @@ contract GrievanceCourtTest is Test {
         vm.prank(accused);
         registry.withdrawStake();
         assertEq(registry.stake(accused), 0);
+    }
+
+    function test_multipleGrievances_conditionalUnfreeze() public {
+        uint256 epoch1 = 100;
+        uint256 epoch2 = 101;
+        bytes32 hash1 = keccak256("evidence1");
+        bytes32 hash2 = keccak256("evidence2");
+
+        bytes32 gId1 = EvidenceLib.grievanceId(accuser, accused, epoch1, hash1);
+        bytes32 gId2 = EvidenceLib.grievanceId(accuser, accused, epoch2, hash2);
+
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, epoch1, hash1);
+        assertTrue(registry.stakeFrozen(accused));
+        assertEq(court.openGrievanceCountAgainst(accused), 1);
+
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, epoch2, hash2);
+        assertEq(court.openGrievanceCountAgainst(accused), 2);
+
+        vm.warp(block.timestamp + WINDOW + 1);
+
+        vm.prank(accuser);
+        court.resolveGrievance(gId1);
+
+        assertEq(court.openGrievanceCountAgainst(accused), 1);
+        assertTrue(registry.stakeFrozen(accused));
+
+        vm.prank(accuser);
+        court.resolveGrievance(gId2);
+
+        assertEq(court.openGrievanceCountAgainst(accused), 0);
+        assertFalse(registry.stakeFrozen(accused));
+    }
+
+    function test_open_reverts_insufficientBond() public {
+        vm.prank(accuser);
+        vm.expectRevert(GrievanceCourt.InsufficientBond.selector);
+        court.openGrievance{value: BOND - 1}(accused, 200, keccak256("x"));
+    }
+
+    function test_defend_reverts_notAccused() public {
+        bytes32 h = keccak256("na");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 201, h);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(201), h);
+
+        vm.prank(stranger);
+        vm.expectRevert(GrievanceCourt.NotAccused.selector);
+        court.defendGrievance(gid, hex"");
+    }
+
+    function test_defend_reverts_badPhase_after_defend() public {
+        bytes32 h = keccak256("bd");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 202, h);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(202), h);
+
+        vm.prank(accused);
+        court.defendGrievance(gid, hex"aa");
+
+        vm.prank(accused);
+        vm.expectRevert(GrievanceCourt.BadPhase.selector);
+        court.defendGrievance(gid, hex"bb");
+    }
+
+    function test_resolve_reverts_badPhase_unknownGrievance() public {
+        vm.expectRevert(GrievanceCourt.BadPhase.selector);
+        court.resolveGrievance(bytes32(uint256(0xdead)));
+    }
+
+    function test_open_reverts_alreadyExists() public {
+        bytes32 h = keccak256("dup");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 203, h);
+
+        vm.prank(accuser);
+        vm.expectRevert(GrievanceCourt.AlreadyExists.selector);
+        court.openGrievance{value: BOND}(accused, 203, h);
+    }
+
+    function test_resolve_reverts_badPhase_after_resolved() public {
+        bytes32 h = keccak256("rs");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 204, h);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(204), h);
+
+        vm.warp(block.timestamp + WINDOW + 1);
+        vm.prank(accuser);
+        court.resolveGrievance(gid);
+
+        vm.expectRevert(GrievanceCourt.BadPhase.selector);
+        court.resolveGrievance(gid);
     }
 }

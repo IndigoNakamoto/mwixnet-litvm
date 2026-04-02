@@ -112,7 +112,9 @@ contract GrievanceCourt is IGrievanceCourtExit {
             if (block.timestamp < g.deadline) revert TooEarly();
             g.phase = GrievancePhase.ResolvedSlash;
             _decrementOpenAgainst(g.accused);
-            registry.unfreezeStake(g.accused);
+            if (openGrievanceCountAgainst[g.accused] == 0) {
+                registry.unfreezeStake(g.accused);
+            }
             emit ResolvedSlash(grievanceId);
             _refundBond(g.accuser, g.bondAmount);
             return;
@@ -121,7 +123,9 @@ contract GrievanceCourt is IGrievanceCourtExit {
         if (g.phase == GrievancePhase.Defended) {
             g.phase = GrievancePhase.ResolvedExonerate;
             _decrementOpenAgainst(g.accused);
-            registry.unfreezeStake(g.accused);
+            if (openGrievanceCountAgainst[g.accused] == 0) {
+                registry.unfreezeStake(g.accused);
+            }
             emit ResolvedExonerate(grievanceId);
             _refundBond(g.accuser, g.bondAmount);
             return;
