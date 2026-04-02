@@ -1,0 +1,26 @@
+name: mlnd
+
+on:
+  push:
+    paths:
+      - "mlnd/**"
+      - ".github/workflows/mlnd.yml"
+  pull_request:
+    paths:
+      - "mlnd/**"
+      - ".github/workflows/mlnd.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: mlnd/go.sum
+
+      - name: Go test
+        working-directory: mlnd
+        run: go test ./... -count=1
