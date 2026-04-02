@@ -13,6 +13,7 @@ globs:
 - **LitVM:** `contracts/` (Foundry) + `research/LITVM.md` — registry, `GrievanceCourt`, `EvidenceLib` (appendix 13); not audited.
 - **Reference implementation map:** `research/COINSWAPD_TEARDOWN.md` — actual `coinswapd` RPC names, onion JSON shape, and file-level entry points; use before asserting how the ltcmweb reference behaves.
 - **Stack split:** MWEB = mixing + default routing fees; LitVM = stake, bonds, slashing, grievance lifecycle; Nostr = discovery / gossip; Tor = transport. Do not put high-frequency discovery or rich routing metadata on LitVM as permanent state (see spec §3–5).
+- **Nostr wire (normative):** `research/NOSTR_MLN.md` — kinds 31250–31251, replaceable maker ads, grievance pointers. CI validates `nostr/fixtures/` against that profile; `scripts/mln_nostr_wire.py` and the Nostr CLIs follow the same schema.
 - **Judicial vs happy path:** On-chain contracts handle **accusations, defenses, resolution** — not re-verifying every successful mix. Per-hop fees in the baseline design stay on **MWEB** unless the spec explicitly adds another rail.
 - **Evidence:** Prefer fixing **canonical encodings and hashes** (`evidenceHash`, hop receipts) before hard-coding oracle or bridge APIs — spec §6.5 and §10.
 - When citing **coinswapd**, trace through `research/coinswapd/` paths given in the teardown; cryptography and types often live under **`ltcd`** / `ltcutil/mweb`, not a separate `mwebd` import in that binary.

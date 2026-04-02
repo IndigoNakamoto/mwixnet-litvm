@@ -34,10 +34,10 @@ Contract addresses will be printed - record them:
 
 ## 2. Update Nostr wiring
 
-Edit `research/NOSTR_EVENTS.md` and the scripts:
+Edit `research/NOSTR_MLN.md` (normative wire), `nostr/fixtures/` if you add examples, and any deployment notes. Python CLIs under `scripts/` already use kinds **31250–31251**.
 
-- Add a top-level note with the real addresses.
-- Update `scripts/publish_grievance.py` / `mln-nostr-demo.py` to include `["litvm-registry","0x..."]` tag on maker ads.
+- Record real registry / court addresses and chain id in docs and in client `content.litvm` fields per `NOSTR_MLN.md`.
+- Point `scripts/publish_grievance.py` at the broadcast artifact (`--broadcast-json`) or pass `--registry` / `--grievance-court` explicitly after deploy.
 
 ## 3. Verify on testnet
 
@@ -47,7 +47,7 @@ cast call <GrievanceCourt> "getGrievance(bytes32)" <grievanceId> --rpc-url $LITV
 
 ## 4. Next (after deployment)
 
-- Update `NOSTR_EVENTS.md` example tags with real contract addresses.
+- Update `NOSTR_MLN.md` and fixtures with real contract addresses.
 - Run `make test-full-stack-with-nostr` pointing at the real LitVM RPC.
 - Announce the testnet on Nostr with the new maker-ad events.
 

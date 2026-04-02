@@ -14,7 +14,9 @@
 | Maker exit queue / cooldown (registry + grievances) | `PRODUCT_SPEC.md` section 5.1.1, `contracts/src/MwixnetRegistry.sol` |
 | Appendix 13 hash helpers (`evidenceHash`, `grievanceId`) | `contracts/src/EvidenceLib.sol` |
 | Nostr wire profile (MLN kinds, tags, `content` JSON, `nostrKeyHash` binding) | `research/NOSTR_MLN.md` |
+| Archived Nostr doc stub (historical `NOSTR_EVENTS` filename) | `research/NOSTR_EVENTS.md` |
 | User stories, coordination / epochs, wallet route policy (PoC) | `research/USER_STORIES_MLN.md` |
+| Wallet UX wireframes (taker / maker) | `research/WALLET_TAKER_FLOW_V1.md`, `research/WALLET_MAKER_FLOW_V1.md` |
 | Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |

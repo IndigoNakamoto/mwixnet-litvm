@@ -239,7 +239,7 @@ State-to-spec alignment:
 - Taker auto-route and policy knobs:
   - `research/USER_STORIES_MLN.md` (Taker goals + Wallet PoC policy table).
 - Nostr discovery semantics:
-  - `research/NOSTR_EVENTS.md` (ads and pointers as informational layer).
+  - `research/NOSTR_MLN.md` (maker ads and grievance pointers as informational layer).
 - Epoch and `epochId` consistency:
   - `research/USER_STORIES_MLN.md` epoch semantics.
   - `PRODUCT_SPEC.md` section 7.1.

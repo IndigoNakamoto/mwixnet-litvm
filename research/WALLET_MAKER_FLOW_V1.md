@@ -13,7 +13,7 @@ Define operator-facing UX that:
 
 This document is UI- and behavior-focused. It does not define new protocol rules.
 
-**Wire note:** Replaceable maker advertisements are specified in [`research/NOSTR_MLN.md`](NOSTR_MLN.md) (`mln_maker_ad`, kind **31250**). [`research/NOSTR_EVENTS.md`](NOSTR_EVENTS.md) lists different numeric kinds for Phase 2 experiments; treat **NOSTR_MLN** as the canonical maker-ad schema for MLN v1 unless your deployment doc says otherwise.
+**Wire note:** Replaceable maker advertisements are specified in [`research/NOSTR_MLN.md`](NOSTR_MLN.md) (`mln_maker_ad`, kind **31250**). [`research/NOSTR_EVENTS.md`](NOSTR_EVENTS.md) is an archived filename pointing at the same normative spec.
 
 ## Inputs and Defaults
 
@@ -306,7 +306,7 @@ Operators should see the **same** epoch boundary as takers for scheduling ads an
 - Maker role and responsibilities: [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) section 4; [`research/USER_STORIES_MLN.md`](USER_STORIES_MLN.md) personas and story 4.
 - Timelocked unstaking: [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) section 5.1.1; [`research/USER_STORIES_MLN.md`](USER_STORIES_MLN.md) “Maker exit.”
 - Nostr maker ad wire: [`research/NOSTR_MLN.md`](NOSTR_MLN.md) (`mln_maker_ad`, `nostrKeyHash`).
-- Grievance lifecycle (defense, freeze): [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) sections 6–6.5; [`research/NOSTR_EVENTS.md`](NOSTR_EVENTS.md) grievance pointer kinds (gossip only).
+- Grievance lifecycle (defense, freeze): [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) sections 6–6.5; [`research/NOSTR_MLN.md`](NOSTR_MLN.md) grievance pointer (`mln_grievance_pointer`, kind **31251**; gossip only).
 - Evidence correlators (if accused): [`research/EVIDENCE_GENERATOR.md`](EVIDENCE_GENERATOR.md); [`contracts/src/EvidenceLib.sol`](../contracts/src/EvidenceLib.sol).
 - Taker-facing counterpart flow: [`research/WALLET_TAKER_FLOW_V1.md`](WALLET_TAKER_FLOW_V1.md).
 

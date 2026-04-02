@@ -10,7 +10,7 @@ Related references:
 
 - `research/EVIDENCE_GENERATOR.md` (preimage and hash rules)
 - `research/COINSWAPD_TEARDOWN.md` (entry points and code map)
-- `research/NOSTR_EVENTS.md` (grievance pointer event profile)
+- `research/NOSTR_MLN.md` (normative Nostr kinds **31250–31251** and `content` JSON; see also archived pointer in `research/NOSTR_EVENTS.md`)
 
 ## 1) Clone or update the local reference tree
 
@@ -81,8 +81,8 @@ Confirm logs contain:
 ## 5) Bridge back to this repo workflow
 
 1. Run `make test-grievance` (or `make test-full-stack`) in this repo to verify local LitVM grievance flow.
-2. Use emitted/derived grievance values with `scripts/publish_grievance.py`.
-3. Publish `kind=31001` pointers per `research/NOSTR_EVENTS.md`.
+2. Use emitted on-chain `grievanceId` (and deployment addresses) with `scripts/publish_grievance.py` — **do not** put `evidenceHash` or preimages on Nostr; see `research/NOSTR_MLN.md`.
+3. Publish **`kind=31251`** `mln_grievance_pointer` events per `research/NOSTR_MLN.md` (tags + `content` schema match [`nostr/fixtures/valid/grievance_pointer.json`](../nostr/fixtures/valid/grievance_pointer.json)).
 
 This keeps the happy-path MWEB flow unchanged while enabling deterministic failure evidence for LitVM grievance handling.
 

@@ -32,14 +32,16 @@ test-grievance:
 test-full-stack:
 	@echo "=== Running full grievance + Nostr stack test ==="
 	./scripts/test-grievance-local.sh
-	@echo "Grievance test passed. Publishing sample Nostr event (use your own privkey):"
-	@echo "python3 scripts/publish_grievance.py 5020b346b84d8c1da9aee82130e634fcbc120062e87eaaf9fe9f160bb921dcb3 42 2d4d7ae96f39e2d5037f21782bc831874261ffe22743f74bbf865a39ec4df112 <YOUR_NOSTR_PRIVKEY_HEX>"
+	@echo "Grievance test passed. Sample kind-31251 pointer (use your privkey; evidence stays off Nostr):"
+	@echo "python3 scripts/publish_grievance.py 0x5020b346b84d8c1da9aee82130e634fcbc120062e87eaaf9fe9f160bb921dcb3 42 <YOUR_NOSTR_PRIVKEY_HEX> \\"
+	@echo "  --broadcast-json contracts/broadcast/Deploy.s.sol/31337/run-latest.json \\"
+	@echo "  --accused 0x000000000000000000000000000000000000CAfE"
 	@echo "Done. Phase 2 Nostr integration is now testable."
 
 listen-makers:
-	@echo "=== Building maker-ad subscription filters (kind 30001) ==="
+	@echo "=== Maker-ad subscription filters (kind 31250, research/NOSTR_MLN.md) ==="
 	python3 scripts/listen_makers.py --help
-	@echo "Tip: run with --stake 0x<registryAddress> to focus by litvm-stake tag."
+	@echo "Tip: pass --chain-id 31337 --maker 0x<litvm_maker> for an exact d-tag filter."
 
 listen-demo:
 	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io
@@ -55,4 +57,4 @@ test-full-stack-with-nostr:
 	sleep 2; \
 	./scripts/test-grievance-local.sh; \
 	echo "Grievance test passed. Starting combined Nostr demo..."; \
-	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io --stake 0x000000000000000000000000000000000000bEef
+	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io

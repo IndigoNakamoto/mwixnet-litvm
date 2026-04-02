@@ -1,0 +1,2 @@
+# Nostr CLIs: publish_grievance, listen_*, mln-nostr-demo
+nostr>=0.0.2

@@ -27,7 +27,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[x] Phase 0 — Protocol clarity** — MWEB transaction layer vs Grin baseline ([appendix 14](PRODUCT_SPEC.md)), native fee path via [`ltcmweb/coinswapd`](https://github.com/ltcmweb/coinswapd), and **canonical `evidenceHash` preimage** in [appendix 13](PRODUCT_SPEC.md) (validate against nodes before freezing registry ABIs).
 - **[x] Phase 1 — LitVM contracts (local complete)** — Foundry project in [`contracts/`](contracts/): `MwixnetRegistry`, `GrievanceCourt`, [`EvidenceLib`](contracts/src/EvidenceLib.sol) (appendix 13.5), fuzz tests, [`Makefile`](Makefile), [`scripts/deploy-local-anvil.sh`](scripts/deploy-local-anvil.sh), [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml). **Not audited.**
 - **[ ] Phase 1 — LitVM testnet broadcast (pending)** — Needs [public RPC, chain ID, and zkLTC](https://docs.litvm.com/get-started-on-testnet/add-to-wallet). Then: `forge script` with [`contracts/.env`](contracts/.env.example), verify contracts, record addresses. See [`research/LITVM.md`](research/LITVM.md).
-- **[~] Phase 2 — Nostr profile (in progress)** — Event kinds / NIPs for maker ads and grievance pointers are defined in [`research/NOSTR_EVENTS.md`](research/NOSTR_EVENTS.md); local full-stack validation is available via `make test-full-stack`.
+- **[~] Phase 2 — Nostr profile (in progress)** — Normative wire (kinds **31250–31251**, `content` JSON, `nostrKeyHash` binding) is in [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md); JSON fixtures are validated in CI under [`nostr/`](nostr/). Demo CLIs under [`scripts/`](scripts/) use the same kinds and shapes. Local stack: `make test-full-stack`.
 - **[ ] Phase 3 — End-to-end integration** — Nostr discovery → Tor → MWixnet round → L2 settlement / slash path.
 
 ### Phase 1 local (already shipped)
@@ -44,7 +44,7 @@ Handoff checklist for anyone picking up the repo:
 1. **LitVM testnet** — When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/add-to-wallet) are published, fund a throwaway deployer with testnet `zkLTC`, copy [`contracts/.env.example`](contracts/.env.example) → `contracts/.env`, and run [`forge script`](contracts/README.md) with `--broadcast`. Record deployed addresses.
 2. **Judicial economics** — [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) remains a **scaffold** (bond refunds, no real slash split). Harden for a testnet demo or keep **non-production** until reviewed.
 3. **Optional** — Static analysis (e.g. Slither) on `contracts/src/`.
-4. **Phase 2 (in progress)** — Nostr event profile landed in [`research/NOSTR_EVENTS.md`](research/NOSTR_EVENTS.md); run `make test-full-stack` for local grievance + Nostr pointer validation, then finalize addresses/tags once LitVM testnet registry values are stable.
+4. **Phase 2 (in progress)** — Keep [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md), [`nostr/fixtures/`](nostr/), and [`scripts/`](scripts/) in lockstep; run `make test-full-stack` for local grievance + Nostr pointer validation. Finalize addresses/tags once LitVM testnet registry values are stable.
 
 Appendix 13 hashing is implemented in [`contracts/src/EvidenceLib.sol`](contracts/src/EvidenceLib.sol) and covered by [`contracts/test/EvidenceHash.t.sol`](contracts/test/EvidenceHash.t.sol).
 
@@ -60,8 +60,10 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
 | [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance` |
+| [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |
 | [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md) | Phase 2 Nostr wire: kinds 31250–31251, `nostrKeyHash` binding, maker ads + grievance pointers |
+| [`research/NOSTR_EVENTS.md`](research/NOSTR_EVENTS.md) | Archived pointer (historical filename); normative spec is `NOSTR_MLN.md` |
 | [`research/USER_STORIES_MLN.md`](research/USER_STORIES_MLN.md) | User stories, coordination model, epoch semantics, wallet auto-route policy (PoC) |
 | [`research/WALLET_TAKER_FLOW_V1.md`](research/WALLET_TAKER_FLOW_V1.md) | Wallet wireframe-level taker flow, UTC-midnight epoch UX behavior, and edge-case actions |
 | [`research/WALLET_MAKER_FLOW_V1.md`](research/WALLET_MAKER_FLOW_V1.md) | Operator maker flow: register, Nostr ad, dashboard, batch participation, timelocked exit, grievance defense |
