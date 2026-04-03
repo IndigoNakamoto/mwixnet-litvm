@@ -95,11 +95,25 @@ Nostr relay operators and LitVM RPC providers are infrastructure; they are not C
 2. **As a taker,** I want to **join the queue** for the next **scheduled epoch**, discover **which makers are in** for that window via **Nostr ads** while **confirming stake on LitVM**, then run the **MWEB** batch when the epoch closes — without a single coordinator owning the list.
 3. **As a taker,** I want to find makers with enough locked stake and compatible fees **without trusting a single coordinator**, so I combine **Nostr discovery** with **LitVM stake checks** and connect over **Tor** for the **MWEB CoinSwap** round.
 4. **As a maker,** I want **stake and identity binding** on LitVM to be what wallets trust, and Nostr to only **mirror** reachability/fees, so I register on-chain and publish a **replaceable maker ad** — updating it when I **join, leave, or change** Tor/fees before the next epoch.
-5. **As a taker (or upstream maker),** if a batch never completes and I have evidence of who failed, I want to **open a grievance** on LitVM with a pre-committed `**evidenceHash`**, lock a bond, and let the accused defend or face slash — without putting full mix transcripts on-chain in the happy path.
+5. **As a taker (or upstream maker),** if a batch never completes and I have evidence of who failed, I want to **open a grievance** on LitVM with a pre-committed **evidenceHash**, lock a bond, and let the accused defend or face slash — without putting full mix transcripts on-chain in the happy path.
 6. **As any participant,** I expect failed mixes to be **non-custodial** (UTXOs unspent), with **delay** as the main cost; **slashing/bounties** are the economic backstop, not the default fee rail (PRODUCT_SPEC sections 5.3 and 6).
+
+## UX product principles (taker-first)
+
+Privacy routing stacks hide heavy cryptography; the product must **not** force that complexity into the default path.
+
+1. **Persona split** — The **default app experience targets the taker** (amount, destination, fee, privacy/speed preset). **Maker / node operator** workflows belong in separate surfaces (maker wallet flows, `mlnd` operator docs, dashboard). Avoid mashing operator jargon into the primary taker UI. LitVM auto-defend flows, Nostr event kinds, and similar **infrastructure detail** belong under **Advanced** or **Developer mode**, not the main screen.
+2. **Trust and system status** — Show **persistent connection health** to the engine the wallet trusts (e.g. sidecar / node): clear connected/disconnected state and a short endpoint label. During route/submit, prefer **staged progress copy** (e.g. finding path, negotiating fees, building onion, queued for batch) over an anonymous spinner so the wait reads as real work.
+3. **Information hierarchy** — Lead with **amount**, **destination**, and **total fee**. Long **hex strings** (pubkeys, tx ids, evidence hashes) should be **truncated by default** with one-click **copy full** for debugging; they must not dominate the layout.
+4. **Empty and cold-start states** — First launch or pre-sync should use **warm onboarding** (e.g. syncing network graph, looking for routes) instead of a blank or zero-only screen.
+
+Wire-level and role detail remain in `NOSTR_MLN.md` and `PRODUCT_SPEC.md`; wallet step UX lives in the WALLET_* flow docs below.
 
 ## Related documents
 
 - `[PRODUCT_SPEC.md](../PRODUCT_SPEC.md)` — Sections 4 (roles), 5–6 (LitVM, grievances), 7 (coordination), appendix 13 (`evidenceHash`), appendix 14 (MWEB batching notes).
 - `[NOSTR_MLN.md](NOSTR_MLN.md)` — Event kinds 31250–31251, `nostrKeyHash`, maker ad schema.
+- `[WALLET_TAKER_FLOW_V1.md](WALLET_TAKER_FLOW_V1.md)`, `[WALLET_MAKER_FLOW_V1.md](WALLET_MAKER_FLOW_V1.md)` — Wallet wireframes and flows.
+- `[../mlnd/MAKER_DASHBOARD_SETUP.md](../mlnd/MAKER_DASHBOARD_SETUP.md)` — Maker dashboard setup (operator surface).
+- `[../mlnd/README.md](../mlnd/README.md)` — `mlnd` operator overview.
 

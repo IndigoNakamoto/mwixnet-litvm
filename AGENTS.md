@@ -17,8 +17,10 @@
 | Appendix 13 hash helpers (`evidenceHash`, `grievanceId`) | `contracts/src/EvidenceLib.sol` |
 | Nostr wire profile (MLN kinds, tags, `content` JSON, `nostrKeyHash` binding) | `research/NOSTR_MLN.md` |
 | Archived Nostr doc stub (historical `NOSTR_EVENTS` filename) | `research/NOSTR_EVENTS.md` |
-| User stories, coordination / epochs, wallet route policy (PoC) | `research/USER_STORIES_MLN.md` |
+| User stories, coordination / epochs, wallet route policy (PoC), taker-first UX principles | `research/USER_STORIES_MLN.md` |
 | Wallet UX wireframes (taker / maker) | `research/WALLET_TAKER_FLOW_V1.md`, `research/WALLET_MAKER_FLOW_V1.md` |
+| Maker dashboard setup (operator surface) | `mlnd/MAKER_DASHBOARD_SETUP.md` |
+| Product/UX design pass (personas, trust UI, IA, onboarding) | `.cursor/skills/mln-web3-product-design/SKILL.md` |
 | Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
 | Phase 15 LitVM economics (slash, bonds, exit locks; Foundry invariants + Slither in CI) | `PHASE_15_ECONOMIC_HARDENING.md`, `contracts/test/InvariantRegistryStake.t.sol`, `.github/workflows/contracts.yml`, `contracts/src/MwixnetRegistry.sol`, `contracts/src/GrievanceCourt.sol` |
 | Phase 16 public testnet readiness (RPC_URL deploy, verification env, operator compose without Anvil/local relay) | `PHASE_16_PUBLIC_TESTNET.md`, `deploy/docker-compose.testnet.yml`, `deploy/.env.testnet.example`, `contracts/.env.example`, `mln-cli/internal/config/settings.go` |

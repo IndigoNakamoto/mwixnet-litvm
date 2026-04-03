@@ -1,0 +1,21 @@
+---
+description: >-
+  MLN product/UX design—taker-first surfaces, wallet flows, maker dashboard docs. Use when editing USER_STORIES,
+  WALLET_* flows, MAKER_DASHBOARD_SETUP, mlnd README product copy, or when the user asks for PM/UX review of privacy routing.
+alwaysApply: false
+globs:
+  - research/USER_STORIES_MLN.md
+  - research/WALLET_TAKER_FLOW_V1.md
+  - research/WALLET_MAKER_FLOW_V1.md
+  - mlnd/MAKER_DASHBOARD_SETUP.md
+  - mlnd/README.md
+---
+
+# MLN product design
+
+Follow `.cursor/skills/mln-web3-product-design/SKILL.md`:
+
+- Keep **default UX taker-first**; put protocol internals (LitVM auto-defend, Nostr kinds, long hex) behind **Advanced / Developer** surfaces.
+- Prefer updating **`research/USER_STORIES_MLN.md`** and the relevant **wallet** or **maker dashboard** doc over stuffing UI detail into **`PRODUCT_SPEC.md`** unless the user explicitly asks.
+
+When changing roadmap or top-level README phase index claims, also follow `.cursor/skills/doc-sync/SKILL.md`.
