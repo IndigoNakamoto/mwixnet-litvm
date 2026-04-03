@@ -51,6 +51,9 @@ def litvm_block(chain_id: str, registry: str, grievance_court: str) -> dict[str,
     }
 
 
+RE_SWAP_X25519_PUB = re.compile(r"^[a-f0-9]{64}$")
+
+
 def maker_ad_content_json(
     chain_id: str,
     registry: str,
@@ -58,6 +61,7 @@ def maker_ad_content_json(
     *,
     fees: dict[str, Any] | None = None,
     tor: str | None = None,
+    swap_x25519_pub_hex: str | None = None,
     capabilities: list[str] | None = None,
 ) -> str:
     body: dict[str, Any] = {
@@ -68,6 +72,11 @@ def maker_ad_content_json(
         body["fees"] = fees
     if tor is not None:
         body["tor"] = tor
+    if swap_x25519_pub_hex is not None:
+        h = swap_x25519_pub_hex.strip().lower()
+        if not RE_SWAP_X25519_PUB.match(h):
+            raise ValueError("swap_x25519_pub_hex must be 64 lowercase hex digits")
+        body["swapX25519PubHex"] = h
     if capabilities is not None:
         body["capabilities"] = capabilities
     return json.dumps(body, separators=(",", ":"))

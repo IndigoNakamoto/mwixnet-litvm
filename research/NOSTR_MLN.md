@@ -64,6 +64,7 @@ UTF-8 JSON object, wire version **`"v": 1`**.
 | `litvm` | object | yes | Deployment pointers (see below). |
 | `fees` | object | no | Optional fee hints (e.g. `{"unit":"sat_per_hop","min":1,"max":10}`) — **non-binding**; actual fees are off-chain/MWEB per spec. |
 | `tor` | string | no | Tor v3 onion for **mix API** (if published; prefer Tor over cleartext where applicable). |
+| `swapX25519PubHex` | string | no | **Coinswap onion layer:** 64 **lowercase** hex digits encoding a **32-byte Curve25519** public key for ECDH with takers building `onion.Onion` payloads. Optional for ads that only signal discovery; **required for real MWEB handoff** when takers use `mweb_submitRoute` (see [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md)). |
 | `capabilities` | array of string | no | e.g. `["mweb-coinswap-v0"]` — free-form, wallet-defined. |
 
 **`litvm` object (required):**

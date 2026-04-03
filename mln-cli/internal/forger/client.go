@@ -21,8 +21,9 @@ type RequestPayload struct {
 
 // HopRequest is one hop in the sidecar route (Tor mix API + fee hint from the maker ad).
 type HopRequest struct {
-	Tor       string `json:"tor"`
-	FeeMinSat uint64 `json:"feeMinSat"`
+	Tor              string `json:"tor"`
+	FeeMinSat        uint64 `json:"feeMinSat"`
+	SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
 }
 
 // ResponsePayload is the generic JSON response from the sidecar.
@@ -60,8 +61,9 @@ func (c *SidecarClient) SubmitRoute(ctx context.Context, route *pathfind.Route, 
 	}
 	for _, hop := range route.Hops {
 		payload.Route = append(payload.Route, HopRequest{
-			Tor:       hop.Tor,
-			FeeMinSat: hop.FeeMinSat,
+			Tor:              hop.Tor,
+			FeeMinSat:        hop.FeeMinSat,
+			SwapX25519PubHex: hop.SwapX25519PubHex,
 		})
 	}
 

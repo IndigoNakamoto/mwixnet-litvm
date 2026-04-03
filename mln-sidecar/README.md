@@ -12,10 +12,12 @@ Lightweight MLN HTTP shim between the taker wallet / `mln-cli` forger and the MW
 
 The coinswapd fork (outside this repo) should expose:
 
-- **`mweb_submitRoute`** — params: one object matching [`mln-cli` `RequestPayload`](../mln-cli/internal/forger/client.go) (`route`, `destination`, `amount`). Builds/persists the swap server-side.
+- **`mweb_submitRoute`** — params: one object matching [`mln-cli` `RequestPayload`](../mln-cli/internal/forger/client.go) (`route`, `destination`, `amount`; each hop may include optional `swapX25519PubHex` per [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md)). Builds/persists the swap server-side.
 - **`mweb_getBalance`** — no params. Result object: `availableSat`, `spendableSat` (uint64), optional `detail` string — same semantics as [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) / `GET /v1/balance`.
 
 Vanilla ltcmweb exposes `swap_Swap(onion.Onion)` only; see [`research/COINSWAPD_TEARDOWN.md`](../research/COINSWAPD_TEARDOWN.md).
+
+Fork integration spec (wire contract, onion build checklist, optional `swapX25519PubHex` on each hop): [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md).
 
 ## HTTP API
 

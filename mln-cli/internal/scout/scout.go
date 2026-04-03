@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/registry"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/ethereum/go-ethereum/common"
 	gnostr "github.com/nbd-wtf/go-nostr"
 )
@@ -25,17 +25,19 @@ type Config struct {
 
 // VerifiedMaker is a maker that passed signature, wire, deployment filter, and registry checks.
 type VerifiedMaker struct {
-	Operator   common.Address `json:"operator"`
-	Tor        string         `json:"tor,omitempty"`
-	Stake      string         `json:"stake"` // decimal string (wei-style units)
-	MinStake   string         `json:"minStake"`
-	EventID    string         `json:"eventId"`
-	CreatedAt  int64          `json:"createdAt"`
-	RelayURL   string         `json:"relay,omitempty"`
-	FeeMinSat  uint64         `json:"feeMinSat,omitempty"`
-	FeeMaxSat  uint64         `json:"feeMaxSat,omitempty"`
-	RegistryOK bool           `json:"registryOk"`
-	Local      bool           `json:"local,omitempty"` // set by takerflow when operator matches configured maker key
+	Operator  common.Address `json:"operator"`
+	Tor       string         `json:"tor,omitempty"`
+	Stake     string         `json:"stake"` // decimal string (wei-style units)
+	MinStake  string         `json:"minStake"`
+	EventID   string         `json:"eventId"`
+	CreatedAt int64          `json:"createdAt"`
+	RelayURL  string         `json:"relay,omitempty"`
+	FeeMinSat uint64         `json:"feeMinSat,omitempty"`
+	FeeMaxSat uint64         `json:"feeMaxSat,omitempty"`
+	// SwapX25519PubHex is optional; when set on all hops in a route, takers can build real onions (see research/COINSWAPD_MLN_FORK_SPEC.md).
+	SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+	RegistryOK       bool   `json:"registryOk"`
+	Local            bool   `json:"local,omitempty"` // set by takerflow when operator matches configured maker key
 }
 
 // Rejection records why an event was not listed as verified.
@@ -148,13 +150,14 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 		}
 
 		vm := VerifiedMaker{
-			Operator:   parsed.Operator,
-			Tor:        strings.TrimSpace(parsed.Content.Tor),
-			Stake:      v.Stake.String(),
-			MinStake:   v.MinStake.String(),
-			EventID:    ev.ID,
-			CreatedAt:  int64(ev.CreatedAt),
-			RegistryOK: true,
+			Operator:         parsed.Operator,
+			Tor:              strings.TrimSpace(parsed.Content.Tor),
+			SwapX25519PubHex: strings.TrimSpace(parsed.Content.SwapX25519PubHex),
+			Stake:            v.Stake.String(),
+			MinStake:         v.MinStake.String(),
+			EventID:          ev.ID,
+			CreatedAt:        int64(ev.CreatedAt),
+			RegistryOK:       true,
 		}
 		if ie.Relay != nil {
 			vm.RelayURL = ie.Relay.URL

@@ -16,6 +16,7 @@ from typing import Any
 RE_ADDR = re.compile(r"^0x[a-f0-9]{40}$")
 RE_B32 = re.compile(r"^0x[a-f0-9]{64}$")
 RE_D = re.compile(r"^mln:v1:\d+:0x[a-f0-9]{40}$")
+RE_SWAP_X25519_PUB = re.compile(r"^[a-f0-9]{64}$")
 
 
 def _tags_map(tags: list[Any]) -> dict[str, str]:
@@ -71,6 +72,10 @@ def validate_maker_ad(event: dict[str, Any]) -> None:
         raise ValueError("use lowercase hex in litvm addresses")
     if addr_from_d.lower() != addr_from_d:
         raise ValueError("d tag maker address must be lowercase hex")
+    sk = body.get("swapX25519PubHex")
+    if sk is not None:
+        if not isinstance(sk, str) or not RE_SWAP_X25519_PUB.match(sk):
+            raise ValueError("swapX25519PubHex must be 64 lowercase hex digits if present")
 
 
 def validate_grievance_pointer(event: dict[str, Any]) -> None:

@@ -40,6 +40,8 @@ func (s *swapService) Swap(onion onion.Onion) error {
 
 **Upstream `coinswapd` does not implement this endpoint**; it only accepts a full onion via JSON-RPC `swap_Swap` as above. A **fork or small proxy** next to `coinswapd` must translate the route JSON into `onion.Onion` (or otherwise drive the existing swap path).
 
+**Normative fork blueprint** (JSON-RPC `mweb_submitRoute` / `mweb_getBalance`, key binding, milestones): [`research/COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md).
+
 For **wallet UX**, the same MLN extension may also expose **`GET /v1/balance`** (MWEB available/spendable satoshis for the taker wallet); see [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) and [`mln-cli/internal/forger/balance.go`](../mln-cli/internal/forger/balance.go).
 
 ### Inter-node (`swap_forward` / `swap_backward`)

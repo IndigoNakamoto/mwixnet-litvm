@@ -4,6 +4,13 @@
 
 The MLN Stack adapts the [Mimblewimble CoinSwap proposal](https://forum.grin.mw/t/mimblewimble-coinswap-proposal/8322) to Litecoin, eliminating the need for a single, trusted human coordinator. By decoupling the privacy engine from economic enforcement and network discovery, MLN targets scalable anonymity sets without bloating Layer 2 state or leaking metadata.
 
+## Prerequisites
+
+- **Go 1.22+** for [`mln-cli/`](mln-cli/) and [`mlnd/`](mlnd/) (`go test`, `make build-mln-cli`, Wails). Dependencies such as `go-ethereum` v1.14.x require the standard library packages `maps`, `slices`, and `log/slog`.
+- **Which `go` is running:** After `brew install go`, Apple Silicon Homebrew puts the compiler at **`/opt/homebrew/opt/go/bin/go`**. If `which go` still shows **`/usr/local/go/bin/go`** (an older installer), that binary stays on your `PATH` first and you will keep seeing errors like `package maps is not in GOROOT (/usr/local/go/...)`. Fix: put Homebrew first, e.g. `export PATH="/opt/homebrew/opt/go/bin:$PATH"` (add to `~/.zshrc`), or remove/renamed the old `/usr/local/go` install. Confirm with `go version` (expect 1.22+).
+- **Where to run tests:** `mlnd` and `mln-cli` are **sibling** directories under the repo root. From inside `mln-cli/`, use `cd ../mlnd` (not `cd mlnd`).
+- [`mln-sidecar/`](mln-sidecar/) declares a lower Go version and an older `go-ethereum`; it may still build on older toolchains—see its `go.mod`.
+
 ## 🏗️ Architecture: separation of concerns
 
 The MLN Stack intentionally isolates the four pillars of a trustless mixing network:

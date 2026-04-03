@@ -3,15 +3,20 @@ package mweb
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 )
 
 const expectedHops = 3
 
+// swapX25519PubHexRE matches a 32-byte Curve25519 public key as 64 lowercase hex digits (see research/COINSWAPD_MLN_FORK_SPEC.md).
+var swapX25519PubHexRE = regexp.MustCompile(`^[0-9a-f]{64}$`)
+
 // HopInput is one hop from the MLN sidecar JSON (matches mln-cli RequestPayload.route).
 type HopInput struct {
-	Tor       string `json:"tor"`
-	FeeMinSat uint64 `json:"feeMinSat"`
+	Tor              string `json:"tor"`
+	FeeMinSat        uint64 `json:"feeMinSat"`
+	SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
 }
 
 // SwapRequest is the POST /v1/swap body (matches mln-cli forger.RequestPayload).
@@ -58,6 +63,20 @@ func ValidateSwapRequest(req *SwapRequest) error {
 	}
 	if feeSum > req.Amount {
 		return fmt.Errorf("sum of feeMinSat (%d) exceeds amount (%d)", feeSum, req.Amount)
+	}
+	var withKey int
+	for i, h := range req.Route {
+		k := strings.TrimSpace(h.SwapX25519PubHex)
+		if k == "" {
+			continue
+		}
+		if !swapX25519PubHexRE.MatchString(k) {
+			return fmt.Errorf("hop %d: swapX25519PubHex must be 64 lowercase hex digits", i)
+		}
+		withKey++
+	}
+	if withKey != 0 && withKey != len(req.Route) {
+		return fmt.Errorf("swapX25519PubHex must be set on all hops or omitted on all")
 	}
 	return nil
 }
