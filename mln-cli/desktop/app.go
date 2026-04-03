@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/config"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
@@ -79,6 +80,31 @@ func (a *App) BuildRoute() (*takerflow.RouteResult, error) {
 	ctx, cancel := context.WithTimeout(a.ctx, timeout)
 	defer cancel()
 	return takerflow.BuildRoute(ctx, net, nil)
+}
+
+// FetchMwebBalance queries the sidecar for MWEB balance available to coinswap (GET /v1/balance).
+func (a *App) FetchMwebBalance(sidecarURL string) (*forger.MwebBalance, error) {
+	a.mu.Lock()
+	net, err := a.store.load()
+	a.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	u := strings.TrimSpace(sidecarURL)
+	if u == "" {
+		u = net.DefaultSidecar()
+	}
+	if err := warnNonLoopback(u, net.DefaultSidecar()); err != nil {
+		return nil, err
+	}
+	d, err := net.ForgerContextTimeout()
+	if err != nil {
+		d = 10 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(a.ctx, d)
+	defer cancel()
+	cl := forger.NewSidecarClient(u).HTTPClient
+	return forger.FetchMwebBalance(ctx, u, cl)
 }
 
 // DryRunRouteJSON validates Tor endpoints on a JSON route (from BuildRoute).

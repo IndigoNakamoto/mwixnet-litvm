@@ -1,6 +1,6 @@
 # MLN Wallet (Wails desktop)
 
-Phase 11 taker GUI: same stack as `mln-cli` (scout → pathfind → forger) with settings persisted under the OS user config directory (`mln-wallet/settings.json`).
+Phase 11 taker GUI: same stack as `mln-cli` (scout → pathfind → forger) with settings persisted under the OS user config directory (`mln-wallet/settings.json`). The balance panel calls **`GET /v1/balance`** on your MLN sidecar (see [`PHASE_10_TAKER_CLI.md`](../../PHASE_10_TAKER_CLI.md)); implement it on your `coinswapd` fork.
 
 ## Prerequisites
 

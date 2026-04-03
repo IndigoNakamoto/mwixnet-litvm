@@ -91,6 +91,24 @@ Not supported by stock ltcmweb; the server must accept JSON like:
 
 `mln-cli` expects a JSON object with `ok` (boolean), optional `detail`, and optional `error`. On success it reminds that **coinswapd batching** runs at **local midnight** in the reference implementation, so there may be **no immediate chain txid**.
 
+### Optional: MWEB balance for wallets (`GET /v1/balance`)
+
+The Wails taker wallet and [`forger.FetchMwebBalance`](mln-cli/internal/forger/balance.go) call **`GET`** on the same service as `POST /v1/swap`, with path **`/v1/balance`** when the swap URL ends in `/v1/swap` (otherwise `…/balance` is appended). **Stock ltcmweb does not implement this**; add it on your MLN fork or proxy.
+
+Success JSON:
+
+```json
+{
+  "ok": true,
+  "availableSat": 125000000,
+  "spendableSat": 120000000,
+  "detail": "optional human-readable note"
+}
+```
+
+- **`availableSat`** — total MWEB balance visible to the swap wallet (satoshis).
+- **`spendableSat`** — optional; if omitted, clients treat it as equal to `availableSat`. Use when some funds are reserved or below dust for the next batch.
+
 Implementation: [`mln-cli/internal/forger/`](mln-cli/internal/forger/).
 
 ## Trust model

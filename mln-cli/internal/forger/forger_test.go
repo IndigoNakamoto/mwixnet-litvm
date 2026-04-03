@@ -150,3 +150,55 @@ func TestDryRun_Result(t *testing.T) {
 		t.Fatalf("hop0 = %+v", res.Hops[0])
 	}
 }
+
+func TestBalanceURL(t *testing.T) {
+	t.Parallel()
+
+	got, err := BalanceURL("http://127.0.0.1:8080/v1/swap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "http://127.0.0.1:8080/v1/balance"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestFetchMwebBalance_OK(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/balance", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method %q", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true,"availableSat":125000000,"detail":"mweb wallet"}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	b, err := FetchMwebBalance(context.Background(), srv.URL+"/v1/swap", srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.AvailableSat != 125_000_000 || b.SpendableSat != 125_000_000 {
+		t.Fatalf("%+v", b)
+	}
+	if b.Detail != "mweb wallet" {
+		t.Fatal(b.Detail)
+	}
+}
+
+func TestFetchMwebBalance_NotFound(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	_, err := FetchMwebBalance(context.Background(), srv.URL+"/v1/swap", srv.Client())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

@@ -6,6 +6,21 @@ function relaysToText(relays) {
   return relays.join(', ')
 }
 
+function satToLTC(sat) {
+  const n = Number(sat)
+  if (!Number.isFinite(n) || n < 0) return '—'
+  return (n / 1e8).toLocaleString(undefined, {
+    minimumFractionDigits: 8,
+    maximumFractionDigits: 8,
+  })
+}
+
+function formatSat(sat) {
+  const n = Number(sat)
+  if (!Number.isFinite(n)) return '—'
+  return n.toLocaleString()
+}
+
 function emptySettings() {
   return {
     nostrRelays: [],
@@ -33,6 +48,23 @@ export default function App() {
   const [dest, setDest] = useState('')
   const [amountSat, setAmountSat] = useState('')
   const [sidecarURL, setSidecarURL] = useState('')
+  const [mwebBalance, setMwebBalance] = useState(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
+  const [balanceErr, setBalanceErr] = useState('')
+
+  const refreshBalance = useCallback(async () => {
+    setBalanceLoading(true)
+    setBalanceErr('')
+    try {
+      const b = await AppGo.FetchMwebBalance(sidecarURL.trim())
+      setMwebBalance(b)
+    } catch (e) {
+      setMwebBalance(null)
+      setBalanceErr(String(e.message || e))
+    } finally {
+      setBalanceLoading(false)
+    }
+  }, [sidecarURL])
 
   const load = useCallback(async () => {
     setErr('')
@@ -50,6 +82,10 @@ export default function App() {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    refreshBalance()
+  }, [refreshBalance])
 
   const save = async () => {
     setBusy(true)
@@ -147,6 +183,10 @@ export default function App() {
       setErr('Amount (satoshis) must be a positive number.')
       return
     }
+    if (mwebBalance && amt > Number(mwebBalance.spendableSat)) {
+      setErr('Amount exceeds spendable MWEB balance; lower the amount or refresh balance.')
+      return
+    }
     setBusy(true)
     setErr('')
     setOk('')
@@ -177,6 +217,41 @@ export default function App() {
     <div>
       <h1>MLN Wallet</h1>
       <p className="sub">Taker flow: configure network → scout → build route → send via local coinswapd sidecar.</p>
+
+      <section>
+        <h2>MWEB balance (coinswap)</h2>
+        <p className="sub" style={{ marginTop: 0 }}>
+          Fetched from your MLN sidecar via <span className="mono">GET /v1/balance</span> (same host as{' '}
+          <span className="mono">POST /v1/swap</span>). Your fork must implement this endpoint.
+        </p>
+        {mwebBalance ? (
+          <div className="balance-grid">
+            <div>
+              <div className="balance-label">Available</div>
+              <div className="balance-ltc">{satToLTC(mwebBalance.availableSat)} LTC</div>
+              <div className="balance-sat mono">{formatSat(mwebBalance.availableSat)} sat</div>
+            </div>
+            {mwebBalance.spendableSat !== mwebBalance.availableSat ? (
+              <div>
+                <div className="balance-label">Spendable for swap</div>
+                <div className="balance-ltc">{satToLTC(mwebBalance.spendableSat)} LTC</div>
+                <div className="balance-sat mono">{formatSat(mwebBalance.spendableSat)} sat</div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {mwebBalance?.detail ? (
+          <p className="mono" style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0.5rem 0 0' }}>
+            {mwebBalance.detail}
+          </p>
+        ) : null}
+        {balanceErr ? <p className="err" style={{ marginTop: '0.65rem' }}>{balanceErr}</p> : null}
+        <div className="row" style={{ marginTop: '0.75rem' }}>
+          <button type="button" disabled={balanceLoading} onClick={refreshBalance}>
+            {balanceLoading ? 'Refreshing…' : 'Refresh balance'}
+          </button>
+        </div>
+      </section>
 
       <section>
         <h2>Network settings</h2>
@@ -317,6 +392,9 @@ export default function App() {
           value={amountSat}
           onChange={(e) => setAmountSat(e.target.value)}
         />
+        {mwebBalance && Number(amountSat) > 0 && Number(amountSat) > Number(mwebBalance.spendableSat) ? (
+          <p className="err">Amount is greater than spendable MWEB balance ({formatSat(mwebBalance.spendableSat)} sat).</p>
+        ) : null}
         <label htmlFor="sidecar">Sidecar URL (optional override)</label>
         <input
           id="sidecar"
