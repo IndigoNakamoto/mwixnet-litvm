@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/bridge"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
@@ -98,8 +99,24 @@ func main() {
 			return bc.Run(gctx)
 		})
 	}
-	if enableBridge := bridgeCoinswapdEnabled(); enableBridge {
-		br := bridge.NewCoinswapd(log.Default())
+	if bridgeCoinswapdEnabled() {
+		bridgeDir := strings.TrimSpace(os.Getenv("MLND_BRIDGE_RECEIPTS_DIR"))
+		if bridgeDir == "" {
+			client.Close()
+			log.Fatal("MLND_BRIDGE_COINSWAPD is set but MLND_BRIDGE_RECEIPTS_DIR is empty")
+		}
+		poll := 2 * time.Second
+		if s := strings.TrimSpace(os.Getenv("MLND_BRIDGE_POLL_INTERVAL")); s != "" {
+			d, err := time.ParseDuration(s)
+			if err != nil {
+				client.Close()
+				log.Fatalf("MLND_BRIDGE_POLL_INTERVAL: %v", err)
+			}
+			if d > 0 {
+				poll = d
+			}
+		}
+		br := bridge.NewCoinswapd(log.Default(), dbStore, bridgeDir, poll)
 		g.Go(func() error {
 			return br.Run(gctx)
 		})

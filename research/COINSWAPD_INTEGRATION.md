@@ -132,3 +132,7 @@ Finally, bridge the result back into this repo flow:
 1. Open a local grievance via `make test-grievance` or `make test-full-stack`.
 2. Publish pointer data with `scripts/publish_grievance.py`.
 3. Verify relay visibility with `scripts/listen_grievances.py` and/or `scripts/listen_makers.py`.
+
+## 7) Happy-path hop receipts for `mlnd` (NDJSON)
+
+The Phase 2 patch above targets **failure-path** logging. For **automatic SQLite receipts** when a mix completes successfully, the fork (or a sidecar) must emit **LitVM-correlated** hop rows: registry **`epochId`**, **`accuser`** (grievance opener identity), **`accusedMaker`**, peel correlators, and defense strings. Stock `swap_*` RPCs do not expose that bundle alone; see [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) for the **NDJSON line schema** consumed by `mlnd` (`MLND_BRIDGE_RECEIPTS_DIR`).

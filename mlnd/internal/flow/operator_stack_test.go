@@ -100,3 +100,62 @@ func TestOperatorStack_SQLiteEvidenceAndMakerAd(t *testing.T) {
 func uint64Ptr(u uint64) *uint64 {
 	return &u
 }
+
+// TestOperatorStack_ReceiptValidateAndDefense builds a receipt and synthetic GrievanceOpened
+// correlators, then runs validation and defense packing (no chain RPC, no relays).
+func TestOperatorStack_ReceiptValidateAndDefense(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "def.db")
+	s, err := store.NewStore(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	epochID := big.NewInt(42)
+	accuser := common.HexToAddress("0x0000000000000000000000000000000000000a01")
+	accused := common.HexToAddress("0x0000000000000000000000000000000000000b02")
+	peeled := common.BytesToHash(common.LeftPadBytes([]byte{0x11}, 32))
+	fwd := common.BytesToHash(common.LeftPadBytes([]byte{0x22}, 32))
+
+	rec := store.ReceiptRecord{
+		EvidencePreimage: litvm.EvidencePreimage{
+			EpochID:               epochID,
+			Accuser:               accuser,
+			AccusedMaker:          accused,
+			HopIndex:              0,
+			PeeledCommitment:      peeled,
+			ForwardCiphertextHash: fwd,
+		},
+		NextHopPubkey: "npub1defense",
+		Signature:     "sig-defense",
+	}
+	evidenceHash := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
+	if err := s.SaveReceipt(rec); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.GetByEvidenceHash(evidenceHash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	grievanceID := litvm.ComputeGrievanceID(accuser, accused, epochID, evidenceHash)
+	ev := &litvm.GrievanceEvent{
+		GrievanceID:  grievanceID,
+		Accuser:      accuser,
+		Accused:      accused,
+		EpochID:      epochID,
+		EvidenceHash: evidenceHash,
+		Deadline:     big.NewInt(1 << 62),
+	}
+	if err := litvm.ValidateReceiptForGrievance(ev, got, accused); err != nil {
+		t.Fatal(err)
+	}
+	defense, err := litvm.BuildDefenseData(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(defense) == 0 {
+		t.Fatal("empty defense payload")
+	}
+}

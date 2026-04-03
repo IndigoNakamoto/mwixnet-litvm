@@ -11,6 +11,23 @@
 | `MLND_OPERATOR_ADDR` | Your maker / accused address (hex) |
 | `MLND_DB_PATH` | SQLite path for evidence receipts (default `mlnd.db`) |
 
+## LitVM testnet (documentation)
+
+RPC URL, chain ID, block explorer, and faucet are published by the LitVM team. **Do not guess** production values: use the current endpoints from the official docs ([LitVM documentation](https://docs.litvm.com/); toolchain notes in [`research/LITVM.md`](../research/LITVM.md)).
+
+Example **placeholders** (replace after you copy real values from docs):
+
+```bash
+export MLND_WS_URL="wss://REPLACE_WITH_OFFICIAL_LITVM_WS"
+export MLND_COURT_ADDR="0xREPLACE_GRIEVANCE_COURT"
+export MLND_OPERATOR_ADDR="0xYOUR_MAKER_ADDRESS"
+# If using Nostr ads:
+export MLND_LITVM_CHAIN_ID="REPLACE_DECIMAL_CHAIN_ID"
+export MLND_REGISTRY_ADDR="0xREPLACE_REGISTRY"
+```
+
+Local Anvil keeps the default `MLND_WS_URL=ws://127.0.0.1:8545` from the table above.
+
 ## Auto-defend (optional, explicit opt-in)
 
 **Security:** `MLND_OPERATOR_PRIVATE_KEY` is a **hot key** with gas-spend power. Use a dedicated key, minimal balance, and test with dry-run first. The derived address **must** match `MLND_OPERATOR_ADDR` (the contract checks `msg.sender == accused`).
@@ -85,13 +102,25 @@ Optional:
 
 Wire format: [`research/NOSTR_MLN.md`](../research/NOSTR_MLN.md). Relay smoke flow: [`research/E2E_NOSTR_DEMO.md`](../research/E2E_NOSTR_DEMO.md).
 
-## coinswapd receipt bridge (optional stub)
+## coinswapd receipt bridge (optional)
+
+When enabled, mlnd scans a directory for **`*.ndjson`** and **`*.jsonl`** files and appends each **complete line** to SQLite via `SaveReceipt`. Line format (LitVM identities + peel correlators + defense strings) is defined in [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md). Stock `coinswapd` does not emit this stream; a **fork or sidecar** must write lines there — see [`research/COINSWAPD_INTEGRATION.md`](../research/COINSWAPD_INTEGRATION.md) (section 7) and [`research/COINSWAPD_TEARDOWN.md`](../research/COINSWAPD_TEARDOWN.md).
 
 | Env | Meaning |
 |-----|---------|
-| `MLND_BRIDGE_COINSWAPD` | Set to `1`, `true`, or `yes` to run the v0 bridge goroutine (logs only; no `SaveReceipt` yet). Future versions will follow [`research/COINSWAPD_TEARDOWN.md`](../research/COINSWAPD_TEARDOWN.md) JSON-RPC (`swap_*`) or log tailing. |
+| `MLND_BRIDGE_COINSWAPD` | Set to `1`, `true`, or `yes` to run the bridge |
+| `MLND_BRIDGE_RECEIPTS_DIR` | **Required** when the bridge is enabled: directory to scan (non-recursive) |
+| `MLND_BRIDGE_POLL_INTERVAL` | Optional scan period (default `2s`; `time.ParseDuration`, e.g. `5s`) |
 
-See [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) for the full Phase 5 scope.
+Duplicate lines for the same `evidenceHash` are ignored (SQLite `ON CONFLICT DO NOTHING`).
+
+**Run with a patched coinswapd**
+
+1. Configure the fork to append one JSON object per line into files under a shared directory (e.g. `receipts.ndjson`).
+2. Export `MLND_BRIDGE_COINSWAPD=1` and `MLND_BRIDGE_RECEIPTS_DIR` pointing at that directory; start `mlnd` with the usual LitVM variables.
+3. Until the fork emits lines, the bridge only polls the directory; the watcher and Nostr paths are unchanged.
+
+Phase history: [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) (stub + wiring), [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) (NDJSON ingestion).
 
 **Dependency note:** imports use module path `github.com/nbd-wtf/go-nostr` with a `replace` to **`github.com/fiatjaf/go-nostr`** (maintained fork). Version is pinned to **v0.35.0** for Go **1.22** CI compatibility.
 
