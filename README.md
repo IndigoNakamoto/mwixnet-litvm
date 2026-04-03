@@ -24,11 +24,13 @@ The MLN Stack intentionally isolates the four pillars of a trustless mixing netw
 
 Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, section 9); milestones here are a summary.
 
+**Production disclaimer:** While this repository’s **Phases 1–15** implementation PoC is **feature-complete in-tree**, it is **not production** until **LitVM testnet broadcast**, an independent **security audit**, and **C++ `coinswapd` integration** are finalized.
+
 **Recently completed in-repo (Phases 12–15):** local **E2E stack** (Anvil + Nostr + three `mlnd` makers + bootstrap), **`mln-sidecar`** with **`mock` and `rpc`** modes and JSON-RPC forwarding to **`mweb_submitRoute`** / **`mweb_getBalance`** (fork-side implementation still out of repo), **self-included routing** (wallet + pathfind), and **Phase 15 LitVM economic hardening** (slash, bonds, exit locks, reentrancy guard) plus **registry invariants** exercised in Foundry fuzzing. **Slither** runs on `contracts/**` changes in [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml).
 
 - **[x] Phase 0 — Protocol clarity** — MWEB transaction layer vs Grin baseline ([appendix 14](PRODUCT_SPEC.md)), native fee path via [`ltcmweb/coinswapd`](https://github.com/ltcmweb/coinswapd), and **canonical `evidenceHash` preimage** in [appendix 13](PRODUCT_SPEC.md) (validate against nodes before freezing registry ABIs).
 - **[x] Phase 1 — LitVM contracts (local complete)** — Foundry project in [`contracts/`](contracts/): `MwixnetRegistry`, `GrievanceCourt`, [`EvidenceLib`](contracts/src/EvidenceLib.sol) (appendix 13.5), fuzz tests, [`Makefile`](Makefile), [`scripts/deploy-local-anvil.sh`](scripts/deploy-local-anvil.sh), [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml). **Not audited.**
-- **[ ] Phase 1 — LitVM testnet broadcast (pending)** — Needs [public RPC, chain ID, and zkLTC](https://docs.litvm.com/get-started-on-testnet/add-to-wallet). Then: `forge script` with [`contracts/.env`](contracts/.env.example), verify contracts, record addresses. See [`research/LITVM.md`](research/LITVM.md).
+- **[ ] Phase 1 — LitVM testnet broadcast (pending)** — Needs [public RPC, chain ID, and zkLTC](https://docs.litvm.com/get-started-on-testnet/add-to-wallet). Then: `forge script` with [`contracts/.env.example`](contracts/.env.example) → `contracts/.env`, verify contracts, record addresses. See [`research/LITVM.md`](research/LITVM.md).
 - **[~] Phase 2 — Nostr profile (in progress)** — Normative wire (kinds **31250–31251**, `content` JSON, `nostrKeyHash` binding) is in [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md); JSON fixtures are validated in CI under [`nostr/`](nostr/). Demo CLIs under [`scripts/`](scripts/) use the same kinds and shapes. Local stack: `make test-full-stack`. **Live relay walkthrough:** [`research/E2E_NOSTR_DEMO.md`](research/E2E_NOSTR_DEMO.md) (`scripts/nostr_watch.py` + `publish_grievance.py`).
 - **[ ] Phase 3 — End-to-end integration** — Nostr discovery → Tor → MWixnet round → L2 settlement / slash path.
 - **[x] Phase 8 — Testnet packaging (local complete)** — [`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md): `mlnd` Dockerfile, `make build` / `make docker-build`, `make testnet-smoke`, [`mlnd/.env.example`](mlnd/.env.example), GitHub Releases on `v*` tags ([`.github/workflows/mlnd-release.yml`](.github/workflows/mlnd-release.yml)). **Binaries attach on tag push; LitVM testnet RPC still pending for live operator runs.**
@@ -80,7 +82,7 @@ Appendix 13 hashing is implemented in [`contracts/src/EvidenceLib.sol`](contract
 
 ---
 
-This repository holds the **product specification**, research notes, and Cursor configuration—**not** a production implementation yet (spec v0.1, draft).
+This repository holds the **product specification**, research notes, and Cursor configuration (spec **v0.1**, draft). **Production vs PoC** is defined under **Roadmap status** above.
 
 ## Documentation
 
@@ -89,11 +91,18 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Full architecture, economics, roadmap, evidence preimage (appendix 13), MWEB appendix (14), open questions |
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
-| [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`, `test-operator-smoke` (mlnd bridge + golden grievance; see [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md)); `build`, `build-mln-cli`, `build-mln-wallet` (Wails taker GUI; see [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md)), `docker-build`, `testnet-smoke` ([`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md)) |
-| [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md) | Operator packaging: Compose, env template, NDJSON bridge + `coinswapd`, defense and Nostr ops |
-| [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md) | Taker CLI (`mln-cli`): Scout, Pathfind, Forger (dry-run + sidecar POST); env and trust model |
-| [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) | Local Docker E2E: Anvil + Nostr relay + 3× `mlnd`, `scripts/e2e-bootstrap.sh`, [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) |
-| [`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md) | LitVM: slash economics, bond forfeit, slashing window, registry reentrancy guard; Foundry invariant fuzzing; Slither in CI |
+| [`Makefile`](Makefile) | Contracts (`contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`), operator smoke (`test-operator-smoke`, `test-full-stack`), `mlnd` / CLI / wallet / sidecar builds, Docker images — see phase playbooks below for context |
+| [`PHASE_5_NOSTR_TOR_BRIDGE.md`](PHASE_5_NOSTR_TOR_BRIDGE.md) | Phase 5: Nostr relay behavior, Tor URL clarity, receipt bridge scaffold (`mlnd`) |
+| [`PHASE_6_BRIDGE_INTEGRATION.md`](PHASE_6_BRIDGE_INTEGRATION.md) | Phase 6: NDJSON receipt bridge → `mlnd` SQLite, identity threading vs `coinswapd` |
+| [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md) | Phase 7: golden NDJSON → `mlnd` bridge → LitVM grievance operator smoke (`make test-operator-smoke`) |
+| [`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md) | Phase 8: `mlnd` Docker, release workflow, `make testnet-smoke`, GitHub Releases |
+| [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md) | Phase 9: operator packaging — Compose, env template, NDJSON bridge + `coinswapd`, defense and Nostr ops |
+| [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md) | Phase 10: taker CLI (`mln-cli`) — Scout, Pathfind, Forger (dry-run + sidecar POST); env and trust model |
+| [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md) | Phase 11: Wails taker wallet (`make build-mln-wallet`, `wails` build tag) |
+| [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) | Phase 12: local Docker E2E — Anvil + Nostr relay + 3× `mlnd`, `scripts/e2e-bootstrap.sh`, [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) |
+| [`mln-sidecar/README.md`](mln-sidecar/README.md) | Phase 13: `mln-sidecar` HTTP shim — `GET /v1/balance`, `POST /v1/swap`; `-mode=mock` vs `-mode=rpc` (`mweb_submitRoute` / `mweb_getBalance`) |
+| [`PHASE_14_SELF_INCLUSION.md`](PHASE_14_SELF_INCLUSION.md) | Phase 14: optional self-included routing (wallet + `mln-cli pathfind -self-included`) |
+| [`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md) | Phase 15: LitVM slash economics, bond forfeit, slashing window, registry reentrancy guard; Foundry invariant fuzzing; Slither in CI |
 | [`research/THREAT_MODEL_MLN.md`](research/THREAT_MODEL_MLN.md) | Accepted code review snapshot, threat tables, and residual risks (not a substitute for audit) |
 | [`docker-compose.yml`](docker-compose.yml) | `mlnd` service + commented `coinswapd` stub; use with [`.env.compose.example`](.env.compose.example) |
 | [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
@@ -118,7 +127,7 @@ git clone https://github.com/ltcmweb/coinswapd.git research/coinswapd
 
 ## Cursor
 
-Rules under [`.cursor/rules/`](.cursor/rules/), skills under [`.cursor/skills/`](.cursor/skills/).
+Rules under [`.cursor/rules/`](.cursor/rules/), skills under [`.cursor/skills/`](.cursor/skills/) (including [`.cursor/skills/doc-sync/SKILL.md`](.cursor/skills/doc-sync/SKILL.md) for documentation synchronization passes).
 
 ## License
 
