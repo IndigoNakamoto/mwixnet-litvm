@@ -1,0 +1,12 @@
+[
+  {
+    "type": "function",
+    "name": "defendGrievance",
+    "inputs": [
+      { "name": "grievanceId", "type": "bytes32" },
+      { "name": "defenseData", "type": "bytes" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]

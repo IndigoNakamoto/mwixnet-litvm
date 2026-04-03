@@ -32,20 +32,20 @@ type Watcher struct {
 	courtAddr    common.Address
 	operatorAddr common.Address
 	receipts     ReceiptLookup
+	defender     *Defender
 }
 
-// NewWatcher dials wsURL (WebSocket JSON-RPC) and returns a watcher for courtAddr / operatorAddr.
-// receipts may be nil to skip evidence lookups (log-only).
-func NewWatcher(wsURL, courtHex, operatorHex string, receipts ReceiptLookup) (*Watcher, error) {
-	client, err := ethclient.Dial(wsURL)
-	if err != nil {
-		return nil, fmt.Errorf("dial %q: %w", wsURL, err)
+// NewWatcher returns a watcher using an existing JSON-RPC client (caller typically dials once for ChainID / defend).
+func NewWatcher(client *ethclient.Client, courtHex, operatorHex string, receipts ReceiptLookup, defender *Defender) (*Watcher, error) {
+	if client == nil {
+		return nil, fmt.Errorf("nil eth client")
 	}
 	return &Watcher{
 		client:       client,
 		courtAddr:    common.HexToAddress(courtHex),
 		operatorAddr: common.HexToAddress(operatorHex),
 		receipts:     receipts,
+		defender:     defender,
 	}, nil
 }
 
@@ -99,13 +99,49 @@ func (w *Watcher) Start(ctx context.Context) error {
 					log.Printf("mlnd: [CRITICAL] cannot defend grievance %s: %v", ev.GrievanceID.Hex(), err)
 					continue
 				}
-				log.Printf("mlnd: receipt found for evidenceHash=%s nextHop=%s (defenseData + transactor TODO)",
-					ev.EvidenceHash.Hex(), receipt.NextHopPubkey)
-				// TODO: encode defenseData and submit defendGrievance(tx, ev.GrievanceID, defenseData)
-				_ = receipt
+				w.handleReceiptFound(ctx, ev, receipt)
 			}
 		}
 	}
+}
+
+func (w *Watcher) handleReceiptFound(ctx context.Context, ev *GrievanceEvent, receipt *ReceiptForDefense) {
+	if err := ValidateReceiptForGrievance(ev, receipt, w.operatorAddr); err != nil {
+		log.Printf("mlnd: receipt validation failed for grievance %s: %v", ev.GrievanceID.Hex(), err)
+		return
+	}
+	if w.defender == nil {
+		log.Printf("mlnd: validated receipt for grievance %s (auto-defend off; set MLND_DEFEND_AUTO=1 and MLND_OPERATOR_PRIVATE_KEY)", ev.GrievanceID.Hex())
+		return
+	}
+
+	head, err := w.client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		log.Printf("mlnd: chain header for deadline check: %v", err)
+		return
+	}
+	if !ChainTimeBeforeDeadline(head, ev.Deadline) {
+		log.Printf("mlnd: skip defend %s: chain time %d >= deadline %s", ev.GrievanceID.Hex(), head.Time, ev.Deadline.String())
+		return
+	}
+
+	defenseData, err := BuildDefenseData(receipt)
+	if err != nil {
+		log.Printf("mlnd: build defenseData for %s: %v", ev.GrievanceID.Hex(), err)
+		return
+	}
+
+	if w.defender.IsDryRun() {
+		log.Printf("mlnd: DRY-RUN defendGrievance grievanceId=%s defenseData (%d bytes)=%x", ev.GrievanceID.Hex(), len(defenseData), defenseData)
+		return
+	}
+
+	tx, err := w.defender.SubmitDefend(ctx, w.client, ev.GrievanceID, defenseData)
+	if err != nil {
+		log.Printf("mlnd: defendGrievance failed for %s: %v", ev.GrievanceID.Hex(), err)
+		return
+	}
+	log.Printf("mlnd: submitted defendGrievance tx=%s grievanceId=%s", tx.Hash().Hex(), ev.GrievanceID.Hex())
 }
 
 // ParseGrievanceLog decodes a GrievanceOpened log (four topics, 96 bytes data).

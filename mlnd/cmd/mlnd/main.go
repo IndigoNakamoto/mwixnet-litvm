@@ -10,6 +10,7 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
 	mlnnostr "github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -43,13 +44,32 @@ func main() {
 		}
 	}()
 
-	watcher, err := litvm.NewWatcher(wsURL, courtAddr, operatorAddr, dbStore)
+	client, err := ethclient.Dial(wsURL)
 	if err != nil {
-		log.Fatalf("init watcher: %v", err)
+		log.Fatalf("dial rpc: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	defender, err := litvm.LoadDefenderFromEnv(ctx, client, courtAddr, operatorAddr)
+	if err != nil {
+		client.Close()
+		log.Fatalf("defender config: %v", err)
+	}
+	if defender != nil {
+		if defender.IsDryRun() {
+			log.Println("mlnd: auto-defend enabled (DRY-RUN — no transactions)")
+		} else {
+			log.Println("mlnd: auto-defend enabled (will submit defendGrievance)")
+		}
+	}
+
+	watcher, err := litvm.NewWatcher(client, courtAddr, operatorAddr, dbStore, defender)
+	if err != nil {
+		client.Close()
+		log.Fatalf("init watcher: %v", err)
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -61,6 +81,7 @@ func main() {
 
 	bc, err := mlnnostr.LoadBroadcasterFromEnv()
 	if err != nil {
+		client.Close()
 		log.Fatalf("nostr broadcaster config: %v", err)
 	}
 	if bc != nil {
