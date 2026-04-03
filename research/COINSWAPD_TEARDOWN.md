@@ -34,6 +34,12 @@ func (s *swapService) Swap(onion onion.Onion) error {
 - Only **swap server (node index 0)** accepts new onions.
 - Payload type is **`onion.Onion`** (see §2), not a custom “swap” wrapper.
 
+### MLN `mln-cli` sidecar extension (not in upstream ltcmweb)
+
+[`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) describes the taker CLI’s **optional** HTTP POST to an MLN-defined URL (default path **`/v1/swap`**) with a **route JSON** body (`tor` + `feeMinSat` per hop, plus `destination` and `amount` in satoshis). That keeps `mln-cli` as a **pure Go** coordinator while MWEB onion build and Tor dialing stay in **`coinswapd`**.
+
+**Upstream `coinswapd` does not implement this endpoint**; it only accepts a full onion via JSON-RPC `swap_Swap` as above. A **fork or small proxy** next to `coinswapd` must translate the route JSON into `onion.Onion` (or otherwise drive the existing swap path).
+
 ### Inter-node (`swap_forward` / `swap_backward`)
 
 These are invoked via `rpc.Client.Call(nil, "swap_forward", data)` / `"swap_backward"` (`swap.go`) — i.e. **opaque binary blobs** after decryption, not JSON onions. The **forward** path sends **gob-encoded** sorted commitments + per-commitment `onionEtc`; the **backward** path sends outputs + kernels.

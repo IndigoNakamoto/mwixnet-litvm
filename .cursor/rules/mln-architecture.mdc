@@ -5,6 +5,7 @@ globs:
   - PRODUCT_SPEC.md
   - research/**/*
   - contracts/**/*
+  - mln-cli/**/*
 ---
 
 # MLN architecture (project rule)
@@ -12,6 +13,7 @@ globs:
 - **Canonical spec:** `PRODUCT_SPEC.md` — product intent, layered architecture, roadmap, open questions; **§13** = `evidenceHash` preimage + wire bytes; **§14** = MWEB transaction / onion baseline vs Grin for the `coinswapd` path.
 - **LitVM:** `contracts/` (Foundry) + `research/LITVM.md` — registry, `GrievanceCourt`, `EvidenceLib` (appendix 13); not audited.
 - **Reference implementation map:** `research/COINSWAPD_TEARDOWN.md` — actual `coinswapd` RPC names, onion JSON shape, and file-level entry points; use before asserting how the ltcmweb reference behaves.
+- **Taker CLI vs coinswapd:** `mln-cli` Forger POSTs **MLN route JSON** to a configurable URL (default `/v1/swap`); that is **not** upstream `swap_Swap`. Vanilla taker entry is still `onion.Onion` over JSON-RPC `/`. See teardown subsection on the sidecar extension and `PHASE_10_TAKER_CLI.md`.
 - **Stack split:** MWEB = mixing + default routing fees; LitVM = stake, bonds, slashing, grievance lifecycle; Nostr = discovery / gossip; Tor = transport. Do not put high-frequency discovery or rich routing metadata on LitVM as permanent state (see spec §3–5).
 - **Nostr wire (normative):** `research/NOSTR_MLN.md` — kinds 31250–31251, replaceable maker ads, grievance pointers. CI validates `nostr/fixtures/` against that profile; `scripts/mln_nostr_wire.py` and the Nostr CLIs follow the same schema.
 - **Judicial vs happy path:** On-chain contracts handle **accusations, defenses, resolution** — not re-verifying every successful mix. Per-hop fees in the baseline design stay on **MWEB** unless the spec explicitly adds another rail.

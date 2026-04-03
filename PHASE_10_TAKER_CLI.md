@@ -1,6 +1,6 @@
 # Phase 10: The Taker Client (`mln-cli`)
 
-This document describes the **taker-side** Go CLI used to discover makers on Nostr, verify them against LitVM, pick a three-hop route (wallet PoC policy), and (later) drive MWEB execution via patched `coinswapd` over Tor.
+This document describes the **taker-side** Go CLI used to discover makers on Nostr, verify them against LitVM, pick a three-hop route (wallet PoC policy), and **hand off the route to a local `coinswapd` sidecar** over HTTP (pure Go in `mln-cli`; MWEB/Tor crypto stays in the sidecar process).
 
 Normative maker-ad wire: [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md). Wallet route policy (PoC): [`research/USER_STORIES_MLN.md`](research/USER_STORIES_MLN.md). MWEB / RPC shape: [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md). Maker daemon: [`mlnd/README.md`](mlnd/README.md).
 
@@ -8,7 +8,7 @@ Normative maker-ad wire: [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md). Walle
 
 - **Phase 10.1 — Scout:** Nostr kind **31250** ingest, Schnorr check, LitVM `eth_call` to `MwixnetRegistry` (`makerNostrKeyHash`, `stake`, `minStake`, `stakeFrozen`).
 - **Phase 10.2 — Pathfind:** Ordered **N1 → N2 → N3** selection from verified makers (minimize sum of optional per-hop fee hints, then prefer higher total stake, random tie-break).
-- **Phase 10.3 — Forger:** Validate Tor endpoints on a saved route; **MWEB onion build and POST to N1 are not implemented** in-tree yet (requires patched `coinswapd` + SOCKS proxy).
+- **Phase 10.3 — Forger:** Validate Tor endpoints on a saved route (`-dry-run`), or **POST JSON** to a local **MLN extension** URL (`-dry-run=false`). Vanilla ltcmweb only exposes `swap_Swap(onion.Onion)` on JSON-RPC `/`; the JSON route body is implemented by a **fork or proxy** (see [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md)).
 
 Shared maker-ad types live in [`mlnd/pkg/makerad`](mlnd/pkg/makerad) so `mlnd` and `mln-cli` stay aligned.
 
@@ -57,13 +57,41 @@ You need **at least three** verified makers.
 
 ## Phase 10.3: Forger
 
-Dry-run only: checks that each hop has a **Tor** URL from the maker ad.
+**Dry-run (default):** checks that each hop has a **Tor** URL from the maker ad and prints the three hop endpoints.
 
 ```bash
 ./bin/mln-cli forger -route-json route.json -dry-run
 ```
 
-Passing `-dry-run=false` exits with an error: execution is not wired in this repository revision.
+**Submit to sidecar:** with `-dry-run=false`, `mln-cli` POSTs a JSON payload to the URL from `-coinswapd-url` (default `http://127.0.0.1:8080/v1/swap`). You must pass **`-dest`** (MWEB destination address) and **`-amount`** (satoshis). The request uses a **10s** HTTP timeout.
+
+```bash
+./bin/mln-cli forger -route-json route.json -dry-run=false \
+  -dest mweb1... -amount 100000000
+# optional: -coinswapd-url http://127.0.0.1:8080/v1/swap
+```
+
+### Sidecar request body (MLN extension)
+
+Not supported by stock ltcmweb; the server must accept JSON like:
+
+```json
+{
+  "route": [
+    { "tor": "<mix API from maker ad>", "feeMinSat": 1000 },
+    { "tor": "...", "feeMinSat": 1000 },
+    { "tor": "...", "feeMinSat": 1000 }
+  ],
+  "destination": "mweb1...",
+  "amount": 100000000
+}
+```
+
+### Sidecar response
+
+`mln-cli` expects a JSON object with `ok` (boolean), optional `detail`, and optional `error`. On success it reminds that **coinswapd batching** runs at **local midnight** in the reference implementation, so there may be **no immediate chain txid**.
+
+Implementation: [`mln-cli/internal/forger/`](mln-cli/internal/forger/).
 
 ## Trust model
 

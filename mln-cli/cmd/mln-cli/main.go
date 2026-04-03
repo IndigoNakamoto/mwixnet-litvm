@@ -43,7 +43,7 @@ func usage() {
 Commands:
   scout     Discover kind-31250 maker ads, verify LitVM registry state
   pathfind  Pick an ordered 3-hop route from verified makers (min fee hint, stake tie-break)
-  forger    Validate a route for Tor endpoints; MWEB execution not yet wired
+  forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
 
 Environment (scout & pathfind):
   MLN_NOSTR_RELAYS          comma-separated wss:// relays
@@ -136,12 +136,12 @@ func runPathfind(args []string) {
 	}
 
 	cfg := scout.Config{
-		Relays:       relays,
-		RPCHTTP:      rpcURL,
-		ChainID:      chainID,
-		RegistryAddr: regAddr,
+		Relays:         relays,
+		RPCHTTP:        rpcURL,
+		ChainID:        chainID,
+		RegistryAddr:   regAddr,
 		GrievanceCourt: court,
-		Timeout:      timeout,
+		Timeout:        timeout,
 	}
 
 	ctx := context.Background()
@@ -176,7 +176,10 @@ func runPathfind(args []string) {
 func runForger(args []string) {
 	fs := flag.NewFlagSet("forger", flag.ExitOnError)
 	routePath := fs.String("route-json", "", "path to JSON route from `mln-cli pathfind -json`")
-	dryRun := fs.Bool("dry-run", true, "validate route only (default)")
+	dryRun := fs.Bool("dry-run", true, "validate route only (default); set false to POST to sidecar")
+	dest := fs.String("dest", "", "destination MWEB address (required with -dry-run=false)")
+	amount := fs.Uint64("amount", 0, "amount to swap in satoshis (required with -dry-run=false)")
+	sidecarURL := fs.String("coinswapd-url", "http://127.0.0.1:8080/v1/swap", "MLN extension URL of local coinswapd sidecar")
 	_ = fs.Parse(args)
 
 	if *routePath == "" {
@@ -194,12 +197,27 @@ func runForger(args []string) {
 		os.Exit(1)
 	}
 
-	if !*dryRun {
-		fmt.Fprintln(os.Stderr, "forger: only -dry-run is supported; MWEB/Tor execution is not implemented")
-		os.Exit(3)
+	if *dryRun {
+		if err := forger.DryRun(&route); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
-	if err := forger.DryRun(&route); err != nil {
+	if strings.TrimSpace(*dest) == "" {
+		fmt.Fprintln(os.Stderr, "forger: -dest is required when -dry-run=false")
+		os.Exit(2)
+	}
+	if *amount == 0 {
+		fmt.Fprintln(os.Stderr, "forger: -amount must be > 0 when -dry-run=false")
+		os.Exit(2)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := forger.Execute(ctx, &route, *sidecarURL, *dest, *amount); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
