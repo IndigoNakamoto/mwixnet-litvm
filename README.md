@@ -113,6 +113,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md) | Phase 15: LitVM slash economics, bond forfeit, slashing window, registry reentrancy guard; Foundry invariant fuzzing; Slither in CI |
 | [`PHASE_16_PUBLIC_TESTNET.md`](PHASE_16_PUBLIC_TESTNET.md) | Phase 16: public testnet readiness — Foundry `RPC_URL` / verification, operator `docker-compose.testnet.yml`, wallet defaults vs local E2E |
 | [`research/THREAT_MODEL_MLN.md`](research/THREAT_MODEL_MLN.md) | Accepted code review snapshot, threat tables, and residual risks (not a substitute for audit) |
+| [`research/RED_TEAM_MLN.md`](research/RED_TEAM_MLN.md) | Red-team style layer-by-layer scenarios, kill chains, tabletop template; extends `THREAT_MODEL_MLN.md` |
 | [`docker-compose.yml`](docker-compose.yml) | `mlnd` service + commented `coinswapd` stub; use with [`.env.compose.example`](.env.compose.example) |
 | [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |

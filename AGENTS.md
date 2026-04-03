@@ -12,6 +12,7 @@
 | Grievance `evidenceHash` preimage (LitVM correlators) | `PRODUCT_SPEC.md` §13 |
 | LitVM Foundry contracts and testnet notes | `contracts/`, `research/LITVM.md` |
 | Accepted code review + threat model (scaffold risks, ops, CI gaps) | `research/THREAT_MODEL_MLN.md` |
+| Red-team narratives + tabletop exercise (extends threat model; not a separate audit) | `research/RED_TEAM_MLN.md` |
 | Maker exit queue / cooldown / slashing window (registry + grievances) | `PRODUCT_SPEC.md` section 5.1.1, `contracts/src/MwixnetRegistry.sol`, `PHASE_15_ECONOMIC_HARDENING.md` |
 | Appendix 13 hash helpers (`evidenceHash`, `grievanceId`) | `contracts/src/EvidenceLib.sol` |
 | Nostr wire profile (MLN kinds, tags, `content` JSON, `nostrKeyHash` binding) | `research/NOSTR_MLN.md` |
