@@ -25,11 +25,13 @@
 | Phase 15 LitVM economics (slash, bonds, exit locks; Foundry invariants + Slither in CI) | `PHASE_15_ECONOMIC_HARDENING.md`, `contracts/test/InvariantRegistryStake.t.sol`, `.github/workflows/contracts.yml`, `contracts/src/MwixnetRegistry.sol`, `contracts/src/GrievanceCourt.sol` |
 | Phase 16 public testnet readiness (RPC_URL deploy, verification env, operator compose without Anvil/local relay) | `PHASE_16_PUBLIC_TESTNET.md`, `deploy/docker-compose.testnet.yml`, `deploy/.env.testnet.example`, `contracts/.env.example`, `mln-cli/internal/config/settings.go` |
 | Local E2E stack (Anvil + Nostr relay + `mln-sidecar` + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh`, `mln-sidecar/` |
+| Phase 3a MWEB handoff (`mln-sidecar -mode=rpc`, stub or fork; no official LitVM testnet) | `PHASE_3_MWEB_HANDOFF_SLICE.md`, `scripts/e2e-mweb-handoff-stub.sh`, `deploy/docker-compose.e2e.sidecar-rpc.yml`, `make build-mw-rpc-stub` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md`; fork + `mweb_*` implementation in `research/coinswapd/` |
 | `mweb_submitRoute` / `mweb_getBalance` fork contract and MLN → `onion.Onion` mapping | `research/COINSWAPD_MLN_FORK_SPEC.md` |
 | Taker CLI (`mln-cli`); maker onboard (`mln-cli maker onboard`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`); optional self-as-N2 routing (Phase 14); optional `mlnd` loopback Maker dashboard (`MLND_DASHBOARD_ADDR`) | `PHASE_10_TAKER_CLI.md`, `PHASE_14_SELF_INCLUSION.md`, `mln-cli/desktop/README.md`, `mlnd/MAKER_DASHBOARD_SETUP.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar + `swap_forward`), `research/COINSWAPD_MLN_FORK_SPEC.md`, `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mln-cli/internal/pathfind/`, `mlnd/pkg/makerad`, `mln-sidecar/` |
 | Documentation sync pass (README `PHASE_*` index parity, git-aligned status blurbs, PoC vs production, link and CI/RPC audit) | `.cursor/skills/doc-sync/SKILL.md`, `.cursor/rules/doc-sync.mdc` |
+| Program hygiene (priorities, blockers, milestone/release readiness from canonical docs + git; not a second roadmap) | `.cursor/skills/mln-pm/SKILL.md` |
 
 Prefer quoting or linking paths into those docs instead of inventing APIs or economics.
 

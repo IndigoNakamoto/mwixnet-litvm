@@ -4,3 +4,4 @@ e2e.maker1.env
 e2e.maker2.env
 e2e.maker3.env
 e2e.wallet-settings.generated.json
+e2e.mweb-handoff.route.json

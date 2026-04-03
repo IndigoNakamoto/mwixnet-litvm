@@ -41,4 +41,8 @@ make build-mln-sidecar
 
 See [`PHASE_12_E2E_CRUCIBLE.md`](../PHASE_12_E2E_CRUCIBLE.md).
 
+## `mw-rpc-stub` (Phase 3a integration helper)
+
+The repo ships **`cmd/mw-rpc-stub`**: a minimal HTTP JSON-RPC server that implements **`mweb_getBalance`** and **`mweb_submitRoute`** so **`mln-sidecar -mode=rpc`** can be tested without running the full **`research/coinswapd`** stack (Neutrino, MWEB keys, etc.). Build from the repository root: **`make build-mw-rpc-stub`** → **`bin/mw-rpc-stub`** (default **`-addr :8546`**). Runbook: [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
+
 Phase 14 **self-included** routes do not change this service: hop identity and `swap_forward` handling remain in **`mlnd` / `coinswapd`** ([`PHASE_14_SELF_INCLUSION.md`](../PHASE_14_SELF_INCLUSION.md)).

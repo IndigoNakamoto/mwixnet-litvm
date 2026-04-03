@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -51,6 +51,11 @@ build-mln-cli:
 build-mln-sidecar:
 	@mkdir -p "$(MK_ROOT)/bin"
 	cd "$(MK_ROOT)/mln-sidecar" && go build -o "$(MK_ROOT)/bin/mln-sidecar" ./cmd/mln-sidecar
+
+# JSON-RPC stub for mweb_* (Phase 3a handoff tests; see PHASE_3_MWEB_HANDOFF_SLICE.md)
+build-mw-rpc-stub:
+	@mkdir -p "$(MK_ROOT)/bin"
+	cd "$(MK_ROOT)/mln-sidecar" && go build -o "$(MK_ROOT)/bin/mw-rpc-stub" ./cmd/mw-rpc-stub
 
 # Vite bundle for Wails embed (Node 18+). Run from repo root.
 build-mln-wallet-frontend:

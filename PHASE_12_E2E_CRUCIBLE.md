@@ -90,6 +90,10 @@ Then build and run the desktop app (`make build-mln-wallet` and run the binary, 
 
 **Send Privately** POSTs the built route to the default MLN sidecar URL (`http://127.0.0.1:8080/v1/swap`). With **`mln-sidecar`** from the Compose file, that service answers **`GET /v1/balance`** (mock **1.25 LTC** available / **1.2 LTC** spendable) and **`POST /v1/swap`** (validates the three-hop JSON, logs a simulated MWEB onion handoff, returns success). The desktop wallet can therefore run a **closed-loop** local simulation: balance panel, spendable check, and submit all succeed without a real `coinswapd`. For production, deploy the same binary (or a fork) next to **`coinswapd`** to translate route JSON into **`swap_Swap(onion.Onion)`** JSON-RPC per [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md). The hop URLs in the route (`8081`–`8083` in this matrix) are what makers advertise for the engine path; the wallet does not dial them directly in the Phase 10 forger flow.
 
+### Optional: rpc sidecar + MWEB JSON-RPC stub (Phase 3a)
+
+To exercise **`-mode=rpc`** (forwarding to **`mweb_getBalance`** / **`mweb_submitRoute`**) without official LitVM testnet, use **[`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)**, **[`deploy/docker-compose.e2e.sidecar-rpc.yml`](deploy/docker-compose.e2e.sidecar-rpc.yml)**, and **`./scripts/e2e-mweb-handoff-stub.sh`** (host stub **`bin/mw-rpc-stub`** on **`:8546`** via `host.docker.internal`).
+
 ## Security note
 
 `e2e-bootstrap.sh` uses **well-known Anvil keys** and fixed Nostr test secrets. They are for **local development only**; never use them on a public network or mainnet.
