@@ -70,6 +70,9 @@ func (s *settingsStore) save(net config.NetworkSettings) error {
 
 func defaultNetworkSettings() config.NetworkSettings {
 	return config.NetworkSettings{
+		NostrRelays:       append([]string(nil), config.DefaultNostrRelays...),
+		LitvmChainID:      config.DefaultLitvmChainID,
+		LitvmHTTPURL:      config.DefaultLitvmHTTPURL,
 		DefaultSidecarURL: "http://127.0.0.1:8080/v1/swap",
 		ScoutTimeout:      "30s",
 		ForgerHTTPTimeout: "10s",

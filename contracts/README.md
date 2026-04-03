@@ -50,6 +50,6 @@ LitVM **testnet** broadcast remains blocked until [official RPC / chain ID](http
 | `test/` | Unit + fuzz tests |
 | `deployments/anvil-local.example.json` | Example recorded addresses after local deploy |
 
-Deploy script for **real LitVM**: copy `.env.example` to `.env`, set `PRIVATE_KEY` and `LITVM_RPC_URL`.
+Deploy script for **public testnet**: copy `.env.example` to `.env`, set `PRIVATE_KEY` and `RPC_URL`; for verification on an Etherscan-compatible explorer, set `ETHERSCAN_API_KEY` and add `--verify` (see [`PHASE_16_PUBLIC_TESTNET.md`](../PHASE_16_PUBLIC_TESTNET.md)).
 
 `lib/forge-std` is vendored for reproducible builds; you can replace with `forge install foundry-rs/forge-std` if you prefer.

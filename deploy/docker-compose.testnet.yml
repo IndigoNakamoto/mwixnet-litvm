@@ -1,0 +1,33 @@
+# Phase 16 — public testnet operator stack: mlnd only (no Anvil, no local nostr-rs-relay).
+# Copy deploy/.env.testnet.example to deploy/.env.testnet (gitignored). From repo root:
+#   docker compose -f deploy/docker-compose.testnet.yml up -d
+# Optional mock MLN HTTP sidecar (taker forger / balance PoC):
+#   docker compose -f deploy/docker-compose.testnet.yml --profile sidecar up -d
+#
+# See PHASE_16_PUBLIC_TESTNET.md and mlnd/README.md.
+
+services:
+  mlnd:
+    build:
+      context: ../mlnd
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.testnet
+    volumes:
+      - mln_testnet_mlnd:/data
+      - mln_testnet_receipts:/receipts
+
+  mln-sidecar:
+    profiles: ["sidecar"]
+    build:
+      context: ../mln-sidecar
+      dockerfile: Dockerfile
+    command: ["-port", "8080", "-mode", "mock"]
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+volumes:
+  mln_testnet_mlnd:
+  mln_testnet_receipts:

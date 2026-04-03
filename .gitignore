@@ -22,3 +22,6 @@ data/
 
 # Root docker-compose secrets (copy from .env.compose.example)
 /.env
+
+# Phase 16 testnet operator env (copy from deploy/.env.testnet.example)
+deploy/.env.testnet

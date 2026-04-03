@@ -10,6 +10,18 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
 )
 
+// Default public Nostr relays (Phase 16). Copy before mutating (e.g. append([]string(nil), DefaultNostrRelays...)).
+var DefaultNostrRelays = []string{
+	"wss://relay.damus.io",
+	"wss://nos.lol",
+}
+
+// DefaultLitvmHTTPURL is a working public HTTP JSON-RPC stand-in until official LitVM testnet RPC is published.
+const DefaultLitvmHTTPURL = "https://rpc.sepolia.org"
+
+// DefaultLitvmChainID matches DefaultLitvmHTTPURL (Sepolia).
+const DefaultLitvmChainID = "11155111"
+
 // NetworkSettings holds the same fields as scout/pathfind environment variables (PHASE_10_TAKER_CLI.md).
 type NetworkSettings struct {
 	NostrRelays         []string `json:"nostrRelays"`

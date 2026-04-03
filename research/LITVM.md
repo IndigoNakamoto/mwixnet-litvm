@@ -57,14 +57,16 @@ docker run --rm --entrypoint forge -v "$(pwd)/contracts:/work" -w /work ghcr.io/
 Copy [`contracts/.env.example`](../contracts/.env.example) to `contracts/.env` (gitignored). You need at least:
 
 - `PRIVATE_KEY` — deployer (testnet only; never reuse mainnet keys)
-- `LITVM_RPC_URL` — from LitVM docs when available
+- `RPC_URL` — HTTP JSON-RPC for the target chain (from LitVM docs when available, or a public testnet RPC for bring-up)
 
 Deploy (after `source .env` or export vars):
 
 ```bash
 cd contracts
-forge script script/Deploy.s.sol:Deploy --rpc-url "$LITVM_RPC_URL" --broadcast
+forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast
 ```
+
+Verification (optional, Etherscan-compatible chains): add `--verify --etherscan-api-key "$ETHERSCAN_API_KEY"` (set in `.env`; see [`PHASE_16_PUBLIC_TESTNET.md`](../PHASE_16_PUBLIC_TESTNET.md)).
 
 Optional env overrides: `MIN_STAKE`, `CHALLENGE_WINDOW`, `GRIEVANCE_BOND_MIN` (see `Deploy.s.sol`).
 

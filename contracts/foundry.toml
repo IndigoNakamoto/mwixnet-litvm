@@ -7,9 +7,9 @@ optimizer = true
 optimizer_runs = 200
 via_ir = false
 
-# Use env when invoking: forge script ... --rpc-url $LITVM_RPC_URL
+# Use env when invoking: forge script ... --rpc-url $RPC_URL
 [rpc_endpoints]
-litvm_testnet = "${LITVM_RPC_URL}"
+litvm_testnet = "${RPC_URL}"
 
 [invariant]
 runs = 256

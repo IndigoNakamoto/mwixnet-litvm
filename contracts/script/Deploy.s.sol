@@ -6,7 +6,8 @@ import {MwixnetRegistry} from "../src/MwixnetRegistry.sol";
 import {GrievanceCourt} from "../src/GrievanceCourt.sol";
 
 /// @notice Deploy registry, judicial court, then wire `grievanceCourt` on the registry (one-time).
-/// @dev Load env: PRIVATE_KEY, optionally broadcast with --rpc-url $LITVM_RPC_URL
+/// @dev Env: PRIVATE_KEY (vm.envUint). RPC is not read in Solidity — broadcast with:
+///      forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast [--verify --etherscan-api-key "$ETHERSCAN_API_KEY"]
 contract Deploy is Script {
     function run() external {
         uint256 minStake = vm.envOr("MIN_STAKE", uint256(0.1 ether));

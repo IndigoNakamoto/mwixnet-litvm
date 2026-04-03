@@ -20,6 +20,7 @@
 | Wallet UX wireframes (taker / maker) | `research/WALLET_TAKER_FLOW_V1.md`, `research/WALLET_MAKER_FLOW_V1.md` |
 | Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
 | Phase 15 LitVM economics (slash, bonds, exit locks; Foundry invariants + Slither in CI) | `PHASE_15_ECONOMIC_HARDENING.md`, `contracts/test/InvariantRegistryStake.t.sol`, `.github/workflows/contracts.yml`, `contracts/src/MwixnetRegistry.sol`, `contracts/src/GrievanceCourt.sol` |
+| Phase 16 public testnet readiness (RPC_URL deploy, verification env, operator compose without Anvil/local relay) | `PHASE_16_PUBLIC_TESTNET.md`, `deploy/docker-compose.testnet.yml`, `deploy/.env.testnet.example`, `contracts/.env.example`, `mln-cli/internal/config/settings.go` |
 | Local E2E stack (Anvil + Nostr relay + `mln-sidecar` + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh`, `mln-sidecar/` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
@@ -43,9 +44,9 @@ The teardown documents **entry points** and the **`ltcd`** dependency boundary (
 
 ## Current phase
 
-**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–15** (taker CLI, wallet, E2E crucible, sidecar, self-inclusion, economic hardening) are **shipped in-tree**; **LitVM testnet broadcast** remains pending public RPC.
+**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**; **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM.
 
-**Phase 1 (testnet):** when LitVM publishes endpoints, broadcast and record addresses (`research/LITVM.md`).
+**Phase 1 (testnet):** when LitVM publishes endpoints, broadcast and record addresses (`research/LITVM.md`, `PHASE_16_PUBLIC_TESTNET.md`).
 
 Earlier: **protocol clarity** (`PRODUCT_SPEC.md` §9). **`evidenceHash` preimage** — spec §13 + `EvidenceLib`; validate against nodes before freezing production ABIs. **L1 inclusion proofs** for defenses: TBD (`PRODUCT_SPEC.md` §10).
 
