@@ -1,0 +1,76 @@
+name: mlnd release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: mlnd/go.sum
+      - name: Install C toolchain (CGO / sqlite)
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+      - name: Build mlnd (linux/amd64)
+        working-directory: mlnd
+        env:
+          CGO_ENABLED: "1"
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -trimpath -ldflags="-s -w" -o "$RUNNER_TEMP/mlnd-linux-amd64" ./cmd/mlnd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlnd-linux-amd64
+          path: ${{ runner.temp }}/mlnd-linux-amd64
+
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: mlnd/go.sum
+      - name: Install C toolchain (CGO / sqlite)
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+      - name: Build mlnd (linux/arm64)
+        working-directory: mlnd
+        env:
+          CGO_ENABLED: "1"
+          GOOS: linux
+          GOARCH: arm64
+        run: go build -trimpath -ldflags="-s -w" -o "$RUNNER_TEMP/mlnd-linux-arm64" ./cmd/mlnd
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mlnd-linux-arm64
+          path: ${{ runner.temp }}/mlnd-linux-arm64
+
+  release:
+    needs: [build-amd64, build-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mlnd-linux-amd64
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: mlnd-linux-arm64
+          path: dist
+      - name: chmod binaries
+        run: chmod +x dist/mlnd-linux-amd64 dist/mlnd-linux-arm64
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/mlnd-linux-amd64
+            dist/mlnd-linux-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

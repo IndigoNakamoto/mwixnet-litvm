@@ -1,0 +1,16 @@
+# Multi-stage image for mlnd (CGO + SQLite via github.com/mattn/go-sqlite3).
+# Build from repo root: docker build -f mlnd/Dockerfile -t mlnd:local mlnd
+
+FROM golang:1.22-bookworm AS builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+ENV CGO_ENABLED=1
+RUN go build -trimpath -ldflags="-s -w" -o /out/mlnd ./cmd/mlnd
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /out/mlnd /usr/local/bin/mlnd
+ENTRYPOINT ["/usr/local/bin/mlnd"]

@@ -1,3 +1,5 @@
+# mlnd `make build` output
+/bin/
 .DS_Store
 # Local Foundry install (foundryup)
 .foundry/

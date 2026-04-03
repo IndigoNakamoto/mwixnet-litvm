@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build docker-build listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -32,6 +32,18 @@ test-grievance:
 # Golden NDJSON fixture + mlnd bridge + openGrievance on Anvil (no coinswapd). Requires Go 1.22+ on PATH.
 test-operator-smoke:
 	./scripts/mlnd-bridge-litvm-smoke.sh
+
+# LitVM testnet (or any chain): set MLND_HTTP_URL + MLND_COURT_ADDR; see mlnd/.env.example and research/LITVM.md
+testnet-smoke:
+	./scripts/mlnd-testnet-smoke.sh
+
+# CGO required (SQLite). Output: bin/mlnd
+build:
+	@mkdir -p "$(MK_ROOT)/bin"
+	cd "$(MK_ROOT)/mlnd" && CGO_ENABLED=1 go build -o "$(MK_ROOT)/bin/mlnd" ./cmd/mlnd
+
+docker-build:
+	docker build -f "$(MK_ROOT)/mlnd/Dockerfile" -t mlnd:local "$(MK_ROOT)/mlnd"
 
 test-full-stack:
 	@echo "=== Running full grievance + Nostr stack test ==="

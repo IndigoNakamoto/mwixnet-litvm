@@ -28,6 +28,38 @@ export MLND_REGISTRY_ADDR="0xREPLACE_REGISTRY"
 
 Local Anvil keeps the default `MLND_WS_URL=ws://127.0.0.1:8545` from the table above.
 
+### Run on LitVM testnet
+
+1. Copy [`mlnd/.env.example`](.env.example) to `mlnd/.env` (or export variables in your shell). Fill **only** from [official LitVM docs](https://docs.litvm.com/) and [`research/LITVM.md`](../research/LITVM.md); do not commit secrets.
+2. `mlnd` needs **`MLND_WS_URL`** (WebSocket). For `cast`-based checks (`make testnet-smoke`), set **`MLND_HTTP_URL`** to the HTTP JSON-RPC endpoint LitVM documents for tooling (often a different URL than WS).
+3. Start the daemon from `mlnd/` with `go run ./cmd/mlnd` or use a release binary / Docker (below).
+
+### Docker image
+
+From the **repo root**:
+
+```bash
+make docker-build
+# example: persist SQLite + mount receipt dir for the coinswapd bridge
+docker run --rm -e MLND_WS_URL -e MLND_COURT_ADDR -e MLND_OPERATOR_ADDR \
+  -v "$PWD/mlnd-data:/data" -e MLND_DB_PATH=/data/mlnd.db \
+  mlnd:local
+```
+
+Build context is this directory; see [`Dockerfile`](Dockerfile) (multi-stage `golang:1.22-bookworm` → `debian:bookworm-slim`, `CGO_ENABLED=1`).
+
+### Testnet RPC smoke (optional)
+
+With real testnet values:
+
+```bash
+export MLND_HTTP_URL="https://…"   # HTTP JSON-RPC for cast
+export MLND_COURT_ADDR="0x…"
+make testnet-smoke
+```
+
+If `cast` is not on your PATH, the script uses Docker Foundry; for **local** Anvil on `127.0.0.1`, it rewrites the URL to `host.docker.internal` so the container can reach the host (same idea as `scripts/deploy-local-anvil.sh`).
+
 ## Auto-defend (optional, explicit opt-in)
 
 **Security:** `MLND_OPERATOR_PRIVATE_KEY` is a **hot key** with gas-spend power. Use a dedicated key, minimal balance, and test with dry-run first. The derived address **must** match `MLND_OPERATOR_ADDR` (the contract checks `msg.sender == accused`).
@@ -120,7 +152,7 @@ Duplicate lines for the same `evidenceHash` are ignored (SQLite `ON CONFLICT DO 
 2. Export `MLND_BRIDGE_COINSWAPD=1` and `MLND_BRIDGE_RECEIPTS_DIR` pointing at that directory; start `mlnd` with the usual LitVM variables.
 3. Until the fork emits lines, the bridge only polls the directory; the watcher and Nostr paths are unchanged.
 
-Phase history: [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) (stub + wiring), [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) (NDJSON ingestion), [`PHASE_7_END_TO_END.md`](../PHASE_7_END_TO_END.md) (coinswapd patch + `make test-operator-smoke`).
+Phase history: [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) (stub + wiring), [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) (NDJSON ingestion), [`PHASE_7_END_TO_END.md`](../PHASE_7_END_TO_END.md) (coinswapd patch + `make test-operator-smoke`), [`PHASE_8_TESTNET_RELEASE.md`](../PHASE_8_TESTNET_RELEASE.md) (Docker, releases, `.env.example`, `make testnet-smoke`).
 
 ## Local operator smoke (Anvil, no coinswapd)
 
@@ -137,6 +169,15 @@ This runs [`scripts/mlnd-bridge-litvm-smoke.sh`](../scripts/mlnd-bridge-litvm-sm
 **Dependency note:** imports use module path `github.com/nbd-wtf/go-nostr` with a `replace` to **`github.com/fiatjaf/go-nostr`** (maintained fork). Version is pinned to **v0.35.0** for Go **1.22** CI compatibility.
 
 ## Build / test
+
+From **repo root** (writes `bin/mlnd`, needs **Go 1.22+**, CGO, and a C toolchain on the host):
+
+```bash
+make build
+# Run with MLND_* env vars set (see tables above), e.g. from mlnd/: ../bin/mlnd
+```
+
+Unit tests:
 
 ```bash
 cd mlnd
