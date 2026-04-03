@@ -34,6 +34,10 @@ Local Anvil keeps the default `MLND_WS_URL=ws://127.0.0.1:8545` from the table a
 2. `mlnd` needs **`MLND_WS_URL`** (WebSocket). For `cast`-based checks (`make testnet-smoke`), set **`MLND_HTTP_URL`** to the HTTP JSON-RPC endpoint LitVM documents for tooling (often a different URL than WS).
 3. Start the daemon from `mlnd/` with `go run ./cmd/mlnd` or use a release binary / Docker (below).
 
+### Docker Compose (operators)
+
+For a full operator layout (volumes for SQLite + receipt dir, `env_file`), use the root [`docker-compose.yml`](../docker-compose.yml) and [`.env.compose.example`](../.env.compose.example). Runbook: [`PHASE_9_ENABLEMENT.md`](../PHASE_9_ENABLEMENT.md).
+
 ### Docker image
 
 From the **repo root**:

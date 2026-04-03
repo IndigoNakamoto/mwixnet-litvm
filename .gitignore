@@ -16,3 +16,9 @@ contracts/.env
 contracts/deployments/anvil-local.json
 
 __pycache__/
+
+# Operator local data (docker-compose)
+data/
+
+# Root docker-compose secrets (copy from .env.compose.example)
+/.env

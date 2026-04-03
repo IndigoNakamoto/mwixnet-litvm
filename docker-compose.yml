@@ -1,0 +1,30 @@
+# MLN maker node — Compose stack (mlnd + optional coinswapd).
+# Copy .env.compose.example → .env before `docker compose up`.
+# See PHASE_9_ENABLEMENT.md for operations.
+
+services:
+  mlnd:
+    build:
+      context: ./mlnd
+      dockerfile: Dockerfile
+    container_name: mlnd
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data/mlnd:/data
+      - ./data/receipts:/receipts
+    # Uncomment to reach JSON-RPC on the host (e.g. local Anvil on 8545).
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+  # Patched coinswapd image is operator-built; uncomment when available.
+  # coinswapd:
+  #   image: your-registry/coinswapd:patched
+  #   container_name: coinswapd
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./data/receipts:/receipts
+  #     - ./data/coinswapd:/root/.coinswapd

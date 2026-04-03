@@ -30,6 +30,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[~] Phase 2 — Nostr profile (in progress)** — Normative wire (kinds **31250–31251**, `content` JSON, `nostrKeyHash` binding) is in [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md); JSON fixtures are validated in CI under [`nostr/`](nostr/). Demo CLIs under [`scripts/`](scripts/) use the same kinds and shapes. Local stack: `make test-full-stack`. **Live relay walkthrough:** [`research/E2E_NOSTR_DEMO.md`](research/E2E_NOSTR_DEMO.md) (`scripts/nostr_watch.py` + `publish_grievance.py`).
 - **[ ] Phase 3 — End-to-end integration** — Nostr discovery → Tor → MWixnet round → L2 settlement / slash path.
 - **[x] Phase 8 — Testnet packaging (local complete)** — [`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md): `mlnd` Dockerfile, `make build` / `make docker-build`, `make testnet-smoke`, [`mlnd/.env.example`](mlnd/.env.example), GitHub Releases on `v*` tags ([`.github/workflows/mlnd-release.yml`](.github/workflows/mlnd-release.yml)). **Binaries attach on tag push; LitVM testnet RPC still pending for live operator runs.**
+- **[x] Phase 9 — Enablement and hardening (operator packaging)** — [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md): Docker Compose ([`docker-compose.yml`](docker-compose.yml)), [`.env.compose.example`](.env.compose.example), NDJSON bridge ops with patched `coinswapd`, defense and Nostr runbooks.
 
 ### Phase 1 local (already shipped)
 
@@ -47,6 +48,18 @@ When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/a
 ### Release process (`mlnd` binaries)
 
 Push a version tag matching `v*` (e.g. `v0.1.0`). [`.github/workflows/mlnd-release.yml`](.github/workflows/mlnd-release.yml) builds **linux/amd64** and **linux/arm64** with CGO (SQLite), then attaches `mlnd-linux-amd64` and `mlnd-linux-arm64` to the GitHub Release. ARM runners need a **public** repository (or adjust the workflow). Docker: `make docker-build` → image `mlnd:local`.
+
+## Deployment (operators)
+
+The maker daemon (`mlnd`) can run under Docker Compose with persistent SQLite and a shared receipt directory for a patched [`coinswapd`](https://github.com/ltcmweb/coinswapd).
+
+### Quick start
+
+1. `mkdir -p data/mlnd data/receipts`
+2. `cp .env.compose.example .env` and fill in LitVM endpoints and keys (see [`research/LITVM.md`](research/LITVM.md)).
+3. `docker compose up -d mlnd`
+
+For NDJSON bridge layout, auto-defend key practice, Nostr relays, and paired `coinswapd` mounting, read the **[Phase 9 enablement playbook](PHASE_9_ENABLEMENT.md)**.
 
 ### Next steps (pickup after a break)
 
@@ -69,6 +82,8 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
 | [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`, `test-operator-smoke` (mlnd bridge + golden grievance; see [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md)); `build`, `docker-build`, `testnet-smoke` ([`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md)) |
+| [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md) | Operator packaging: Compose, env template, NDJSON bridge + `coinswapd`, defense and Nostr ops |
+| [`docker-compose.yml`](docker-compose.yml) | `mlnd` service + commented `coinswapd` stub; use with [`.env.compose.example`](.env.compose.example) |
 | [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |
 | [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md) | Phase 2 Nostr wire: kinds 31250–31251, `nostrKeyHash` binding, maker ads + grievance pointers |
