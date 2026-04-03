@@ -35,7 +35,9 @@ contract MwixnetRegistryTest is Test {
         vm.expectRevert(MwixnetRegistry.RegisteredMakerMustUseExitQueue.selector);
         registry.withdraw(1 ether);
 
-        GrievanceCourt court = new GrievanceCourt(registry, 1 days, 0.01 ether);
+        GrievanceCourt court = new GrievanceCourt(
+            registry, 1 days, 0.01 ether, 10_000, 1000, 9000, 7 days
+        );
         registry.setGrievanceCourt(address(court));
 
         registry.requestWithdrawal();

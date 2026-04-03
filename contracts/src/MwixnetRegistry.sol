@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.24;
 
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IGrievanceCourtExit} from "./interfaces/IGrievanceCourtExit.sol";
 
 /// @title MwixnetRegistry
 /// @notice Stake and maker registration on LitVM (zkLTC native token). See PRODUCT_SPEC.md sections 5–6.
 /// @dev Not audited. Registered makers use a timelocked exit queue (`requestWithdrawal` / `withdrawStake`) per PRODUCT_SPEC.
-contract MwixnetRegistry {
+contract MwixnetRegistry is ReentrancyGuard {
     uint256 public immutable minStake;
     /// @notice Cooldown after `requestWithdrawal` before `withdrawStake`. Must exceed max epoch length + challenge window in production.
     uint256 public immutable cooldownPeriod;
@@ -27,6 +28,10 @@ contract MwixnetRegistry {
     event StakeFrozen(address indexed maker);
     event StakeUnfrozen(address indexed maker);
     event GrievanceCourtSet(address indexed court);
+    event StakeSlashed(
+        address indexed maker, address indexed accuser, uint256 totalSlashed, uint256 bounty, uint256 burned
+    );
+    event MakerDeregisteredLowStake(address indexed maker);
 
     error NotOwner();
     error NotGrievanceCourt();
@@ -43,6 +48,8 @@ contract MwixnetRegistry {
     error NotInExitQueue();
     error CooldownNotComplete();
     error InExitQueue();
+    error WithdrawalLocked();
+    error InvalidBountyBurnSplit();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -95,13 +102,16 @@ contract MwixnetRegistry {
     }
 
     /// @notice Begin timelocked exit: stop advertising off-chain, then wait `cooldownPeriod` before `withdrawStake`.
-    function requestWithdrawal() external {
+    function requestWithdrawal() external nonReentrant {
         if (makerNostrKeyHash[msg.sender] == bytes32(0)) revert NotRegisteredMaker();
         if (exitUnlockTime[msg.sender] != 0) revert AlreadyInExitQueue();
         address court = grievanceCourt;
         if (court == address(0)) revert GrievanceCourtNotSet();
         if (IGrievanceCourtExit(court).openGrievanceCountAgainst(msg.sender) != 0) {
             revert OpenGrievanceBlocksExit();
+        }
+        if (block.timestamp < IGrievanceCourtExit(court).withdrawalLockUntil(msg.sender)) {
+            revert WithdrawalLocked();
         }
         if (stakeFrozen[msg.sender]) revert StakeFrozen_();
 
@@ -111,15 +121,20 @@ contract MwixnetRegistry {
     }
 
     /// @notice After cooldown and with no open grievance freeze, withdraw full stake and clear maker registration.
-    function withdrawStake() external {
+    function withdrawStake() external nonReentrant {
         uint256 unlock = exitUnlockTime[msg.sender];
         if (unlock == 0) revert NotInExitQueue();
         if (block.timestamp < unlock) revert CooldownNotComplete();
         if (stakeFrozen[msg.sender]) revert StakeFrozen_();
 
         address court = grievanceCourt;
-        if (court != address(0) && IGrievanceCourtExit(court).openGrievanceCountAgainst(msg.sender) != 0) {
-            revert OpenGrievanceBlocksExit();
+        if (court != address(0)) {
+            if (IGrievanceCourtExit(court).openGrievanceCountAgainst(msg.sender) != 0) {
+                revert OpenGrievanceBlocksExit();
+            }
+            if (block.timestamp < IGrievanceCourtExit(court).withdrawalLockUntil(msg.sender)) {
+                revert WithdrawalLocked();
+            }
         }
 
         uint256 amount = stake[msg.sender];
@@ -130,6 +145,47 @@ contract MwixnetRegistry {
         (bool ok,) = payable(msg.sender).call{value: amount}("");
         require(ok, "withdrawStake transfer");
         emit StakeWithdrawnAfterExit(msg.sender, amount);
+    }
+
+    /// @notice Called by `GrievanceCourt` on upheld grievance: slash `slashAmount` from `maker`, pay bounty to `accuser`, burn remainder to `address(0)`.
+    /// @dev `bountyBps + burnBps` must equal 10_000. Remaining stake below `minStake` clears `makerNostrKeyHash` and `exitUnlockTime` (routing pool drop).
+    function slashStake(address maker, uint256 slashAmount, address accuser, uint256 bountyBps, uint256 burnBps)
+        external
+        onlyGrievanceCourt
+        nonReentrant
+    {
+        if (accuser == address(0)) revert ZeroAddress();
+        if (bountyBps + burnBps != 10_000) revert InvalidBountyBurnSplit();
+
+        uint256 st = stake[maker];
+        if (slashAmount > st) {
+            slashAmount = st;
+        }
+        if (slashAmount == 0) {
+            return;
+        }
+
+        uint256 bounty = (slashAmount * bountyBps) / 10_000;
+        uint256 burned = slashAmount - bounty;
+
+        stake[maker] = st - slashAmount;
+
+        if (makerNostrKeyHash[maker] != bytes32(0) && stake[maker] < minStake) {
+            makerNostrKeyHash[maker] = bytes32(0);
+            exitUnlockTime[maker] = 0;
+            emit MakerDeregisteredLowStake(maker);
+        }
+
+        if (bounty != 0) {
+            (bool okB,) = payable(accuser).call{value: bounty}("");
+            require(okB, "slash bounty transfer");
+        }
+        if (burned != 0) {
+            (bool okBr,) = payable(address(0)).call{value: burned}("");
+            require(okBr, "slash burn transfer");
+        }
+
+        emit StakeSlashed(maker, accuser, slashAmount, bounty, burned);
     }
 
     function freezeStake(address maker) external onlyGrievanceCourt {

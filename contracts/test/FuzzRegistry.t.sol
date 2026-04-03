@@ -15,6 +15,7 @@ contract FuzzRegistryTest is Test {
 
     function testFuzz_deposit_increases_stake(address user, uint96 amount) public {
         vm.assume(user != address(0));
+        vm.assume(uint160(user) > 1024);
         vm.assume(user.code.length == 0);
         amount = uint96(bound(uint256(amount), 1, 10_000 ether));
         vm.deal(user, amount);
@@ -27,6 +28,7 @@ contract FuzzRegistryTest is Test {
         public
     {
         vm.assume(user != address(0));
+        vm.assume(uint160(user) > 1024);
         vm.assume(user.code.length == 0);
         depositAmt = uint128(bound(uint256(depositAmt), MIN, 1000 ether));
         vm.assume(withdrawAmt <= depositAmt);
@@ -42,6 +44,7 @@ contract FuzzRegistryTest is Test {
 
     function testFuzz_freeze_blocks_withdraw(address user, uint128 depositAmt) public {
         vm.assume(user != address(0));
+        vm.assume(uint160(user) > 1024);
         vm.assume(user.code.length == 0);
         depositAmt = uint128(bound(uint256(depositAmt), MIN, 500 ether));
 

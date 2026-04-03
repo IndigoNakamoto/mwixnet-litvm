@@ -1,6 +1,6 @@
 # MLN Solidity (LitVM)
 
-Contracts implementing a **maker registry** (`MwixnetRegistry`), **grievance / judicial skeleton** (`GrievanceCourt`), and **appendix 13 hash helpers** (`EvidenceLib`) for the MLN stack. See [`../PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) and [`../research/LITVM.md`](../research/LITVM.md).
+Contracts implementing a **maker registry** (`MwixnetRegistry`), **grievance court** (`GrievanceCourt`, Phase 15 economics), and **appendix 13 hash helpers** (`EvidenceLib`) for the MLN stack. See [`../PRODUCT_SPEC.md`](../PRODUCT_SPEC.md), [`../PHASE_15_ECONOMIC_HARDENING.md`](../PHASE_15_ECONOMIC_HARDENING.md), and [`../research/LITVM.md`](../research/LITVM.md).
 
 ## Quick start
 
@@ -44,8 +44,8 @@ LitVM **testnet** broadcast remains blocked until [official RPC / chain ID](http
 | Path | Description |
 |------|-------------|
 | `src/EvidenceLib.sol` | Pure `evidenceHash` (appendix 13.5) and `grievanceId` (matches `GrievanceCourt`) |
-| `src/MwixnetRegistry.sol` | Stake (native), `registerMaker`, timelocked `requestWithdrawal` / `withdrawStake`, freeze/unfreeze for judicial contract |
-| `src/GrievanceCourt.sol` | `openGrievance`, `defendGrievance`, `resolveGrievance`, `openGrievanceCountAgainst` — not audited |
+| `src/MwixnetRegistry.sol` | Stake (native), `registerMaker`, timelocked exit + `slashStake`, `ReentrancyGuard`, freeze/unfreeze for judicial contract |
+| `src/GrievanceCourt.sol` | `openGrievance`, `defendGrievance`, `resolveGrievance`, `slashBps` / bounty–burn split, bond forfeit on exonerate, `withdrawalLockUntil` — not audited |
 | `script/Deploy.s.sol` | Deploy registry → court → `setGrievanceCourt` |
 | `test/` | Unit + fuzz tests |
 | `deployments/anvil-local.example.json` | Example recorded addresses after local deploy |

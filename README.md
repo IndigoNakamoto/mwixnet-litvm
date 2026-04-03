@@ -36,6 +36,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[x] Phase 12 — E2E Crucible (local simulation)** — [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md): [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) (Anvil + `nostr-rs-relay` + **`mln-sidecar`** + three `mlnd` makers), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh), generated wallet settings under `deploy/` (gitignored).
 - **[x] Phase 13 — Sidecar shim (`mln-sidecar`)** — Pure-Go HTTP service: **`GET /v1/balance`**, **`POST /v1/swap`** ([`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md)); mock MWEB handoff for local wallet/CLI; production path forwards to `coinswapd` JSON-RPC. Build: `make build-mln-sidecar`. Module: [`mln-sidecar/`](mln-sidecar/).
 - **[x] Phase 14 — Self-inclusion UX** — [`PHASE_14_SELF_INCLUSION.md`](PHASE_14_SELF_INCLUSION.md): optional **Self-Included Routing** (wallet + `mln-cli pathfind -self-included` + `MLN_OPERATOR_ETH_KEY`); pathfind fixes **N2** to the local registered maker; Scout marks **Local node**; `mln-sidecar` unchanged (middle-hop relay stays `coinswapd` / `mlnd`).
+- **[x] Phase 15 — Economic hardening (LitVM contracts)** — [`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md): real **`slashStake`** (bounty / burn to `address(0)`), **`slashBps`**, exoneration **bond forfeit** to accused, **`withdrawalLockUntil`** + `slashingWindow`, auto-deregister when stake falls below `minStake`, OpenZeppelin **`ReentrancyGuard`** on registry exits and slash. **Not audited.**
 
 ### Phase 1 local (already shipped)
 
@@ -69,7 +70,7 @@ For NDJSON bridge layout, auto-defend key practice, Nostr relays, and paired `co
 ### Next steps (pickup after a break)
 
 1. **LitVM testnet** — When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/add-to-wallet) are published, fund a throwaway deployer with testnet `zkLTC`, copy [`contracts/.env.example`](contracts/.env.example) → `contracts/.env`, and run [`forge script`](contracts/README.md) with `--broadcast`. Record deployed addresses.
-2. **Judicial economics** — [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) remains a **scaffold** (bond refunds, no real slash split). Harden for a testnet demo or keep **non-production** until reviewed.
+2. **Judicial economics** — [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) + [`MwixnetRegistry`](contracts/src/MwixnetRegistry.sol) implement **Phase 15** slash/bounty/burn, bond forfeit on exoneration, and exit locks ([`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md)). Still **not audited**; `defenseData` verification remains future work.
 3. **Optional** — Static analysis (e.g. Slither) on `contracts/src/`.
 4. **Phase 2 (in progress)** — Keep [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md), [`nostr/fixtures/`](nostr/), and [`scripts/`](scripts/) in lockstep; run `make test-full-stack` for local grievance + Nostr pointer validation. Finalize addresses/tags once LitVM testnet registry values are stable.
 
@@ -90,6 +91,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md) | Operator packaging: Compose, env template, NDJSON bridge + `coinswapd`, defense and Nostr ops |
 | [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md) | Taker CLI (`mln-cli`): Scout, Pathfind, Forger (dry-run + sidecar POST); env and trust model |
 | [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) | Local Docker E2E: Anvil + Nostr relay + 3× `mlnd`, `scripts/e2e-bootstrap.sh`, [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) |
+| [`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md) | LitVM: slash economics, bond forfeit, slashing window, registry reentrancy guard; invariant + Slither TODOs |
 | [`docker-compose.yml`](docker-compose.yml) | `mlnd` service + commented `coinswapd` stub; use with [`.env.compose.example`](.env.compose.example) |
 | [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |

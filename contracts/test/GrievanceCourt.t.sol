@@ -18,10 +18,16 @@ contract GrievanceCourtTest is Test {
     uint256 internal constant COOLDOWN = 48 hours;
     uint256 internal constant BOND = 0.1 ether;
     uint256 internal constant WINDOW = 1 days;
+    uint256 internal constant SLASH_BPS = 10_000;
+    uint256 internal constant BOUNTY_BPS = 1000;
+    uint256 internal constant BURN_BPS = 9000;
+    uint256 internal constant SLASHING_WINDOW = 7 days;
 
     function setUp() public {
         registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
-        court = new GrievanceCourt(registry, WINDOW, BOND);
+        court = new GrievanceCourt(
+            registry, WINDOW, BOND, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW
+        );
         registry.setGrievanceCourt(address(court));
 
         vm.deal(accuser, 50 ether);
@@ -47,6 +53,7 @@ contract GrievanceCourtTest is Test {
         bytes32 gid = EvidenceLib.grievanceId(accuser, accused, epochId, evidenceHash);
         vm.warp(block.timestamp + WINDOW + 1);
 
+        uint256 accuserBefore = accuser.balance;
         vm.prank(accuser);
         court.resolveGrievance(gid);
 
@@ -69,6 +76,11 @@ contract GrievanceCourtTest is Test {
         assertLe(openedAt_, deadline_);
         assertFalse(registry.stakeFrozen(accused));
         assertEq(court.openGrievanceCountAgainst(accused), 0);
+        assertEq(registry.stake(accused), 0);
+        assertEq(registry.makerNostrKeyHash(accused), bytes32(0));
+        uint256 bounty = (5 ether * BOUNTY_BPS) / 10_000;
+        assertEq(accuser.balance, accuserBefore + BOND + bounty);
+        assertEq(address(0).balance, (5 ether * BURN_BPS) / 10_000);
     }
 
     function test_defend_then_exonerate() public {
@@ -83,6 +95,7 @@ contract GrievanceCourtTest is Test {
         vm.prank(accused);
         court.defendGrievance(gid, hex"abcd");
 
+        uint256 accusedBefore = accused.balance;
         court.resolveGrievance(gid);
 
         (
@@ -104,6 +117,7 @@ contract GrievanceCourtTest is Test {
         assertEq(bondAmt_, BOND);
         assertFalse(registry.stakeFrozen(accused));
         assertEq(court.openGrievanceCountAgainst(accused), 0);
+        assertEq(accused.balance, accusedBefore + BOND);
     }
 
     function test_resolve_reverts_before_deadline_if_open() public {
@@ -127,27 +141,43 @@ contract GrievanceCourtTest is Test {
         registry.requestWithdrawal();
     }
 
+    /// @dev Uses partial `slashBps` so stake remains after resolution; full slash would clear `exitUnlockTime` via auto-deregister.
     function test_withdrawStake_blocked_until_grievance_resolved() public {
+        MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
+        GrievanceCourt c = new GrievanceCourt(r, WINDOW, BOND, 2500, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW);
+        r.setGrievanceCourt(address(c));
+
+        vm.deal(accuser, 50 ether);
+        vm.deal(accused, 50 ether);
         vm.prank(accused);
-        registry.requestWithdrawal();
+        r.deposit{value: 5 ether}();
+        vm.prank(accused);
+        r.registerMaker(bytes32(uint256(42)));
+
+        vm.prank(accused);
+        r.requestWithdrawal();
         vm.warp(block.timestamp + COOLDOWN);
 
         bytes32 evidenceHash = keccak256("late");
         vm.prank(accuser);
-        court.openGrievance{value: BOND}(accused, 11, evidenceHash);
+        c.openGrievance{value: BOND}(accused, 11, evidenceHash);
 
         vm.prank(accused);
         vm.expectRevert(MwixnetRegistry.StakeFrozen_.selector);
-        registry.withdrawStake();
+        r.withdrawStake();
 
         bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(11), evidenceHash);
         vm.warp(block.timestamp + WINDOW + 1);
         vm.prank(accuser);
-        court.resolveGrievance(gid);
+        c.resolveGrievance(gid);
 
+        vm.warp(block.timestamp + SLASHING_WINDOW + 1);
+
+        uint256 remaining = 5 ether - (5 ether * 2500) / 10_000;
         vm.prank(accused);
-        registry.withdrawStake();
-        assertEq(registry.stake(accused), 0);
+        r.withdrawStake();
+        assertEq(r.stake(accused), 0);
+        assertEq(accused.balance, 50 ether - 5 ether + remaining);
     }
 
     function test_multipleGrievances_conditionalUnfreeze() public {
@@ -241,5 +271,65 @@ contract GrievanceCourtTest is Test {
 
         vm.expectRevert(GrievanceCourt.BadPhase.selector);
         court.resolveGrievance(gid);
+    }
+
+    function test_constructor_reverts_invalid_bounty_burn_split() public {
+        MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
+        vm.expectRevert(GrievanceCourt.InvalidBountyBurnSplit.selector);
+        new GrievanceCourt(r, WINDOW, BOND, SLASH_BPS, 1000, 8000, SLASHING_WINDOW);
+    }
+
+    function test_constructor_reverts_slash_bps_too_high() public {
+        MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
+        vm.expectRevert(GrievanceCourt.SlashBpsTooHigh.selector);
+        new GrievanceCourt(r, WINDOW, BOND, 10_001, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW);
+    }
+
+    function test_partial_slash_keeps_maker_when_stake_stays_above_min() public {
+        MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
+        GrievanceCourt c = new GrievanceCourt(r, WINDOW, BOND, 2000, 5000, 5000, SLASHING_WINDOW);
+        r.setGrievanceCourt(address(c));
+
+        vm.deal(accuser, 50 ether);
+        vm.deal(accused, 50 ether);
+        vm.prank(accused);
+        r.deposit{value: 5 ether}();
+        bytes32 nh = bytes32(uint256(99));
+        vm.prank(accused);
+        r.registerMaker(nh);
+
+        bytes32 ev = keccak256("partial");
+        vm.prank(accuser);
+        c.openGrievance{value: BOND}(accused, 77, ev);
+        vm.warp(block.timestamp + WINDOW + 1);
+        vm.prank(accuser);
+        c.resolveGrievance(EvidenceLib.grievanceId(accuser, accused, 77, ev));
+
+        uint256 slashed = (5 ether * 2000) / 10_000;
+        assertEq(r.stake(accused), 5 ether - slashed);
+        assertEq(r.makerNostrKeyHash(accused), nh);
+    }
+
+    function test_requestWithdrawal_reverts_during_slashing_window_after_exonerate() public {
+        bytes32 evidenceHash = keccak256("lock");
+        uint256 epochId = 66;
+
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, epochId, evidenceHash);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, epochId, evidenceHash);
+
+        vm.prank(accused);
+        court.defendGrievance(gid, hex"01");
+
+        court.resolveGrievance(gid);
+
+        vm.prank(accused);
+        vm.expectRevert(MwixnetRegistry.WithdrawalLocked.selector);
+        registry.requestWithdrawal();
+
+        vm.warp(block.timestamp + SLASHING_WINDOW + 1);
+        vm.prank(accused);
+        registry.requestWithdrawal();
+        assertGt(registry.exitUnlockTime(accused), 0);
     }
 }

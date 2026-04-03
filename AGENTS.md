@@ -12,13 +12,14 @@
 | Grievance `evidenceHash` preimage (LitVM correlators) | `PRODUCT_SPEC.md` §13 |
 | LitVM Foundry contracts and testnet notes | `contracts/`, `research/LITVM.md` |
 | Accepted code review + threat model (scaffold risks, ops, CI gaps) | `research/THREAT_MODEL_MLN.md` |
-| Maker exit queue / cooldown (registry + grievances) | `PRODUCT_SPEC.md` section 5.1.1, `contracts/src/MwixnetRegistry.sol` |
+| Maker exit queue / cooldown / slashing window (registry + grievances) | `PRODUCT_SPEC.md` section 5.1.1, `contracts/src/MwixnetRegistry.sol`, `PHASE_15_ECONOMIC_HARDENING.md` |
 | Appendix 13 hash helpers (`evidenceHash`, `grievanceId`) | `contracts/src/EvidenceLib.sol` |
 | Nostr wire profile (MLN kinds, tags, `content` JSON, `nostrKeyHash` binding) | `research/NOSTR_MLN.md` |
 | Archived Nostr doc stub (historical `NOSTR_EVENTS` filename) | `research/NOSTR_EVENTS.md` |
 | User stories, coordination / epochs, wallet route policy (PoC) | `research/USER_STORIES_MLN.md` |
 | Wallet UX wireframes (taker / maker) | `research/WALLET_TAKER_FLOW_V1.md`, `research/WALLET_MAKER_FLOW_V1.md` |
 | Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
+| Phase 15 LitVM economics (slash, bonds, exit locks, invariant/Slither TODOs) | `PHASE_15_ECONOMIC_HARDENING.md`, `contracts/src/MwixnetRegistry.sol`, `contracts/src/GrievanceCourt.sol` |
 | Local E2E stack (Anvil + Nostr relay + `mln-sidecar` + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh`, `mln-sidecar/` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
