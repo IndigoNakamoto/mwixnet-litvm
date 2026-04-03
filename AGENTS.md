@@ -28,7 +28,7 @@
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md`; fork + `mweb_*` implementation in `research/coinswapd/` |
 | `mweb_submitRoute` / `mweb_getBalance` fork contract and MLN → `onion.Onion` mapping | `research/COINSWAPD_MLN_FORK_SPEC.md` |
-| Taker CLI (`mln-cli`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`); optional self-as-N2 routing (Phase 14) | `PHASE_10_TAKER_CLI.md`, `PHASE_14_SELF_INCLUSION.md`, `mln-cli/desktop/README.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar + `swap_forward`), `research/COINSWAPD_MLN_FORK_SPEC.md`, `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mln-cli/internal/pathfind/`, `mlnd/pkg/makerad`, `mln-sidecar/` |
+| Taker CLI (`mln-cli`); maker onboard (`mln-cli maker onboard`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`); optional self-as-N2 routing (Phase 14); optional `mlnd` loopback Maker dashboard (`MLND_DASHBOARD_ADDR`) | `PHASE_10_TAKER_CLI.md`, `PHASE_14_SELF_INCLUSION.md`, `mln-cli/desktop/README.md`, `mlnd/MAKER_DASHBOARD_SETUP.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar + `swap_forward`), `research/COINSWAPD_MLN_FORK_SPEC.md`, `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mln-cli/internal/pathfind/`, `mlnd/pkg/makerad`, `mln-sidecar/` |
 | Documentation sync pass (README `PHASE_*` index parity, git-aligned status blurbs, PoC vs production, link and CI/RPC audit) | `.cursor/skills/doc-sync/SKILL.md`, `.cursor/rules/doc-sync.mdc` |
 
 Prefer quoting or linking paths into those docs instead of inventing APIs or economics.
@@ -48,7 +48,7 @@ The teardown documents **entry points** and the **`ltcd`** dependency boundary (
 
 ## Current phase
 
-**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**; **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM. **Security docs:** `research/THREAT_MODEL_MLN.md` (accepted audit snapshot + threat tables), `research/RED_TEAM_MLN.md` (red-team narratives; extends the threat model).
+**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**, including **`mln-cli maker onboard`** and an **optional `mlnd` Maker dashboard** (loopback by default); **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM. **Security docs:** `research/THREAT_MODEL_MLN.md` (accepted audit snapshot + threat tables), `research/RED_TEAM_MLN.md` (red-team narratives; extends the threat model).
 
 **Phase 1 (testnet):** when LitVM publishes endpoints, broadcast and record addresses (`research/LITVM.md`, `PHASE_16_PUBLIC_TESTNET.md`).
 

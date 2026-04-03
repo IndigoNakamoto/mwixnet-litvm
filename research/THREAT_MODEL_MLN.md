@@ -245,3 +245,4 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | 2026-04 | Initial commit: external audit narrative + threat tables, team acceptance recorded. |
 | 2026-04 | Doc sync: Slither + invariant tooling reflected as CI-enforced; codebase state bumped post-Phase 15. |
 | 2026-04 | [`RED_TEAM_MLN.md`](RED_TEAM_MLN.md) added; §1.1 / §1.4 / table “GrievanceCourt economics” aligned with Phase 15 slash and exoneration bond (bond no longer refunded to accuser on exonerate). |
+| 2026-04 | Doc sync: **`mln-cli maker onboard`** (operator LitVM txs) and **`mlnd` loopback dashboard** (`MLND_DASHBOARD_ADDR`, optional token) noted as new operator surfaces alongside existing hot-key / sidecar rows. |

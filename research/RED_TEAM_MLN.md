@@ -23,7 +23,7 @@ The repository is a **pre-production research and integration scaffold** across 
 |----------|-------------------------|
 | `contracts/src` (registry, court, `EvidenceLib`) | Full formal verification of MWEB / MWixnet math |
 | `mlnd/` watcher, bridge, defender, SQLite | Upstream `ltcd` / full `coinswapd` audit |
-| `mln-cli/` pathfind, scout, forger, config, Wails `desktop/` | Python CLIs beyond CI |
+| `mln-cli/` pathfind, scout, forger, `maker onboard`, config, Wails `desktop/` | Python CLIs beyond CI |
 | `mln-sidecar/` HTTP API | End-user LitVM bridge implementation bugs |
 | CI workflows (coverage gaps) | Third-party relay / Tor network global threats |
 
@@ -80,6 +80,7 @@ flowchart LR
 | **Dual identity exfil** | Single process holds **`MLND_OPERATOR_PRIVATE_KEY`** and **`MLND_NOSTR_NSEC`** | Full maker **LitVM** + **reputation** capability to attacker | [`THREAT_MODEL_MLN.md`](THREAT_MODEL_MLN.md) §1.5 |
 | **Bridge directory write** | Any principal that can write **`MLND_BRIDGE_RECEIPTS_DIR`** injects NDJSON | Receipt store pollution; **mitigated** by `ValidateReceiptForGrievance` vs on-chain event before defend | Filesystem permissions = real control |
 | **Operational intel** | DRY-RUN logs **full `defenseData` hex** | Metadata leakage to log aggregators | Harden logging in production configs |
+| **Loopback dashboard** | `MLND_DASHBOARD_ADDR` with **`MLND_DASHBOARD_ALLOW_LAN`** or weak/absent **`MLND_HTTP_TOKEN`** | JSON status + SSE ops narrative readable off-host | Default is loopback-only; token recommended if anything beyond localhost can reach the bind address |
 
 ### 3. Taker path: `mln-cli`, desktop, Forger → sidecar
 
@@ -87,6 +88,7 @@ flowchart LR
 |--------|----------|--------|--------|
 | **Cleartext RPC** | User points Forger at **remote HTTP** sidecar (CLI has **no** desktop `warnNonLoopback` parity) | **MITM**: fake success, **exfil** of route JSON (destination, amount) | **High** for remote HTTP |
 | **Malware on wallet host** | Read **`OperatorEthPrivateKeyHex`** from `settings.json` | Impersonation, **Phase 14 self-route** abuse surface | **High** — plaintext key |
+| **Maker onboard key** | Operator runs **`mln-cli maker onboard -execute`** with **`MLN_OPERATOR_ETH_KEY`** on a shared host | Same class as hot **`mlnd`** operator key — tx signing, registration | **High** — env/secret hygiene |
 | **Pathfind randomness** | `math/rand` time-seeded — **acceptable** for tie-break only | Only becomes critical if policy ever ties **secrets** to path choice | Documented as intentional PoC |
 
 ### 4. `mln-sidecar`
