@@ -20,6 +20,7 @@
 | Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
+| Taker CLI (`mln-cli`); shared maker-ad structs for `mlnd` + client | `PHASE_10_TAKER_CLI.md`, `mln-cli/`, `mlnd/pkg/makerad` |
 
 Prefer quoting or linking paths into those docs instead of inventing APIs or economics.
 

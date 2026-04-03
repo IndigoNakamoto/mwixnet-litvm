@@ -14,14 +14,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/ethereum/go-ethereum/common"
 	gnostr "github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
-)
-
-const (
-	kindMakerAd = 31250
-	tagTMakerAd = "mln-maker-ad"
 )
 
 // BroadcasterConfig holds static fields for the maker ad (all EVM addresses lowercase 0x per spec).
@@ -235,34 +231,14 @@ func normalizeETHAddr(s string) (string, error) {
 
 // DTag returns the NIP-33 d tag mln:v1:<chainId>:<operatorLower>.
 func DTag(chainID, operatorLower string) string {
-	return fmt.Sprintf("mln:v1:%s:%s", chainID, operatorLower)
-}
-
-type makerAdContent struct {
-	V            int       `json:"v"`
-	Litvm        litvmJSON `json:"litvm"`
-	Fees         *feesJSON `json:"fees,omitempty"`
-	Tor          string    `json:"tor,omitempty"`
-	Capabilities []string  `json:"capabilities,omitempty"`
-}
-
-type litvmJSON struct {
-	ChainID        string `json:"chainId"`
-	Registry       string `json:"registry"`
-	GrievanceCourt string `json:"grievanceCourt"`
-}
-
-type feesJSON struct {
-	Unit string `json:"unit"`
-	Min  uint64 `json:"min"`
-	Max  uint64 `json:"max"`
+	return makerad.DTag(chainID, operatorLower)
 }
 
 // BuildMakerAdEvent builds and signs a kind-31250 replaceable maker ad at now.
 func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
-	body := makerAdContent{
+	body := makerad.Content{
 		V: 1,
-		Litvm: litvmJSON{
+		Litvm: makerad.LitVM{
 			ChainID:        b.cfg.ChainID,
 			Registry:       b.cfg.Registry,
 			GrievanceCourt: b.cfg.GrievanceCourt,
@@ -273,7 +249,7 @@ func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
 		body.Tor = b.cfg.TorOnion
 	}
 	if b.cfg.FeeMinSat != nil && b.cfg.FeeMaxSat != nil {
-		body.Fees = &feesJSON{
+		body.Fees = &makerad.Fees{
 			Unit: "sat_per_hop",
 			Min:  *b.cfg.FeeMinSat,
 			Max:  *b.cfg.FeeMaxSat,
@@ -287,7 +263,7 @@ func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
 	d := DTag(b.cfg.ChainID, b.cfg.Operator)
 	tags := gnostr.Tags{
 		{"d", d},
-		{"t", tagTMakerAd},
+		{"t", makerad.TagTMakerAd},
 	}
 	if b.cfg.ClientName != "" {
 		tags = append(tags, gnostr.Tag{"client", b.cfg.ClientName, b.cfg.ClientVersion})
@@ -296,7 +272,7 @@ func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
 
 	ev := &gnostr.Event{
 		CreatedAt: gnostr.Timestamp(now.Unix()),
-		Kind:      kindMakerAd,
+		Kind:      makerad.KindMakerAd,
 		Tags:      tags,
 		Content:   string(contentBytes),
 	}

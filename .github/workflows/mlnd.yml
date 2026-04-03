@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "mlnd/**"
+      - "mln-cli/**"
       - ".github/workflows/mlnd.yml"
   pull_request:
     paths:
       - "mlnd/**"
+      - "mln-cli/**"
       - ".github/workflows/mlnd.yml"
 
 jobs:
@@ -19,9 +21,17 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-          cache-dependency-path: mlnd/go.sum
+          cache-dependency-path: |
+            mlnd/go.sum
+            mln-cli/go.sum
 
       # Includes internal/flow (SQLite + evidence hash + kind-31250 build) without Anvil or live relays.
-      - name: Go test
+      - name: Go test mlnd
         working-directory: mlnd
+        env:
+          CGO_ENABLED: "1"
+        run: go test ./... -count=1
+
+      - name: Go test mln-cli
+        working-directory: mln-cli
         run: go test ./... -count=1

@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build docker-build listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli docker-build listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -41,6 +41,11 @@ testnet-smoke:
 build:
 	@mkdir -p "$(MK_ROOT)/bin"
 	cd "$(MK_ROOT)/mlnd" && CGO_ENABLED=1 go build -o "$(MK_ROOT)/bin/mlnd" ./cmd/mlnd
+
+# No CGO. Output: bin/mln-cli (Go 1.22+)
+build-mln-cli:
+	@mkdir -p "$(MK_ROOT)/bin"
+	cd "$(MK_ROOT)/mln-cli" && go build -o "$(MK_ROOT)/bin/mln-cli" ./cmd/mln-cli
 
 docker-build:
 	docker build -f "$(MK_ROOT)/mlnd/Dockerfile" -t mlnd:local "$(MK_ROOT)/mlnd"

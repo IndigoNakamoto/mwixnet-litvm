@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 )
 
 func TestTorOnionWithOptionalPort(t *testing.T) {
@@ -71,7 +73,7 @@ func TestBuildMakerAdEvent_shapeAndSignature(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ev.Kind != kindMakerAd {
+	if ev.Kind != makerad.KindMakerAd {
 		t.Fatalf("kind: got %d", ev.Kind)
 	}
 	if int64(ev.CreatedAt) != ts.Unix() {
@@ -90,8 +92,8 @@ func TestBuildMakerAdEvent_shapeAndSignature(t *testing.T) {
 	if dVal != DTag("31337", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") {
 		t.Fatalf("d tag: got %q", dVal)
 	}
-	if tVal != tagTMakerAd {
-		t.Fatalf("t tag: got %q want %q", tVal, tagTMakerAd)
+	if tVal != makerad.TagTMakerAd {
+		t.Fatalf("t tag: got %q want %q", tVal, makerad.TagTMakerAd)
 	}
 
 	var payload map[string]json.RawMessage
