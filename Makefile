@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli docker-build listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -46,6 +46,15 @@ build:
 build-mln-cli:
 	@mkdir -p "$(MK_ROOT)/bin"
 	cd "$(MK_ROOT)/mln-cli" && go build -o "$(MK_ROOT)/bin/mln-cli" ./cmd/mln-cli
+
+# Vite bundle for Wails embed (Node 18+). Run from repo root.
+build-mln-wallet-frontend:
+	cd "$(MK_ROOT)/mln-cli/desktop/frontend" && npm ci && npm run build
+
+# CGO required (Wails / native webview). Output: bin/mln-wallet. Requires frontend/dist (see build-mln-wallet-frontend).
+build-mln-wallet: build-mln-wallet-frontend
+	@mkdir -p "$(MK_ROOT)/bin"
+	cd "$(MK_ROOT)/mln-cli" && CGO_ENABLED=1 go build -tags=wails -o "$(MK_ROOT)/bin/mln-wallet" ./desktop/
 
 docker-build:
 	docker build -f "$(MK_ROOT)/mlnd/Dockerfile" -t mlnd:local "$(MK_ROOT)/mlnd"

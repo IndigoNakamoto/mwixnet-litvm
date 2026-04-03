@@ -128,10 +128,25 @@ func TestExecute_RequiresDestAndAmount(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	if err := Execute(ctx, testRoute(), "http://unused", "", 100); err == nil {
+	if _, err := Execute(ctx, testRoute(), "http://unused", "", 100); err == nil {
 		t.Fatal("expected error for empty dest")
 	}
-	if err := Execute(ctx, testRoute(), "http://unused", "mweb1x", 0); err == nil {
+	if _, err := Execute(ctx, testRoute(), "http://unused", "mweb1x", 0); err == nil {
 		t.Fatal("expected error for zero amount")
+	}
+}
+
+func TestDryRun_Result(t *testing.T) {
+	t.Parallel()
+
+	res, err := DryRun(testRoute())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Hops) != 3 {
+		t.Fatalf("hops = %d", len(res.Hops))
+	}
+	if res.Hops[0].Index != 1 || res.Hops[0].Tor != "http://n1.onion" {
+		t.Fatalf("hop0 = %+v", res.Hops[0])
 	}
 }

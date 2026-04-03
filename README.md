@@ -32,6 +32,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[x] Phase 8 — Testnet packaging (local complete)** — [`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md): `mlnd` Dockerfile, `make build` / `make docker-build`, `make testnet-smoke`, [`mlnd/.env.example`](mlnd/.env.example), GitHub Releases on `v*` tags ([`.github/workflows/mlnd-release.yml`](.github/workflows/mlnd-release.yml)). **Binaries attach on tag push; LitVM testnet RPC still pending for live operator runs.**
 - **[x] Phase 9 — Enablement and hardening (operator packaging)** — [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md): Docker Compose ([`docker-compose.yml`](docker-compose.yml)), [`.env.compose.example`](.env.compose.example), NDJSON bridge ops with patched `coinswapd`, defense and Nostr runbooks.
 - **[~] Phase 10 — Taker client (`mln-cli`)** — [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md): Scout (Nostr 31250 + LitVM verification), Pathfind (3-hop route), Forger (Tor dry-run + HTTP POST of route JSON to a local **MLN sidecar** URL; onion build remains in `coinswapd` fork/proxy). Build: `make build-mln-cli`. Shared wire types: [`mlnd/pkg/makerad`](mlnd/pkg/makerad).
+- **[~] Phase 11 — Taker wallet (Wails)** — Desktop GUI in [`mln-cli/desktop/`](mln-cli/desktop/) (React + Wails v2, `wails` build tag). Build: `make build-mln-wallet`. Developer notes: [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md).
 
 ### Phase 1 local (already shipped)
 
@@ -82,7 +83,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Full architecture, economics, roadmap, evidence preimage (appendix 13), MWEB appendix (14), open questions |
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
-| [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`, `test-operator-smoke` (mlnd bridge + golden grievance; see [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md)); `build`, `build-mln-cli`, `docker-build`, `testnet-smoke` ([`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md)) |
+| [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`, `test-operator-smoke` (mlnd bridge + golden grievance; see [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md)); `build`, `build-mln-cli`, `build-mln-wallet` (Wails taker GUI; see [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md)), `docker-build`, `testnet-smoke` ([`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md)) |
 | [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md) | Operator packaging: Compose, env template, NDJSON bridge + `coinswapd`, defense and Nostr ops |
 | [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md) | Taker CLI (`mln-cli`): Scout, Pathfind, Forger (dry-run + sidecar POST); env and trust model |
 | [`docker-compose.yml`](docker-compose.yml) | `mlnd` service + commented `coinswapd` stub; use with [`.env.compose.example`](.env.compose.example) |

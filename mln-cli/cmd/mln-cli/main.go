@@ -198,7 +198,7 @@ func runForger(args []string) {
 	}
 
 	if *dryRun {
-		if err := forger.DryRun(&route); err != nil {
+		if err := forger.DryRunCLI(&route, os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
@@ -217,7 +217,7 @@ func runForger(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := forger.Execute(ctx, &route, *sidecarURL, *dest, *amount); err != nil {
+	if err := forger.ExecuteCLI(ctx, &route, *sidecarURL, *dest, *amount, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
