@@ -23,7 +23,7 @@
 | Phase 16 public testnet readiness (RPC_URL deploy, verification env, operator compose without Anvil/local relay) | `PHASE_16_PUBLIC_TESTNET.md`, `deploy/docker-compose.testnet.yml`, `deploy/.env.testnet.example`, `contracts/.env.example`, `mln-cli/internal/config/settings.go` |
 | Local E2E stack (Anvil + Nostr relay + `mln-sidecar` + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh`, `mln-sidecar/` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
-| How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
+| How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md`; fork + `mweb_*` implementation in `research/coinswapd/` |
 | `mweb_submitRoute` / `mweb_getBalance` fork contract and MLN → `onion.Onion` mapping | `research/COINSWAPD_MLN_FORK_SPEC.md` |
 | Taker CLI (`mln-cli`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`); optional self-as-N2 routing (Phase 14) | `PHASE_10_TAKER_CLI.md`, `PHASE_14_SELF_INCLUSION.md`, `mln-cli/desktop/README.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar + `swap_forward`), `research/COINSWAPD_MLN_FORK_SPEC.md`, `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mln-cli/internal/pathfind/`, `mlnd/pkg/makerad`, `mln-sidecar/` |
 | Documentation sync pass (README `PHASE_*` index parity, git-aligned status blurbs, PoC vs production, link and CI/RPC audit) | `.cursor/skills/doc-sync/SKILL.md`, `.cursor/rules/doc-sync.mdc` |
@@ -39,7 +39,7 @@ Prefer quoting or linking paths into those docs instead of inventing APIs or eco
 
 ## Reference code
 
-The team uses a **fork** of `ltcmweb/coinswapd` for implementation work and Q&A; keep that tree **outside this repo** or under `research/coinswapd/` locally (ignored by git). Upstream **ltcmweb** remains the baseline for what the public reference does.
+The team maintains **`research/coinswapd/`** as an in-repo fork of `ltcmweb/coinswapd` (MLN `mweb_*` RPC and route handoff). Upstream **ltcmweb** remains the baseline for comparison; merge or submodule updates are manual.
 
 The teardown documents **entry points** and the **`ltcd`** dependency boundary (not `mwebd` as a direct import in that binary). When extending or comparing designs, align with the teardown before assuming Grin/mwixnet details map 1:1 to MWEB.
 

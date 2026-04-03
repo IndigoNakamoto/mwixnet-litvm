@@ -1,6 +1,6 @@
 ---
 name: coinswapd-reference
-description: Navigate the coinswapd teardown and a local ltcmweb/coinswapd clone (optional path research/coinswapd/, gitignored). Use when tracing RPCs, onion format, MWEB tx assembly, or comparing Grin/mwixnet assumptions to this codebase.
+description: Navigate the coinswapd teardown and the in-repo fork at research/coinswapd/ (or a separate ltcmweb clone). Use when tracing RPCs, onion format, MWEB tx assembly, or comparing Grin/mwixnet assumptions to this codebase.
 ---
 
 # coinswapd reference
@@ -14,7 +14,7 @@ description: Navigate the coinswapd teardown and a local ltcmweb/coinswapd clone
 ## Workflow
 
 1. Read `research/COINSWAPD_TEARDOWN.md` for the curated map (API, onion shape, crypto hotspots, and the **MLN sidecar** note: `mln-cli` route JSON vs upstream `swap_Swap`).
-2. Open the cited paths in your local clone (e.g. `research/coinswapd/main.go`, `onion/onion.go`, `swap.go` — not committed here).
+2. Open the cited paths under `research/coinswapd/` (e.g. `main.go`, `onion/onion.go`, `swap.go`) or your separate clone.
 3. For Pedersen, bulletproofs, wire types — continue into **`ltcd`** as documented in the teardown, not guessed from Grin-only docs.
 
 ## Out of scope for this skill

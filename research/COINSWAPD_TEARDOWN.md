@@ -1,6 +1,6 @@
 # `coinswapd` structural teardown (ltcmweb/coinswapd)
 
-Source: **local** tree at `research/coinswapd/` (clone your fork there; not committed in this repo). Upstream reference: [ltcmweb/coinswapd](https://github.com/ltcmweb/coinswapd). Hector Chu’s implementation tracks Tromp’s CoinSwap proposal; there is no README — this note maps **actual** entry points and types.
+Source: in-repo fork at [`research/coinswapd/`](coinswapd/) (upstream: [ltcmweb/coinswapd](https://github.com/ltcmweb/coinswapd)). Hector Chu’s implementation tracks Tromp’s CoinSwap proposal; there is no README — this note maps **actual** entry points and types.
 
 **Dependency reality:** This binary does **not** import [`mwebd`](https://github.com/ltcmweb/mwebd). It depends on **[`ltcmweb/ltcd`](https://github.com/ltcmweb/ltcd)** for MWEB wire types, `mw` primitives, and helpers under `ltcutil/mweb` (`CreateOutput`, `CreateKernel`, `SignOutput`, fee weights). For “where do Pedersen / bulletproofs live?” trace **`ltcd`** (`wire.MwebOutput`, `RangeProof.Verify`, etc.), not a separate `mwebd` import in this repo.
 

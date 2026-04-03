@@ -3,8 +3,7 @@
 .DS_Store
 # Local Foundry install (foundryup)
 .foundry/
-# Local coinswapd checkout / fork — keep out of this repo (clone beside or use your fork’s remote)
-research/coinswapd/
+# coinswapd fork lives at research/coinswapd/ (MLN mweb_* RPC); tracked for Path 2 engine work
 # Ephemeral clone used to generate coinswapd patches (do not commit)
 _patchgen/
 

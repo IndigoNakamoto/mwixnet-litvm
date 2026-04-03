@@ -1,6 +1,6 @@
 # Blueprint: `ltcmweb/coinswapd` MLN fork (`mweb_*` JSON-RPC)
 
-**Status:** normative integration spec for work in a **fork** of [ltcmweb/coinswapd](https://github.com/ltcmweb/coinswapd) (clone locally under `research/coinswapd/`, gitignored). **Consumer of this contract** in this repo: [`mln-sidecar`](../mln-sidecar/README.md) `-mode=rpc`.
+**Status:** normative integration spec for work in a **fork** of [ltcmweb/coinswapd](https://github.com/ltcmweb/coinswapd) (in-repo tree [`research/coinswapd/`](coinswapd/)). **Consumer of this contract** in this repo: [`mln-sidecar`](../mln-sidecar/README.md) `-mode=rpc`.
 
 **Related:** [COINSWAPD_TEARDOWN.md](COINSWAPD_TEARDOWN.md) (upstream entry points, `onion.Onion`, `swap_Swap`), [PHASE_10_TAKER_CLI.md](../PHASE_10_TAKER_CLI.md), [EVIDENCE_GENERATOR.md](EVIDENCE_GENERATOR.md) (`swap_forward` byte semantics for LitVM).
 
