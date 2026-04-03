@@ -1,2 +1,4 @@
 # Nostr CLIs: publish_grievance, listen_*, mln-nostr-demo
 nostr>=0.0.2
+# Keccak256 for scripts/e2e_nostr_key_hash.py (nostrKeyHash)
+pycryptodome>=3.19.0

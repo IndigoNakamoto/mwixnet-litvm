@@ -33,6 +33,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[x] Phase 9 — Enablement and hardening (operator packaging)** — [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md): Docker Compose ([`docker-compose.yml`](docker-compose.yml)), [`.env.compose.example`](.env.compose.example), NDJSON bridge ops with patched `coinswapd`, defense and Nostr runbooks.
 - **[~] Phase 10 — Taker client (`mln-cli`)** — [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md): Scout (Nostr 31250 + LitVM verification), Pathfind (3-hop route), Forger (Tor dry-run + HTTP POST of route JSON to a local **MLN sidecar** URL; onion build remains in `coinswapd` fork/proxy). Build: `make build-mln-cli`. Shared wire types: [`mlnd/pkg/makerad`](mlnd/pkg/makerad).
 - **[~] Phase 11 — Taker wallet (Wails)** — Desktop GUI in [`mln-cli/desktop/`](mln-cli/desktop/) (React + Wails v2, `wails` build tag). Build: `make build-mln-wallet`. Developer notes: [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md).
+- **[x] Phase 12 — E2E Crucible (local simulation)** — [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md): [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) (Anvil + `nostr-rs-relay` + three `mlnd` makers), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh), generated wallet settings under `deploy/` (gitignored).
 
 ### Phase 1 local (already shipped)
 
@@ -86,6 +87,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`, `test-operator-smoke` (mlnd bridge + golden grievance; see [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md)); `build`, `build-mln-cli`, `build-mln-wallet` (Wails taker GUI; see [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md)), `docker-build`, `testnet-smoke` ([`PHASE_8_TESTNET_RELEASE.md`](PHASE_8_TESTNET_RELEASE.md)) |
 | [`PHASE_9_ENABLEMENT.md`](PHASE_9_ENABLEMENT.md) | Operator packaging: Compose, env template, NDJSON bridge + `coinswapd`, defense and Nostr ops |
 | [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md) | Taker CLI (`mln-cli`): Scout, Pathfind, Forger (dry-run + sidecar POST); env and trust model |
+| [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) | Local Docker E2E: Anvil + Nostr relay + 3× `mlnd`, `scripts/e2e-bootstrap.sh`, [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) |
 | [`docker-compose.yml`](docker-compose.yml) | `mlnd` service + commented `coinswapd` stub; use with [`.env.compose.example`](.env.compose.example) |
 | [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |

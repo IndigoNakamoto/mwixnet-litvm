@@ -2,6 +2,8 @@
 
 Phase 11 taker GUI: same stack as `mln-cli` (scout → pathfind → forger) with settings persisted under the OS user config directory (`mln-wallet/settings.json`). The balance panel calls **`GET /v1/balance`** on your MLN sidecar (see [`PHASE_10_TAKER_CLI.md`](../../PHASE_10_TAKER_CLI.md)); implement it on your `coinswapd` fork.
 
+**Local matrix:** To point the wallet at Docker Anvil + a local Nostr relay and three `mlnd` makers, follow [`PHASE_12_E2E_CRUCIBLE.md`](../../PHASE_12_E2E_CRUCIBLE.md) and merge `deploy/e2e.wallet-settings.generated.json` into network settings (or paste fields in the UI).
+
 ## Prerequisites
 
 - **Go 1.22+** with **CGO enabled** (Wails uses a native webview).

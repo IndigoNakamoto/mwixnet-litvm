@@ -1,0 +1,74 @@
+# Phase 12 — local E2E stack (Anvil + nostr-rs-relay + three mlnd makers).
+# 1) Infra (default): docker compose -f deploy/docker-compose.e2e.yml up -d
+# 2) Bootstrap: ./scripts/e2e-bootstrap.sh
+# 3) Makers:     docker compose -f deploy/docker-compose.e2e.yml --profile makers up -d
+#
+# Maker env files are generated under deploy/ (gitignored). See PHASE_12_E2E_CRUCIBLE.md.
+
+services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: ["anvil", "--host", "0.0.0.0", "--port", "8545"]
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://127.0.0.1:8545"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 3s
+
+  nostr:
+    image: scsibug/nostr-rs-relay:latest
+    ports:
+      - "7080:8080"
+
+  maker1:
+    profiles: ["makers"]
+    build:
+      context: ../mlnd
+      dockerfile: Dockerfile
+    depends_on:
+      anvil:
+        condition: service_healthy
+      nostr:
+        condition: service_started
+    env_file:
+      - e2e.maker1.env
+    volumes:
+      - mln_e2e_maker1:/data
+
+  maker2:
+    profiles: ["makers"]
+    build:
+      context: ../mlnd
+      dockerfile: Dockerfile
+    depends_on:
+      anvil:
+        condition: service_healthy
+      nostr:
+        condition: service_started
+    env_file:
+      - e2e.maker2.env
+    volumes:
+      - mln_e2e_maker2:/data
+
+  maker3:
+    profiles: ["makers"]
+    build:
+      context: ../mlnd
+      dockerfile: Dockerfile
+    depends_on:
+      anvil:
+        condition: service_healthy
+      nostr:
+        condition: service_started
+    env_file:
+      - e2e.maker3.env
+    volumes:
+      - mln_e2e_maker3:/data
+
+volumes:
+  mln_e2e_maker1:
+  mln_e2e_maker2:
+  mln_e2e_maker3:

@@ -1,0 +1,10 @@
+{
+  "nostrRelays": ["ws://127.0.0.1:7080/"],
+  "litvmChainId": "31337",
+  "litvmHttpUrl": "http://127.0.0.1:8545",
+  "registryAddr": "0xREPLACE_AFTER_BOOTSTRAP",
+  "grievanceCourtAddr": "0xREPLACE_AFTER_BOOTSTRAP",
+  "scoutTimeout": "30s",
+  "defaultSidecarUrl": "http://127.0.0.1:8080/v1/swap",
+  "forgerHttpTimeout": "10s"
+}
