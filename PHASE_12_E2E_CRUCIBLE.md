@@ -8,6 +8,7 @@ Normative scout path for the taker: [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI
 
 - **Ledger:** JSON-RPC/WebSocket on `http://127.0.0.1:8545` and `ws://127.0.0.1:8545` (Anvil).
 - **Relay:** WebSocket to the relay at **`ws://127.0.0.1:7080/`** (host maps `7080` → container `8080` for `scsibug/nostr-rs-relay`).
+- **Sidecar:** **`mln-sidecar`** on **`http://127.0.0.1:8080`** — mock MLN HTTP service implementing **`GET /v1/balance`** and **`POST /v1/swap`** ([`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md)) so the Wails wallet and `mln-cli forger` can complete the local loop without `coinswapd`.
 - **Makers:** Three containers (`maker1`, `maker2`, `maker3`) with distinct operator keys and `MLND_TOR_ONION` URLs (`http://127.0.0.1:8081` … `8083`) so the taker forger sees non-empty hop endpoints (cleartext is acceptable for this local matrix).
 
 ## Prerequisites
@@ -28,7 +29,7 @@ From the repo root:
 docker compose -f deploy/docker-compose.e2e.yml up -d
 ```
 
-This starts **`anvil`** and **`nostr`** only. Maker services use the Compose **`makers`** profile so they do not start before env files exist.
+This starts **`anvil`**, **`nostr`**, and **`mln-sidecar`** (port **8080**). Maker services use the Compose **`makers`** profile so they do not start before env files exist.
 
 ## 2. Bootstrap contracts and makers
 
@@ -83,11 +84,11 @@ A blank template lives at [`deploy/e2e-wallet-settings.example.json`](deploy/e2e
 
 Then build and run the desktop app (`make build-mln-wallet` and run the binary, or `wails dev` per [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md)). Use **Scout**; you should see **three verified makers** in the table.
 
-## 5. “Send Privately” and sidecars
+## 5. “Send Privately” and the sidecar
 
-**Scout** and **Build route** exercise Nostr + LitVM verification only.
+**Scout** and **Build route** exercise Nostr + LitVM verification.
 
-**Send** still POSTs the route to **one** local MLN HTTP sidecar URL (default `http://127.0.0.1:8080/v1/swap`). Phase 12 does not start a real or mock `coinswapd`; you need your own sidecar (or a stub server) for a full mix submission. The three hop URLs in the route (`8081`–`8083`) are what makers advertise for the engine path; the wallet does not dial those directly in the Phase 10 forger flow.
+**Send Privately** POSTs the built route to the default MLN sidecar URL (`http://127.0.0.1:8080/v1/swap`). With **`mln-sidecar`** from the Compose file, that service answers **`GET /v1/balance`** (mock **1.25 LTC** available / **1.2 LTC** spendable) and **`POST /v1/swap`** (validates the three-hop JSON, logs a simulated MWEB onion handoff, returns success). The desktop wallet can therefore run a **closed-loop** local simulation: balance panel, spendable check, and submit all succeed without a real `coinswapd`. For production, deploy the same binary (or a fork) next to **`coinswapd`** to translate route JSON into **`swap_Swap(onion.Onion)`** JSON-RPC per [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md). The hop URLs in the route (`8081`–`8083` in this matrix) are what makers advertise for the engine path; the wallet does not dial them directly in the Phase 10 forger flow.
 
 ## Security note
 

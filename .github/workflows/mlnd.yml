@@ -5,11 +5,13 @@ on:
     paths:
       - "mlnd/**"
       - "mln-cli/**"
+      - "mln-sidecar/**"
       - ".github/workflows/mlnd.yml"
   pull_request:
     paths:
       - "mlnd/**"
       - "mln-cli/**"
+      - "mln-sidecar/**"
       - ".github/workflows/mlnd.yml"
 
 jobs:
@@ -34,4 +36,8 @@ jobs:
 
       - name: Go test mln-cli
         working-directory: mln-cli
+        run: go test ./... -count=1
+
+      - name: Go test mln-sidecar
+        working-directory: mln-sidecar
         run: go test ./... -count=1

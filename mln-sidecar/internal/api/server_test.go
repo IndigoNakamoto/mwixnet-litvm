@@ -1,0 +1,75 @@
+package api
+
+import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestBalance(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(NewMux())
+	t.Cleanup(srv.Close)
+
+	resp, err := srv.Client().Get(srv.URL + "/v1/balance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), `"ok":true`) || !strings.Contains(string(body), "125000000") {
+		t.Fatalf("body: %s", body)
+	}
+}
+
+func TestSwap_success(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(NewMux())
+	t.Cleanup(srv.Close)
+
+	payload := `{"route":[
+		{"tor":"http://n1","feeMinSat":1},
+		{"tor":"http://n2","feeMinSat":2},
+		{"tor":"http://n3","feeMinSat":3}
+	],"destination":"mweb1x","amount":1000000}`
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/v1/swap", strings.NewReader(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), `"ok":true`) {
+		t.Fatalf("body: %s", body)
+	}
+}
+
+func TestSwap_validationError(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(NewMux())
+	t.Cleanup(srv.Close)
+
+	payload := `{"route":[{"tor":"only-one"}],"destination":"mweb1","amount":1}`
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/v1/swap", strings.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d", resp.StatusCode)
+	}
+}

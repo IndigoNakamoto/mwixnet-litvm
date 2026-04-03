@@ -18,10 +18,10 @@
 | User stories, coordination / epochs, wallet route policy (PoC) | `research/USER_STORIES_MLN.md` |
 | Wallet UX wireframes (taker / maker) | `research/WALLET_TAKER_FLOW_V1.md`, `research/WALLET_MAKER_FLOW_V1.md` |
 | Local Anvil deploy / CI | `scripts/deploy-local-anvil.sh`, `.github/workflows/contracts.yml` |
-| Local E2E stack (Anvil + Nostr relay + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh` |
+| Local E2E stack (Anvil + Nostr relay + `mln-sidecar` + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh`, `mln-sidecar/` |
 | MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md` (local clone optional under `research/coinswapd/`, gitignored) |
-| Taker CLI (`mln-cli`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`POST` route JSON, not vanilla `swap_Swap`) | `PHASE_10_TAKER_CLI.md`, `mln-cli/desktop/README.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar note), `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mlnd/pkg/makerad` |
+| Taker CLI (`mln-cli`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`) | `PHASE_10_TAKER_CLI.md`, `mln-cli/desktop/README.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar note), `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mlnd/pkg/makerad`, `mln-sidecar/` |
 
 Prefer quoting or linking paths into those docs instead of inventing APIs or economics.
 
