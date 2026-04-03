@@ -319,3 +319,58 @@ Operators should see the **same** epoch boundary as takers for scheduling ads an
 - [x] Edge cases include operator message and deterministic action.
 - [x] No new protocol rail (MWEB fees happy path; LitVM judicial + registry only).
 - [x] Traceable to current product spec, user stories, Nostr profile, and contracts.
+
+## Implementation gap: today vs. target
+
+This section is the **product and engineering blueprint** for closing operator friction. It is safe to treat as normative *for implementation planning*; it does not change protocol rules in [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) or [`research/NOSTR_MLN.md`](NOSTR_MLN.md).
+
+### Diagnosis: fragmentation, not math
+
+The hard part for makers is not understanding stake or `nostrKeyHash` in the abstract—it is **orchestrating** LitVM transactions, Nostr signing, Tor / mix API, and a long-running daemon (`mlnd`) with many environment variables, **without** config drift or copy-paste errors. Today that work is split across terminals, READMEs, and optional tooling. That fragmentation is what filters out most would-be operators.
+
+**Target:** one coherent operator journey (checklist or app) that preserves layer truth (MWEB vs LitVM vs Nostr) while hiding jargon on the default path.
+
+### 1) Bundle signing (MVP feature)
+
+The highest-leverage simplification is a **single flow** that:
+
+- Loads the **operator LitVM key** (file, env, or later hardware wallet).
+- Derives **`nostrKeyHash`** automatically from the chosen Nostr identity per [`NOSTR_MLN.md`](NOSTR_MLN.md) (`keccak256` over the 32-byte x-only pubkey)—no manual hashing in a separate tool.
+- Submits **`MwixnetRegistry.deposit()`** (to meet `minStake`) and **`registerMaker(nostrKeyHash)`** in sequence with clear copy, gas/stake hints from chain, and recovery on failure.
+
+That removes the dominant failure mode: **mismatch** between the EVM operator, the Nostr key used for ads, and the on-chain binding. Implementation can live first in **`mln-cli`** (see sequencing below) and later behind a desktop or loopback UI.
+
+Contract reference: [`contracts/src/MwixnetRegistry.sol`](../contracts/src/MwixnetRegistry.sol).
+
+### 2) Actionable next steps (not only red badges)
+
+Status UI should reduce anxiety and drive **the next action**:
+
+- **Bad:** a red badge that only says “Unregistered.”
+- **Better:** copy such as “Not registered on this registry → **Register**” (or “Stake below minimum → **Deposit**”) with a path to the flow that fixes it.
+
+The shipped loopback **Maker control center** ([`../mlnd/MAKER_DASHBOARD_SETUP.md`](../mlnd/MAKER_DASHBOARD_SETUP.md)) is read-only for chain writes today; **target** is to surface the same registry/Nostr/Tor signals **plus** explicit next steps and links (or in-process CTAs once bundle signing exists). Persistent **connection health** (short RPC label, relay/Tor hints) stays mandatory per [`research/USER_STORIES_MLN.md`](USER_STORIES_MLN.md).
+
+### 3) Fee hints as one control
+
+Maker **fee hints** on the ad are optional and non-binding on MWEB; they should appear in operator UX as a **single control** (e.g. min/max sat per hop), persisted to config or env, instead of expecting operators to discover `MLND_FEE_MIN_SAT` / `MLND_FEE_MAX_SAT` names from [`../mlnd/README.md`](../mlnd/README.md) alone.
+
+### 4) Deployment presets
+
+**Local Anvil** vs **LitVM testnet** (or future mainnet) wizards should preload chain id, registry, and court addresses from a deployment manifest where possible, and reuse the same validation rules as production clients (no zero address, no placeholder strings). That cuts shell paste errors (e.g. broken one-line `export` chains).
+
+### Pragmatic sequencing (engineering roadmap)
+
+Work can ship in layers without building the full Wails wizard on day one:
+
+| Phase | Scope | Outcome |
+| --- | --- | --- |
+| **A** | Docs + dashboard copy | Ordered **checklist** in setup doc and/or UI: prerequisites → stake/register (external for now) → connectivity → ad env → operational view. Deep links to canonical paths. |
+| **B** | **`mln-cli maker onboard`** (name TBD) | RPC read `minStake` / stake / registration; submit `deposit` + `registerMaker` with auto `nostrKeyHash`; clear errors and retries. |
+| **C** | Desktop or extended loopback UI | Wizard driving **B**, writes consistent **`mlnd`** config, embeds or opens the existing dashboard as **status**. |
+
+Phase **B** is the recommended **first executable milestone** after **A**: it delivers bundle signing value without requiring a full GUI.
+
+### Layer boundaries (unchanged)
+
+Simplifying UX must **not** blur accountability: **LitVM** remains authoritative for stake and grievances; **Nostr** for discovery; **MWEB** for mix execution and default routing fees. Operator copy should say so in **Advanced** or **Developer** sections, not on every screen.
