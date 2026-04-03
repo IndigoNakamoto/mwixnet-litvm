@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/ltcmweb/coinswapd/mlnroute"
 	"github.com/ltcmweb/coinswapd/onion"
 	"github.com/ltcmweb/ltcd/chaincfg"
@@ -15,15 +16,21 @@ import (
 )
 
 // buildOnionFromMLNRoute builds onion.Onion from MLN JSON + resolved X25519 pubkeys + wallet coin.
-// Kernel/stealth blinds are random; MW value conservation across peels must hold for swap to
-// succeed at peel time — operators may need an external solver or future blind derivation here.
+// Hop kernel blinds k0,k1 are random; k2 is derived so peeled commitments match CreateOutput's
+// Pedersen blind after fees. Hop stealth blinds s0,s1 are random; s2 closes the sender key
+// so peeled stealth sums match wire.MwebOutput.SenderPubKey (see mln_peel.go).
 func buildOnionFromMLNRoute(
 	req *mlnroute.Request,
 	peerPub []*ecdh.PublicKey,
 	coin *mweb.Coin,
 ) (*onion.Onion, error) {
-	if req == nil || len(peerPub) != mlnroute.ExpectedHops || coin == nil || coin.SpendKey == nil {
+	if req == nil || len(peerPub) != mlnroute.ExpectedHops || coin == nil ||
+		coin.SpendKey == nil || coin.Blind == nil {
 		return nil, mlnroute.InvalidParams("internal: bad build args")
+	}
+
+	if coin.Value != req.Amount {
+		return nil, mlnroute.InvalidParams("coin value must equal route amount")
 	}
 
 	feeSum := mlnroute.FeeSum(req)
@@ -45,49 +52,108 @@ func buildOnionFromMLNRoute(
 	}
 	stealth := mwAddr.StealthAddress()
 
-	var ephemeralKey mw.SecretKey
-	if _, err := rand.Read(ephemeralKey[:]); err != nil {
-		return nil, mlnroute.Internal(err.Error())
-	}
+	bIn := mw.BlindSwitch(coin.Blind, coin.Value)
 
-	lastOut, blind, _ := mweb.CreateOutput(&mweb.Recipient{
-		Value:   outVal,
-		Address: stealth,
-	}, &ephemeralKey)
-	mweb.SignOutput(lastOut, outVal, blind, &ephemeralKey)
-
-	var inputKey mw.SecretKey
-	if _, err := rand.Read(inputKey[:]); err != nil {
-		return nil, mlnroute.Internal(err.Error())
-	}
-	input := mweb.CreateInput(coin, &inputKey)
-
-	hops := make([]*onion.Hop, mlnroute.ExpectedHops)
-	for i := 0; i < mlnroute.ExpectedHops; i++ {
-		var kb, sb mw.BlindingFactor
-		if _, err := rand.Read(kb[:]); err != nil {
+	const maxOuter = 128
+	const maxKernel = 64
+	for outer := 0; outer < maxOuter; outer++ {
+		var skInput, skSend, s0, s1 mw.SecretKey
+		if _, err := rand.Read(skInput[:]); err != nil {
 			return nil, mlnroute.Internal(err.Error())
 		}
-		if _, err := rand.Read(sb[:]); err != nil {
+		if _, err := rand.Read(skSend[:]); err != nil {
 			return nil, mlnroute.Internal(err.Error())
 		}
-		hops[i] = &onion.Hop{
-			PubKey:       peerPub[i],
-			KernelBlind:  kb,
-			StealthBlind: sb,
-			Fee:          req.Route[i].FeeMinSat,
+		if _, err := rand.Read(s0[:]); err != nil {
+			return nil, mlnroute.Internal(err.Error())
+		}
+		if _, err := rand.Read(s1[:]); err != nil {
+			return nil, mlnroute.Internal(err.Error())
+		}
+
+		if !secretScalarOK(&skInput) || !secretScalarOK(&skSend) ||
+			!secretScalarOK(&s0) || !secretScalarOK(&s1) {
+			continue
+		}
+
+		tEff := coin.SpendKey.Sub(&skInput)
+		s2Ptr := skSend.Sub(tEff).Sub(&s0).Sub(&s1)
+		if !secretScalarOK(s2Ptr) {
+			continue
+		}
+
+		lastOut, maskBlind, _ := mweb.CreateOutput(&mweb.Recipient{
+			Value:   outVal,
+			Address: stealth,
+		}, &skSend)
+		mweb.SignOutput(lastOut, outVal, maskBlind, &skSend)
+
+		bSw := mw.BlindSwitch(maskBlind, outVal)
+
+		var k0, k1 mw.BlindingFactor
+		for kTry := 0; kTry < maxKernel; kTry++ {
+			if _, err := rand.Read(k0[:]); err != nil {
+				return nil, mlnroute.Internal(err.Error())
+			}
+			if _, err := rand.Read(k1[:]); err != nil {
+				return nil, mlnroute.Internal(err.Error())
+			}
+			k2 := *bSw.Sub(bIn).Sub(&k0).Sub(&k1)
+			if !kernelScalarOK(&k0) || !kernelScalarOK(&k1) || !kernelScalarOK(&k2) {
+				continue
+			}
+
+			hops := []*onion.Hop{
+				{
+					PubKey:       peerPub[0],
+					KernelBlind:  k0,
+					StealthBlind: stealthBlindFromSecret(&s0),
+					Fee:          req.Route[0].FeeMinSat,
+				},
+				{
+					PubKey:       peerPub[1],
+					KernelBlind:  k1,
+					StealthBlind: stealthBlindFromSecret(&s1),
+					Fee:          req.Route[1].FeeMinSat,
+				},
+				{
+					PubKey:       peerPub[2],
+					KernelBlind:  k2,
+					StealthBlind: stealthBlindFromSecret(s2Ptr),
+					Fee:          req.Route[2].FeeMinSat,
+					Output:       lastOut,
+				},
+			}
+
+			o, err := onion.New(hops)
+			if err != nil {
+				return nil, mlnroute.OnionOrCrypto(fmt.Sprintf("onion.New: %v", err))
+			}
+			input := mweb.CreateInput(coin, &skInput)
+			o.Sign(input, coin.SpendKey)
+
+			if !o.VerifySig() {
+				return nil, mlnroute.OnionOrCrypto("onion owner signature verify failed")
+			}
+			return o, nil
 		}
 	}
-	hops[len(hops)-1].Output = lastOut
 
-	o, err := onion.New(hops)
-	if err != nil {
-		return nil, mlnroute.OnionOrCrypto(fmt.Sprintf("onion.New: %v", err))
-	}
-	o.Sign(input, coin.SpendKey)
+	return nil, mlnroute.OnionOrCrypto("MW onion solver exhausted retries (kernel/stealth scalar bounds)")
+}
 
-	if !o.VerifySig() {
-		return nil, mlnroute.OnionOrCrypto("onion owner signature verify failed")
-	}
-	return o, nil
+func kernelScalarOK(b *mw.BlindingFactor) bool {
+	var k secp256k1.ModNScalar
+	return k.SetBytes((*[32]byte)(b)) == 0
+}
+
+func secretScalarOK(s *mw.SecretKey) bool {
+	var k secp256k1.ModNScalar
+	return k.SetBytes((*[32]byte)(s)) == 0
+}
+
+func stealthBlindFromSecret(s *mw.SecretKey) mw.BlindingFactor {
+	var b mw.BlindingFactor
+	copy(b[:], s[:])
+	return b
 }

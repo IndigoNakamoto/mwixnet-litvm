@@ -1,0 +1,23 @@
+name: coinswapd research
+
+on:
+  push:
+    paths:
+      - "research/coinswapd/**"
+      - ".github/workflows/coinswapd-research.yml"
+  pull_request:
+    paths:
+      - "research/coinswapd/**"
+      - ".github/workflows/coinswapd-research.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: go test
+        working-directory: research/coinswapd
+        run: go test ./... -count=1
