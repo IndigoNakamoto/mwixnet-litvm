@@ -120,7 +120,19 @@ Duplicate lines for the same `evidenceHash` are ignored (SQLite `ON CONFLICT DO 
 2. Export `MLND_BRIDGE_COINSWAPD=1` and `MLND_BRIDGE_RECEIPTS_DIR` pointing at that directory; start `mlnd` with the usual LitVM variables.
 3. Until the fork emits lines, the bridge only polls the directory; the watcher and Nostr paths are unchanged.
 
-Phase history: [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) (stub + wiring), [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) (NDJSON ingestion).
+Phase history: [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) (stub + wiring), [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) (NDJSON ingestion), [`PHASE_7_END_TO_END.md`](../PHASE_7_END_TO_END.md) (coinswapd patch + `make test-operator-smoke`).
+
+## Local operator smoke (Anvil, no coinswapd)
+
+From the **repo root** with Anvil on `8545` (same as `make test-grievance`):
+
+```bash
+make test-operator-smoke
+```
+
+This runs [`scripts/mlnd-bridge-litvm-smoke.sh`](../scripts/mlnd-bridge-litvm-smoke.sh): deploys contracts, writes a **golden** NDJSON line matching [`EvidenceGoldenVectors.t.sol`](../contracts/test/EvidenceGoldenVectors.t.sol), starts mlnd with the bridge enabled (host **`go run`** when Go is 1.22+, otherwise **`docker run golang:1.22`** with `ws://host.docker.internal:8545`), opens `openGrievance` with the same `evidenceHash`, and checks that mlnd logs **validated receipt**. Requires `cast` or Docker Foundry for `cast`, and Docker if your host Go is below 1.22.
+
+`make test-full-stack` is **unchanged** (grievance + Nostr pointer echo only); see [`PHASE_7_END_TO_END.md`](../PHASE_7_END_TO_END.md).
 
 **Dependency note:** imports use module path `github.com/nbd-wtf/go-nostr` with a `replace` to **`github.com/fiatjaf/go-nostr`** (maintained fork). Version is pinned to **v0.35.0** for Go **1.22** CI compatibility.
 

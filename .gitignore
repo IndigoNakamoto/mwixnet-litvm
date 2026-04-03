@@ -3,6 +3,8 @@
 .foundry/
 # Local coinswapd checkout / fork — keep out of this repo (clone beside or use your fork’s remote)
 research/coinswapd/
+# Ephemeral clone used to generate coinswapd patches (do not commit)
+_patchgen/
 
 # Foundry (contracts/)
 contracts/cache/

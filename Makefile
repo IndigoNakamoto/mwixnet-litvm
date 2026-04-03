@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -28,6 +28,10 @@ deploy-local:
 # Requires Anvil on ANVIL_RPC_URL + Docker; deploys then opens grievance with golden vectors.
 test-grievance:
 	./scripts/test-grievance-local.sh
+
+# Golden NDJSON fixture + mlnd bridge + openGrievance on Anvil (no coinswapd). Requires Go 1.22+ on PATH.
+test-operator-smoke:
+	./scripts/mlnd-bridge-litvm-smoke.sh
 
 test-full-stack:
 	@echo "=== Running full grievance + Nostr stack test ==="

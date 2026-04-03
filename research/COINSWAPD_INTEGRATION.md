@@ -135,4 +135,50 @@ Finally, bridge the result back into this repo flow:
 
 ## 7) Happy-path hop receipts for `mlnd` (NDJSON)
 
+Operator checklist and smoke target: [`PHASE_7_END_TO_END.md`](../PHASE_7_END_TO_END.md) (`make test-operator-smoke`).
+
 The Phase 2 patch above targets **failure-path** logging. For **automatic SQLite receipts** when a mix completes successfully, the fork (or a sidecar) must emit **LitVM-correlated** hop rows: registry **`epochId`**, **`accuser`** (grievance opener identity), **`accusedMaker`**, peel correlators, and defense strings. Stock `swap_*` RPCs do not expose that bundle alone; see [`PHASE_6_BRIDGE_INTEGRATION.md`](../PHASE_6_BRIDGE_INTEGRATION.md) for the **NDJSON line schema** consumed by `mlnd` (`MLND_BRIDGE_RECEIPTS_DIR`).
+
+### Committable patch (ltcmweb/coinswapd)
+
+Apply from a [`coinswapd`](https://github.com/ltcmweb/coinswapd) clone root (same idea as §2):
+
+```bash
+cd research/coinswapd   # your local clone; gitignored in mwixnet-litvm
+git apply ../coinswapd-receipt-ndjson.patch
+# or: patch -p1 < ../coinswapd-receipt-ndjson.patch
+```
+
+Canonical file in this repo: [`coinswapd-receipt-ndjson.patch`](coinswapd-receipt-ndjson.patch). Base revision: **`ltcmweb/coinswapd` `master`** as of the patch author date; if hunks fail after upstream drift, re-apply manually using the hook description below.
+
+### Hook site
+
+- **File:** `swap.go`
+- **Function:** `(*swapService) forward`
+- **Placement:** Immediately after `cipher.XORKeyStream(data.Bytes(), data.Bytes())` on the forward blob to the next hop (bytes are **post-XOR** `P` for `forwardCiphertextHash` per [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) appendix 13 / [`EVIDENCE_GENERATOR.md`](EVIDENCE_GENERATOR.md)).
+- **Package:** new `mlnreceipt/writer.go` — `peeledCommitment` = `sha256(33-byte mw.Commitment)` (appendix 13.3); `forwardCiphertextHash` = `keccak256(postXOR)`.
+
+### New flags (coinswapd)
+
+| Flag | Role |
+|------|------|
+| `-mln-receipt-dir` | Directory for append-only `mlnd-receipts.ndjson` (set to the **same path** as mlnd’s `MLND_BRIDGE_RECEIPTS_DIR`). |
+| `-mln-receipt-epoch-id` | Decimal epoch string. |
+| `-mln-receipt-accuser` | `0x` accuser (taker) address. |
+| `-mln-receipt-accused` | `0x` accused maker address. |
+| `-mln-receipt-next-hop-pubkey` | Defense v1 UTF-8 string. |
+| `-mln-receipt-signature` | Defense v1 UTF-8 string. |
+
+**v1 scope:** a line is written only when `len(commits)==1` after `peelOnions()` (single-commit forward batch). Larger batches are skipped without a line.
+
+### Example line (shape only)
+
+```json
+{"epochId":"42","accuser":"0x…","accusedMaker":"0x…","hopIndex":0,"peeledCommitment":"0x…64 hex…","forwardCiphertextHash":"0x…64 hex…","nextHopPubkey":"…","signature":"…"}
+```
+
+Golden-vector row matching local LitVM smoke tests: [`scripts/mlnd-bridge-litvm-smoke.sh`](../scripts/mlnd-bridge-litvm-smoke.sh) (`make test-operator-smoke`).
+
+### Toolchain
+
+Upstream `coinswapd` **go.mod** may require **Go 1.23+**; build the fork with a matching toolchain after applying the patch.

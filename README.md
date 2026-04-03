@@ -59,7 +59,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Full architecture, economics, roadmap, evidence preimage (appendix 13), MWEB appendix (14), open questions |
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
-| [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance` |
+| [`Makefile`](Makefile) | Docker Foundry: `contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`, `test-operator-smoke` (mlnd bridge + golden grievance; see [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md)) |
 | [`scripts/requirements.txt`](scripts/requirements.txt) | `pip install -r scripts/requirements.txt` for Nostr demo CLIs (`nostr` PyPI package) |
 | [`research/LITVM.md`](research/LITVM.md) | LitVM testnet, env, Docker Foundry, Phase 1 local |
 | [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md) | Phase 2 Nostr wire: kinds 31250–31251, `nostrKeyHash` binding, maker ads + grievance pointers |

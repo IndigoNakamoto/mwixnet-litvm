@@ -1,0 +1,112 @@
+diff --git a/main.go b/main.go
+index 06cb420..67e655d 100644
+--- a/main.go
++++ b/main.go
+@@ -38,6 +38,13 @@ var (
+ 	feeAddressFlag = flag.String("a", "", "MWEB address to collect fees to")
+ 
+ 	forceSwap = flag.Bool("f", false, "Force-run a swap at startup")
++
++	mlnReceiptDir     = flag.String("mln-receipt-dir", "", "Directory to append mlnd NDJSON receipt lines (Phase 6 schema); empty disables")
++	mlnReceiptEpoch   = flag.String("mln-receipt-epoch-id", "", "LitVM epoch id (decimal string) for receipt lines")
++	mlnReceiptAccuser = flag.String("mln-receipt-accuser", "", "0x hex accuser (taker) address for receipt lines")
++	mlnReceiptAccused = flag.String("mln-receipt-accused", "", "0x hex accused maker address for receipt lines")
++	mlnReceiptNextHop = flag.String("mln-receipt-next-hop-pubkey", "", "Defense v1 next-hop pubkey (UTF-8)")
++	mlnReceiptSig     = flag.String("mln-receipt-signature", "", "Defense v1 signature (UTF-8)")
+ )
+ 
+ func main() {
+diff --git a/mlnreceipt/writer.go b/mlnreceipt/writer.go
+new file mode 100644
+index 0000000..c569999
+--- /dev/null
++++ b/mlnreceipt/writer.go
+@@ -0,0 +1,63 @@
++package mlnreceipt
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"fmt"
++	"os"
++	"path/filepath"
++	"strings"
++
++	"github.com/ltcmweb/ltcd/ltcutil/mweb/mw"
++	"golang.org/x/crypto/sha3"
++)
++
++// WriteForwardReceipt appends one NDJSON object line for mlnd (see mwixnet-litvm PHASE_6_BRIDGE_INTEGRATION.md).
++// peeledCommitment = sha256(33-byte ltcd compressed Pedersen commitment); forwardCiphertextHash = keccak256(postXOR).
++func WriteForwardReceipt(dir, epochID, accuser, accused string, hopIndex uint8, commit2 mw.Commitment, postXOR []byte, nextHop, sig string) error {
++	dir = strings.TrimSpace(dir)
++	if dir == "" {
++		return nil
++	}
++	epochID = strings.TrimSpace(epochID)
++	accuser = strings.TrimSpace(accuser)
++	accused = strings.TrimSpace(accused)
++	if epochID == "" || accuser == "" || accused == "" {
++		return fmt.Errorf("mln receipt: set -mln-receipt-epoch-id, -mln-receipt-accuser, and -mln-receipt-accused when -mln-receipt-dir is set")
++	}
++
++	peeled := sha256.Sum256(commit2[:])
++	fh := keccak256(postXOR)
++
++	rec := map[string]interface{}{
++		"epochId":               epochID,
++		"accuser":               accuser,
++		"accusedMaker":          accused,
++		"hopIndex":              int(hopIndex),
++		"peeledCommitment":      "0x" + hex.EncodeToString(peeled[:]),
++		"forwardCiphertextHash": "0x" + hex.EncodeToString(fh),
++		"nextHopPubkey":         nextHop,
++		"signature":             sig,
++	}
++	raw, err := json.Marshal(rec)
++	if err != nil {
++		return err
++	}
++	path := filepath.Join(dir, "mlnd-receipts.ndjson")
++	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
++	if err != nil {
++		return err
++	}
++	defer f.Close()
++	if _, err := f.Write(append(raw, '\n')); err != nil {
++		return err
++	}
++	return nil
++}
++
++func keccak256(b []byte) []byte {
++	h := sha3.NewLegacyKeccak256()
++	h.Write(b)
++	return h.Sum(nil)
++}
+diff --git a/swap.go b/swap.go
+index 388c0af..6b9db37 100644
+--- a/swap.go
++++ b/swap.go
+@@ -11,6 +11,7 @@ import (
+ 	"slices"
+ 
+ 	"github.com/ethereum/go-ethereum/rpc"
++	"github.com/ltcmweb/coinswapd/mlnreceipt"
+ 	"github.com/ltcmweb/coinswapd/onion"
+ 	"github.com/ltcmweb/ltcd/ltcutil/mweb"
+ 	"github.com/ltcmweb/ltcd/ltcutil/mweb/mw"
+@@ -137,6 +138,12 @@ func (s *swapService) forward() error {
+ 	}
+ 	cipher.XORKeyStream(data.Bytes(), data.Bytes())
+ 
++	if *mlnReceiptDir != "" && len(commits) == 1 {
++		if err := mlnreceipt.WriteForwardReceipt(*mlnReceiptDir, *mlnReceiptEpoch, *mlnReceiptAccuser, *mlnReceiptAccused, uint8(s.nodeIndex), commits[0], data.Bytes(), *mlnReceiptNextHop, *mlnReceiptSig); err != nil {
++			fmt.Println("mln receipt:", err)
++		}
++	}
++
+ 	client, err := rpc.Dial(node.Url)
+ 	if err != nil {
+ 		return err
