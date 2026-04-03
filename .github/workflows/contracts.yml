@@ -1,5 +1,3 @@
-# TODO: Integrate Slither into this workflow (e.g. crytic/slither-action or Docker `pip install slither-analyzer`
-# and `slither /work --fail-none`); tighten to `--fail-high` after triaging findings on `contracts/`.
 name: contracts
 
 on:
@@ -17,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Forge build
         run: |
@@ -30,10 +30,15 @@ jobs:
             -v "$GITHUB_WORKSPACE/contracts:/work" -w /work \
             ghcr.io/foundry-rs/foundry:latest test -vv
 
-  # Placeholder job — flip `if` to `true` once Slither is wired (see TODO above).
   slither:
-    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Slither not yet enabled; see workflow TODO at top of contracts.yml"
+        with:
+          submodules: recursive
+
+      - uses: crytic/slither-action@v0.4.2
+        with:
+          target: contracts
+          fail-on: high
+          slither-args: --exclude-dependencies --filter-paths "^src/"

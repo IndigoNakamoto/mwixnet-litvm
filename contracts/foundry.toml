@@ -11,5 +11,10 @@ via_ir = false
 [rpc_endpoints]
 litvm_testnet = "${LITVM_RPC_URL}"
 
+[invariant]
+runs = 256
+depth = 500
+fail_on_revert = true
+
 [fmt]
 line_length = 100
