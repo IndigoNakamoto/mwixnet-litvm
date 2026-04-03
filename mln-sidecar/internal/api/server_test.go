@@ -6,11 +6,13 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-sidecar/internal/mweb"
 )
 
 func TestBalance(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(NewMux())
+	srv := httptest.NewServer(NewMux(mweb.NewMockBridge()))
 	t.Cleanup(srv.Close)
 
 	resp, err := srv.Client().Get(srv.URL + "/v1/balance")
@@ -29,7 +31,7 @@ func TestBalance(t *testing.T) {
 
 func TestSwap_success(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(NewMux())
+	srv := httptest.NewServer(NewMux(mweb.NewMockBridge()))
 	t.Cleanup(srv.Close)
 
 	payload := `{"route":[
@@ -54,11 +56,14 @@ func TestSwap_success(t *testing.T) {
 	if !strings.Contains(string(body), `"ok":true`) {
 		t.Fatalf("body: %s", body)
 	}
+	if !strings.Contains(string(body), "Mock onion successfully injected into coinswapd queue") {
+		t.Fatalf("expected mock success detail, body: %s", body)
+	}
 }
 
 func TestSwap_validationError(t *testing.T) {
 	t.Parallel()
-	srv := httptest.NewServer(NewMux())
+	srv := httptest.NewServer(NewMux(mweb.NewMockBridge()))
 	t.Cleanup(srv.Close)
 
 	payload := `{"route":[{"tor":"only-one"}],"destination":"mweb1","amount":1}`

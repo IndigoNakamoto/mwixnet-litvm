@@ -8,7 +8,7 @@ Normative scout path for the taker: [`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI
 
 - **Ledger:** JSON-RPC/WebSocket on `http://127.0.0.1:8545` and `ws://127.0.0.1:8545` (Anvil).
 - **Relay:** WebSocket to the relay at **`ws://127.0.0.1:7080/`** (host maps `7080` → container `8080` for `scsibug/nostr-rs-relay`).
-- **Sidecar:** **`mln-sidecar`** on **`http://127.0.0.1:8080`** — mock MLN HTTP service implementing **`GET /v1/balance`** and **`POST /v1/swap`** ([`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md)) so the Wails wallet and `mln-cli forger` can complete the local loop without `coinswapd`.
+- **Sidecar:** **`mln-sidecar`** on **`http://127.0.0.1:8080`** — mock MLN HTTP service (`-mode=mock` in [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml)) implementing **`GET /v1/balance`** and **`POST /v1/swap`** ([`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md)) so the Wails wallet and `mln-cli forger` can complete the local loop without `coinswapd`.
 - **Makers:** Three containers (`maker1`, `maker2`, `maker3`) with distinct operator keys and `MLND_TOR_ONION` URLs (`http://127.0.0.1:8081` … `8083`) so the taker forger sees non-empty hop endpoints (cleartext is acceptable for this local matrix).
 
 ## Prerequisites

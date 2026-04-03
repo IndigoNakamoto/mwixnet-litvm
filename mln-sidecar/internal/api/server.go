@@ -26,10 +26,10 @@ type SwapResponse struct {
 }
 
 // NewMux registers the MLN HTTP contract (GET /v1/balance, POST /v1/swap).
-func NewMux() http.Handler {
+func NewMux(bridge mweb.Bridge) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/balance", methodOnly(http.MethodGet, handleBalance))
-	mux.HandleFunc("/v1/swap", methodOnly(http.MethodPost, handleSwap))
+	mux.HandleFunc("/v1/balance", methodOnly(http.MethodGet, handleBalance(bridge)))
+	mux.HandleFunc("/v1/swap", methodOnly(http.MethodPost, handleSwap(bridge)))
 	mux.HandleFunc("/healthz", methodOnly(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -47,41 +47,62 @@ func methodOnly(method string, h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func handleBalance(w http.ResponseWriter, r *http.Request) {
-	resp := BalanceResponse{
-		Ok:           true,
-		AvailableSat: 125_000_000,
-		SpendableSat: 120_000_000,
-		Detail:       "Mock balance for E2E",
+func handleBalance(bridge mweb.Bridge) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		avail, spend, detail, err := bridge.HandleBalance(r.Context())
+		if err != nil {
+			// Upstream / RPC failures: 502 so clients distinguish from bad request.
+			writeJSON(w, http.StatusBadGateway, BalanceResponse{
+				Ok:     false,
+				Error:  "balance unavailable",
+				Detail: err.Error(),
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, BalanceResponse{
+			Ok:           true,
+			AvailableSat: avail,
+			SpendableSat: spend,
+			Detail:       detail,
+		})
 	}
-	writeJSON(w, http.StatusOK, resp)
 }
 
-func handleSwap(w http.ResponseWriter, r *http.Request) {
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	var req mweb.SwapRequest
-	if err := dec.Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, SwapResponse{
-			Ok:    false,
-			Error: "invalid JSON",
-			Detail: err.Error(),
+func handleSwap(bridge mweb.Bridge) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		var req mweb.SwapRequest
+		if err := dec.Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, SwapResponse{
+				Ok:     false,
+				Error:  "invalid JSON",
+				Detail: err.Error(),
+			})
+			return
+		}
+		detail, err := bridge.HandleSwap(r.Context(), &req)
+		if err != nil {
+			if mweb.IsInvalidSwapRequest(err) {
+				writeJSON(w, http.StatusBadRequest, SwapResponse{
+					Ok:     false,
+					Error:  "validation failed",
+					Detail: err.Error(),
+				})
+				return
+			}
+			writeJSON(w, http.StatusBadGateway, SwapResponse{
+				Ok:     false,
+				Error:  "mweb rpc failed",
+				Detail: err.Error(),
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, SwapResponse{
+			Ok:     true,
+			Detail: detail,
 		})
-		return
 	}
-	if err := mweb.ValidateSwapRequest(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, SwapResponse{
-			Ok:    false,
-			Error: "validation failed",
-			Detail: err.Error(),
-		})
-		return
-	}
-	_ = mweb.BuildMockOnion(&req)
-	writeJSON(w, http.StatusOK, SwapResponse{
-		Ok:     true,
-		Detail: "Mock onion successfully injected into coinswapd queue",
-	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

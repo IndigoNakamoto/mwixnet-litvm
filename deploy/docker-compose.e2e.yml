@@ -28,6 +28,7 @@ services:
     build:
       context: ../mln-sidecar
       dockerfile: Dockerfile
+    command: ["-port", "8080", "-mode", "mock"]
     ports:
       - "8080:8080"
 
