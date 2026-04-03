@@ -5,8 +5,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/bridge"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
 	mlnnostr "github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
@@ -87,7 +89,6 @@ func main() {
 	if bc != nil {
 		log.Println("mlnd: Nostr maker-ad broadcaster enabled")
 	}
-
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		return watcher.Start(gctx)
@@ -97,9 +98,20 @@ func main() {
 			return bc.Run(gctx)
 		})
 	}
+	if enableBridge := bridgeCoinswapdEnabled(); enableBridge {
+		br := bridge.NewCoinswapd(log.Default())
+		g.Go(func() error {
+			return br.Run(gctx)
+		})
+	}
 
 	if err := g.Wait(); err != nil {
 		log.Fatalf("run: %v", err)
 	}
 	log.Println("shutdown complete")
+}
+
+func bridgeCoinswapdEnabled() bool {
+	s := strings.ToLower(strings.TrimSpace(os.Getenv("MLND_BRIDGE_COINSWAPD")))
+	return s == "1" || s == "true" || s == "yes"
 }

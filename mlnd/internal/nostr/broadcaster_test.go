@@ -9,6 +9,24 @@ import (
 	"time"
 )
 
+func TestTorOnionWithOptionalPort(t *testing.T) {
+	base := "http://v3abcdefghijklmnop1234567890abcdef1234567890abcdefgh.onion"
+	got := torOnionWithOptionalPort(base, "18081")
+	want := base + ":18081"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+	if torOnionWithOptionalPort(base+":18081", "9999") != base+":18081" {
+		t.Fatal("expected existing port unchanged")
+	}
+	if torOnionWithOptionalPort("", "80") != "" {
+		t.Fatal("empty base")
+	}
+	if torOnionWithOptionalPort(base, "") != base {
+		t.Fatal("empty port env")
+	}
+}
+
 func TestDTag(t *testing.T) {
 	got := DTag("31337", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
 	want := "mln:v1:31337:0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
@@ -37,7 +55,7 @@ func TestBuildMakerAdEvent_shapeAndSignature(t *testing.T) {
 			Registry:       "0x5fbdb2315678afecb367f032d93f642f64180aa3",
 			GrievanceCourt: "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
 			Operator:       "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-			TorOnion:       "http://abcdefghijklmnop.onion",
+			TorOnion:       "http://abcdefghijklmnop123456789012345678901234567890abcdefgh.onion:18081",
 			FeeMinSat:      uint64Ptr(1),
 			FeeMaxSat:      uint64Ptr(99),
 			Capabilities:   []string{"mweb-coinswap-v0"},
@@ -92,6 +110,14 @@ func TestBuildMakerAdEvent_shapeAndSignature(t *testing.T) {
 	}
 	if lit["registry"] != "0x5fbdb2315678afecb367f032d93f642f64180aa3" {
 		t.Fatalf("litvm.registry not lowercase: %q", lit["registry"])
+	}
+	var tor string
+	if err := json.Unmarshal(payload["tor"], &tor); err != nil {
+		t.Fatal(err)
+	}
+	wantTor := "http://abcdefghijklmnop123456789012345678901234567890abcdefgh.onion:18081"
+	if tor != wantTor {
+		t.Fatalf("content.tor: got %q want %q", tor, wantTor)
 	}
 }
 

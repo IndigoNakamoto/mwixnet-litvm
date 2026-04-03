@@ -21,6 +21,7 @@ jobs:
           go-version: "1.22"
           cache-dependency-path: mlnd/go.sum
 
+      # Includes internal/flow (SQLite + evidence hash + kind-31250 build) without Anvil or live relays.
       - name: Go test
         working-directory: mlnd
         run: go test ./... -count=1

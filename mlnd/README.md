@@ -79,10 +79,19 @@ Optional:
 | Env | Meaning |
 |-----|---------|
 | `MLND_NOSTR_INTERVAL` | Republish interval (default `30m`; `time.ParseDuration` syntax) |
-| `MLND_TOR_ONION` | Tor mix API URL for `content.tor` |
+| `MLND_TOR_ONION` | Tor mix API URL for `content.tor` (include port in the URL, or set `MLND_TOR_PORT`) |
+| `MLND_TOR_PORT` | If set and `MLND_TOR_ONION` has no port, the port is appended (e.g. `18081`) |
 | `MLND_FEE_MIN_SAT` / `MLND_FEE_MAX_SAT` | If both set, adds `fees` object (`sat_per_hop`) |
 
 Wire format: [`research/NOSTR_MLN.md`](../research/NOSTR_MLN.md). Relay smoke flow: [`research/E2E_NOSTR_DEMO.md`](../research/E2E_NOSTR_DEMO.md).
+
+## coinswapd receipt bridge (optional stub)
+
+| Env | Meaning |
+|-----|---------|
+| `MLND_BRIDGE_COINSWAPD` | Set to `1`, `true`, or `yes` to run the v0 bridge goroutine (logs only; no `SaveReceipt` yet). Future versions will follow [`research/COINSWAPD_TEARDOWN.md`](../research/COINSWAPD_TEARDOWN.md) JSON-RPC (`swap_*`) or log tailing. |
+
+See [`PHASE_5_NOSTR_TOR_BRIDGE.md`](../PHASE_5_NOSTR_TOR_BRIDGE.md) for the full Phase 5 scope.
 
 **Dependency note:** imports use module path `github.com/nbd-wtf/go-nostr` with a `replace` to **`github.com/fiatjaf/go-nostr`** (maintained fork). Version is pinned to **v0.35.0** for Go **1.22** CI compatibility.
 

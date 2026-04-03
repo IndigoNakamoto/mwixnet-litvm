@@ -4,15 +4,19 @@ package nostr
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	gnostr "github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -22,25 +26,50 @@ const (
 
 // BroadcasterConfig holds static fields for the maker ad (all EVM addresses lowercase 0x per spec).
 type BroadcasterConfig struct {
-	ChainID         string
-	Registry        string
-	GrievanceCourt  string
-	Operator        string // maker LitVM address -> d tag + binding
-	TorOnion        string // optional, e.g. http://....onion
-	FeeMinSat       *uint64
-	FeeMaxSat       *uint64
-	Capabilities    []string
-	ClientName      string
-	ClientVersion   string
+	ChainID        string
+	Registry       string
+	GrievanceCourt string
+	Operator       string // maker LitVM address -> d tag + binding
+	TorOnion       string // optional, e.g. http://....onion
+	FeeMinSat      *uint64
+	FeeMaxSat      *uint64
+	Capabilities   []string
+	ClientName     string
+	ClientVersion  string
 }
+
+// errRelayBackoff means this relay URL is in exponential backoff; skip until next tick.
+var errRelayBackoff = errors.New("nostr relay in backoff")
 
 // Broadcaster republishes replaceable maker ads on an interval.
 type Broadcaster struct {
-	cfg        BroadcasterConfig
-	relays     []string
-	secHex     string // 64-char hex private key for gnostr.Event.Sign
-	interval   time.Duration
-	log        *log.Logger
+	cfg      BroadcasterConfig
+	relays   []string
+	secHex   string // 64-char hex private key for gnostr.Event.Sign
+	interval time.Duration
+	log      *log.Logger
+
+	relayMu        sync.Mutex
+	relayByURL     map[string]*gnostr.Relay
+	relayFailCount map[string]int
+	relayNextTry   map[string]time.Time
+}
+
+// NewBroadcaster returns a configured broadcaster (e.g. for tests). relays may be empty if only BuildMakerAdEvent is used.
+func NewBroadcaster(cfg BroadcasterConfig, relays []string, secHex string, interval time.Duration, lg *log.Logger) *Broadcaster {
+	if lg == nil {
+		lg = log.Default()
+	}
+	if interval <= 0 {
+		interval = 30 * time.Minute
+	}
+	return &Broadcaster{
+		cfg:      cfg,
+		relays:   relays,
+		secHex:   secHex,
+		interval: interval,
+		log:      lg,
+	}
 }
 
 // LoadBroadcasterFromEnv returns nil if MLND_NOSTR_RELAYS is unset (broadcaster disabled).
@@ -111,12 +140,14 @@ func LoadBroadcasterFromEnv() (*Broadcaster, error) {
 	}
 
 	relays := splitRelays(relaysRaw)
+	torRaw := strings.TrimSpace(os.Getenv("MLND_TOR_ONION"))
+	torNorm := torOnionWithOptionalPort(torRaw, strings.TrimSpace(os.Getenv("MLND_TOR_PORT")))
 	cfg := BroadcasterConfig{
 		ChainID:        chainID,
 		Registry:       regNorm,
 		GrievanceCourt: courtNorm,
 		Operator:       opNorm,
-		TorOnion:       strings.TrimSpace(os.Getenv("MLND_TOR_ONION")),
+		TorOnion:       torNorm,
 		FeeMinSat:      feeMin,
 		FeeMaxSat:      feeMax,
 		Capabilities:   []string{"mweb-coinswap-v0"},
@@ -124,13 +155,28 @@ func LoadBroadcasterFromEnv() (*Broadcaster, error) {
 		ClientVersion:  "0",
 	}
 
-	return &Broadcaster{
-		cfg:      cfg,
-		relays:   relays,
-		secHex:   secHex,
-		interval: interval,
-		log:      log.Default(),
-	}, nil
+	return NewBroadcaster(cfg, relays, secHex, interval, log.Default()), nil
+}
+
+// torOnionWithOptionalPort returns baseTor unchanged if portStr is empty or baseTor already has a host port.
+// If baseTor parses as a URL with a host but no port, net.JoinHostPort is applied (see MLND_TOR_PORT in README).
+func torOnionWithOptionalPort(baseTor, portStr string) string {
+	if baseTor == "" || portStr == "" {
+		return baseTor
+	}
+	u, err := url.Parse(baseTor)
+	if err != nil || u.Host == "" {
+		return baseTor
+	}
+	if u.Port() != "" {
+		return baseTor
+	}
+	host := u.Hostname()
+	if host == "" {
+		return baseTor
+	}
+	u.Host = net.JoinHostPort(host, portStr)
+	return u.String()
 }
 
 func splitRelays(s string) []string {
@@ -193,17 +239,17 @@ func DTag(chainID, operatorLower string) string {
 }
 
 type makerAdContent struct {
-	V            int              `json:"v"`
-	Litvm        litvmJSON        `json:"litvm"`
-	Fees         *feesJSON        `json:"fees,omitempty"`
-	Tor          string           `json:"tor,omitempty"`
-	Capabilities []string         `json:"capabilities,omitempty"`
+	V            int       `json:"v"`
+	Litvm        litvmJSON `json:"litvm"`
+	Fees         *feesJSON `json:"fees,omitempty"`
+	Tor          string    `json:"tor,omitempty"`
+	Capabilities []string  `json:"capabilities,omitempty"`
 }
 
 type litvmJSON struct {
-	ChainID          string `json:"chainId"`
-	Registry         string `json:"registry"`
-	GrievanceCourt   string `json:"grievanceCourt"`
+	ChainID        string `json:"chainId"`
+	Registry       string `json:"registry"`
+	GrievanceCourt string `json:"grievanceCourt"`
 }
 
 type feesJSON struct {
@@ -265,25 +311,115 @@ func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
 }
 
 // Publish sends the event to each relay; errors are logged per relay only.
+// Relays are reused across ticks; failed publishes trigger close, exponential backoff, and reconnect.
 func (b *Broadcaster) Publish(ctx context.Context, ev gnostr.Event) {
 	pubCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 
-	for _, url := range b.relays {
-		r, err := gnostr.RelayConnect(pubCtx, url)
-		if err != nil {
-			b.log.Printf("mlnd nostr: connect %s: %v", url, err)
+	for _, relayURL := range b.relays {
+		r, err := b.ensureRelay(pubCtx, relayURL)
+		if errors.Is(err, errRelayBackoff) {
 			continue
 		}
-		func() {
-			defer r.Close()
-			if err := r.Publish(pubCtx, ev); err != nil {
-				b.log.Printf("mlnd nostr: publish %s: %v", url, err)
-				return
-			}
-			b.log.Printf("mlnd nostr: published kind=%d id=%s… to %s", ev.Kind, trimID(ev.ID), url)
-		}()
+		if err != nil {
+			b.log.Printf("mlnd nostr: connect %s: %v", relayURL, err)
+			continue
+		}
+		if err := r.Publish(pubCtx, ev); err != nil {
+			b.log.Printf("mlnd nostr: publish %s: %v", relayURL, err)
+			b.forgetRelayAfterFailure(relayURL)
+			continue
+		}
+		b.markRelayOK(relayURL)
+		b.log.Printf("mlnd nostr: published kind=%d id=%s… to %s", ev.Kind, trimID(ev.ID), relayURL)
 	}
+}
+
+func (b *Broadcaster) ensureRelay(ctx context.Context, relayURL string) (*gnostr.Relay, error) {
+	b.relayMu.Lock()
+	if t, ok := b.relayNextTry[relayURL]; ok && time.Now().Before(t) {
+		b.relayMu.Unlock()
+		return nil, errRelayBackoff
+	}
+	if r := b.relayByURL[relayURL]; r != nil && r.IsConnected() {
+		b.relayMu.Unlock()
+		return r, nil
+	}
+	if r := b.relayByURL[relayURL]; r != nil {
+		_ = r.Close()
+		delete(b.relayByURL, relayURL)
+	}
+	b.relayMu.Unlock()
+
+	connCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	r := gnostr.NewRelay(ctx, relayURL)
+	if err := r.Connect(connCtx); err != nil {
+		b.forgetRelayAfterFailure(relayURL)
+		return nil, err
+	}
+
+	b.relayMu.Lock()
+	if b.relayByURL == nil {
+		b.relayByURL = make(map[string]*gnostr.Relay)
+	}
+	b.relayByURL[relayURL] = r
+	if b.relayFailCount != nil {
+		delete(b.relayFailCount, relayURL)
+	}
+	if b.relayNextTry != nil {
+		delete(b.relayNextTry, relayURL)
+	}
+	b.relayMu.Unlock()
+	return r, nil
+}
+
+func (b *Broadcaster) forgetRelayAfterFailure(relayURL string) {
+	b.relayMu.Lock()
+	defer b.relayMu.Unlock()
+	if r := b.relayByURL[relayURL]; r != nil {
+		_ = r.Close()
+		delete(b.relayByURL, relayURL)
+	}
+	if b.relayFailCount == nil {
+		b.relayFailCount = make(map[string]int)
+	}
+	n := b.relayFailCount[relayURL] + 1
+	b.relayFailCount[relayURL] = n
+	shift := min(n, 6)
+	backoff := time.Duration(1<<shift) * time.Second
+	const maxBackoff = 60 * time.Second
+	if backoff > maxBackoff {
+		backoff = maxBackoff
+	}
+	if b.relayNextTry == nil {
+		b.relayNextTry = make(map[string]time.Time)
+	}
+	b.relayNextTry[relayURL] = time.Now().Add(backoff)
+}
+
+func (b *Broadcaster) markRelayOK(relayURL string) {
+	b.relayMu.Lock()
+	defer b.relayMu.Unlock()
+	if b.relayFailCount != nil {
+		delete(b.relayFailCount, relayURL)
+	}
+	if b.relayNextTry != nil {
+		delete(b.relayNextTry, relayURL)
+	}
+}
+
+func (b *Broadcaster) closeAllRelays() {
+	b.relayMu.Lock()
+	defer b.relayMu.Unlock()
+	for u, r := range b.relayByURL {
+		if r != nil {
+			_ = r.Close()
+		}
+		delete(b.relayByURL, u)
+	}
+	b.relayFailCount = nil
+	b.relayNextTry = nil
 }
 
 func trimID(id string) string {
@@ -295,6 +431,8 @@ func trimID(id string) string {
 
 // Run publishes immediately, then every interval until ctx is done.
 func (b *Broadcaster) Run(ctx context.Context) error {
+	defer b.closeAllRelays()
+
 	b.log.Printf("mlnd nostr: broadcaster running, interval=%s relays=%d", b.interval, len(b.relays))
 
 	ev, err := b.BuildMakerAdEvent(time.Now())
