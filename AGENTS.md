@@ -46,7 +46,7 @@ The teardown documents **entry points** and the **`ltcd`** dependency boundary (
 
 ## Current phase
 
-**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**; **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM.
+**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**; **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM. **Security docs:** `research/THREAT_MODEL_MLN.md` (accepted audit snapshot + threat tables), `research/RED_TEAM_MLN.md` (red-team narratives; extends the threat model).
 
 **Phase 1 (testnet):** when LitVM publishes endpoints, broadcast and record addresses (`research/LITVM.md`, `PHASE_16_PUBLIC_TESTNET.md`).
 

@@ -13,7 +13,7 @@
 ## Reality check (accurate to repo)
 
 - **mlnd** ingests NDJSON per [PHASE_6_BRIDGE_INTEGRATION.md](PHASE_6_BRIDGE_INTEGRATION.md).
-- **[`research/coinswapd/`](research/coinswapd/)** is **gitignored**; this repo ships a **patch** plus docs, not the fork tree.
+- **[`research/coinswapd/`](research/coinswapd/)** is a **tracked in-repo fork** (MLN `mweb_*` RPC and related work). Standalone patches (for example [`research/coinswapd-receipt-ndjson.patch`](research/coinswapd-receipt-ndjson.patch)) can still be applied to a **vanilla** ltcmweb clone when bisecting upstream.
 - **[`make test-full-stack`](Makefile)** and [`.github/workflows/test-full-stack.yml`](.github/workflows/test-full-stack.yml) must stay as today — grievance script + Nostr echo. Operator smoke is **`make test-operator-smoke`** only.
 
 ## Design split

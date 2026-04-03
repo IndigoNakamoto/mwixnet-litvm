@@ -54,7 +54,7 @@ Tests cover **`http://….onion:port`**. Operators may set **`MLND_TOR_PORT`** w
 
 ### Receipt bridge stub
 
-[`mlnd/internal/bridge/coinswapd.go`](mlnd/internal/bridge/coinswapd.go): v0 **`Run(ctx)`** logs that the bridge is a no-op and blocks until shutdown. Enable with **`MLND_BRIDGE_COINSWAPD`**. Do not add **`go.mod` `replace`** for gitignored **`research/coinswapd`** until the dependency story is clear ([`AGENTS.md`](AGENTS.md)).
+[`mlnd/internal/bridge/coinswapd.go`](mlnd/internal/bridge/coinswapd.go): v0 **`Run(ctx)`** logs that the bridge is a no-op and blocks until shutdown. Enable with **`MLND_BRIDGE_COINSWAPD`**. Do not add **`go.mod` `replace`** for **`research/coinswapd`** until the dependency story is clear ([`AGENTS.md`](AGENTS.md)).
 
 ### Integration test scope
 

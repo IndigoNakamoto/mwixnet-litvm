@@ -31,7 +31,7 @@ The MLN Stack intentionally isolates the four pillars of a trustless mixing netw
 
 Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, section 9); milestones here are a summary.
 
-**Production disclaimer:** While this repository’s **Phases 1–16** implementation PoC is **feature-complete in-tree** for documented bring-up paths, it is **not production** until **LitVM testnet broadcast** on the official chain, an independent **security audit**, and **C++ `coinswapd` integration** are finalized.
+**Production disclaimer:** While this repository’s **Phases 1–16** implementation PoC is **feature-complete in-tree** for documented bring-up paths, it is **not production** until **LitVM testnet broadcast** on the official chain, an independent **security audit**, and **production-ready patched [`coinswapd`](https://github.com/ltcmweb/coinswapd) / MWEB integration** (Go ltcmweb reference; in-repo fork at [`research/coinswapd/`](research/coinswapd/)) are finalized.
 
 **Recently completed in-repo (Phases 12–16):** local **E2E stack** (Anvil + Nostr + three `mlnd` makers + bootstrap), **`mln-sidecar`** with **`mock` and `rpc`** modes and JSON-RPC forwarding to **`mweb_submitRoute`** / **`mweb_getBalance`** (fork-side implementation still out of repo), **self-included routing** (wallet + pathfind), **Phase 15 LitVM economic hardening** (slash, bonds, exit locks, reentrancy guard) plus **registry invariants** in Foundry fuzzing, and **Phase 16 public testnet readiness** (public relay + RPC defaults, `RPC_URL` / verification env, [`deploy/docker-compose.testnet.yml`](deploy/docker-compose.testnet.yml)). **Slither** runs on `contracts/**` changes in [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml).
 
@@ -83,7 +83,7 @@ For NDJSON bridge layout, auto-defend key practice, Nostr relays, and paired `co
 
 1. **LitVM testnet** — When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/add-to-wallet) are published, follow [`PHASE_16_PUBLIC_TESTNET.md`](PHASE_16_PUBLIC_TESTNET.md): fund a throwaway deployer, set `PRIVATE_KEY` and `RPC_URL` in `contracts/.env`, run [`forge script`](contracts/README.md) with `--broadcast` (and `--verify` when applicable). Record deployed addresses.
 2. **Judicial layer** — Phase 15 economics and locks are implemented in [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) and [`MwixnetRegistry`](contracts/src/MwixnetRegistry.sol) ([`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md)). Contracts remain **not audited**; on-chain **`defenseData` verification** and formal review are still open.
-3. **`coinswapd` fork** — Implement **`mweb_submitRoute`** / **`mweb_getBalance`** so **`mln-sidecar -mode=rpc`** can hand off MLN route JSON to the real MWEB engine (see [`mln-sidecar/README.md`](mln-sidecar/README.md), [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md)).
+3. **`coinswapd` fork** — Harden and validate **`mweb_submitRoute`** / **`mweb_getBalance`** in the tracked **[`research/coinswapd/`](research/coinswapd/)** tree so **`mln-sidecar -mode=rpc`** reliably hands off MLN route JSON to the real MWEB engine (see [`mln-sidecar/README.md`](mln-sidecar/README.md), [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md), [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md)).
 4. **Phase 2 (in progress)** — Keep [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md), [`nostr/fixtures/`](nostr/), and [`scripts/`](scripts/) in lockstep; run `make test-full-stack` for local grievance + Nostr pointer validation. Finalize addresses/tags once LitVM testnet registry values are stable.
 
 Appendix 13 hashing is implemented in [`contracts/src/EvidenceLib.sol`](contracts/src/EvidenceLib.sol) and covered by [`contracts/test/EvidenceHash.t.sol`](contracts/test/EvidenceHash.t.sol).
@@ -125,15 +125,11 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`research/WALLET_MAKER_FLOW_V1.md`](research/WALLET_MAKER_FLOW_V1.md) | Operator maker flow: register, Nostr ad, dashboard, batch participation, timelocked exit, grievance defense |
 | [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md) | Map of `coinswapd` (RPCs, onion shape, `ltcd` boundary) |
 
-## Local reference code (optional)
+## `coinswapd` reference code
 
-Clone a `coinswapd` tree beside the spec to follow code references in the teardown:
+The MLN **`mweb_*`** JSON-RPC extensions live in the **tracked** in-repo fork **[`research/coinswapd/`](research/coinswapd/)** (see [`AGENTS.md`](AGENTS.md), [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md), [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md)).
 
-```bash
-git clone https://github.com/ltcmweb/coinswapd.git research/coinswapd
-```
-
-`research/coinswapd/` is **gitignored** and not part of this repository.
+**Optional:** Clone vanilla [ltcmweb/coinswapd](https://github.com/ltcmweb/coinswapd) **outside** this repository (for example `../coinswapd-upstream`) to diff against upstream or apply standalone patches without modifying the in-repo tree.
 
 ## Cursor
 

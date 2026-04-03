@@ -12,20 +12,15 @@ Related references:
 - `research/COINSWAPD_TEARDOWN.md` (entry points and code map)
 - `research/NOSTR_MLN.md` (normative Nostr kinds **31250–31251** and `content` JSON; see also archived pointer in `research/NOSTR_EVENTS.md`)
 
-## 1) Clone or update the local reference tree
+## 1) Use the in-repo fork or a separate clone
 
-From repo root:
+**Default:** Work in the **tracked** [`research/coinswapd/`](../research/coinswapd/) tree (MLN `mweb_*` RPC and related changes).
 
-```bash
-git clone https://github.com/ltcmweb/coinswapd.git research/coinswapd
-```
-
-If you already have a local clone:
+**Optional:** For a clean **ltcmweb** baseline **outside** this repository (for example to `git apply` patches without touching the in-repo fork):
 
 ```bash
-cd research/coinswapd
-git fetch origin
-git checkout main
+git clone https://github.com/ltcmweb/coinswapd.git ../coinswapd-upstream
+cd ../coinswapd-upstream
 git pull --ff-only
 ```
 
@@ -38,9 +33,10 @@ cd research/coinswapd
 git apply ../coinswapd-evidence.patch
 ```
 
-If your fork has drifted, inspect and apply manually:
+If your fork has drifted, inspect and apply manually (from **`research/coinswapd/`**):
 
 ```bash
+cd research/coinswapd
 git apply --reject --whitespace=fix ../coinswapd-evidence.patch
 ```
 
@@ -144,7 +140,7 @@ The Phase 2 patch above targets **failure-path** logging. For **automatic SQLite
 Apply from a [`coinswapd`](https://github.com/ltcmweb/coinswapd) clone root (same idea as §2):
 
 ```bash
-cd research/coinswapd   # your local clone; gitignored in mwixnet-litvm
+cd research/coinswapd   # tracked in-repo fork, or use your separate ltcmweb clone root
 git apply ../coinswapd-receipt-ndjson.patch
 # or: patch -p1 < ../coinswapd-receipt-ndjson.patch
 ```

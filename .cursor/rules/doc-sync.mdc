@@ -12,6 +12,7 @@ globs:
   - AGENTS.md
   - PHASE_*.md
   - research/THREAT_MODEL_MLN.md
+  - research/RED_TEAM_MLN.md
 ---
 
 # Documentation synchronization
