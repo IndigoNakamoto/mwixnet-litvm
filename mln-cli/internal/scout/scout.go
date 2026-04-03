@@ -35,6 +35,7 @@ type VerifiedMaker struct {
 	FeeMinSat  uint64         `json:"feeMinSat,omitempty"`
 	FeeMaxSat  uint64         `json:"feeMaxSat,omitempty"`
 	RegistryOK bool           `json:"registryOk"`
+	Local      bool           `json:"local,omitempty"` // set by takerflow when operator matches configured maker key
 }
 
 // Rejection records why an event was not listed as verified.

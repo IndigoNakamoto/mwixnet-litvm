@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/identity"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
 )
 
@@ -19,6 +20,10 @@ type NetworkSettings struct {
 	ScoutTimeout        string   `json:"scoutTimeout,omitempty"` // duration string, e.g. "30s"
 	DefaultSidecarURL   string   `json:"defaultSidecarUrl,omitempty"`
 	ForgerHTTPTimeout   string   `json:"forgerHttpTimeout,omitempty"` // duration for sidecar POST context
+	// SelfIncludedRouting fixes pathfind middle hop (N2) to the maker derived from OperatorEthPrivateKeyHex.
+	SelfIncludedRouting bool `json:"selfIncludedRouting,omitempty"`
+	// OperatorEthPrivateKeyHex is the LitVM maker ECDSA key (64 hex chars, optional 0x). Stored in settings.json; protect disk access.
+	OperatorEthPrivateKeyHex string `json:"operatorEthPrivateKeyHex,omitempty"`
 }
 
 // ScoutTimeoutDuration parses ScoutTimeout or returns default 30s.
@@ -54,6 +59,34 @@ func (s *NetworkSettings) Validate() error {
 		return fmt.Errorf("registry address is required")
 	}
 	return nil
+}
+
+// ValidateSelfInclusion ensures self-route mode has a usable operator key.
+func (s *NetworkSettings) ValidateSelfInclusion() error {
+	if !s.SelfIncludedRouting {
+		return nil
+	}
+	if _, err := s.OperatorEthereumAddress(); err != nil {
+		return fmt.Errorf("self-included routing: %w", err)
+	}
+	return nil
+}
+
+// OperatorEthereumAddress derives the maker address from OperatorEthPrivateKeyHex.
+func (s *NetworkSettings) OperatorEthereumAddress() (common.Address, error) {
+	return identity.AddressFromHexPrivateKey(s.OperatorEthPrivateKeyHex)
+}
+
+// TryOperatorAddress returns the derived address when the key field parses; otherwise false.
+func (s *NetworkSettings) TryOperatorAddress() (common.Address, bool) {
+	if strings.TrimSpace(s.OperatorEthPrivateKeyHex) == "" {
+		return common.Address{}, false
+	}
+	a, err := identity.AddressFromHexPrivateKey(s.OperatorEthPrivateKeyHex)
+	if err != nil {
+		return common.Address{}, false
+	}
+	return a, true
 }
 
 // ToScoutConfig maps settings to scout.Config.

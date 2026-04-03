@@ -49,6 +49,9 @@ func (a *App) SaveSettings(net config.NetworkSettings) error {
 	if err := net.Validate(); err != nil {
 		return err
 	}
+	if err := net.ValidateSelfInclusion(); err != nil {
+		return err
+	}
 	return a.store.save(net)
 }
 

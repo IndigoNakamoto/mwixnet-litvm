@@ -31,6 +31,8 @@ function emptySettings() {
     scoutTimeout: '30s',
     defaultSidecarUrl: 'http://127.0.0.1:8080/v1/swap',
     forgerHttpTimeout: '10s',
+    selfIncludedRouting: false,
+    operatorEthPrivateKeyHex: '',
   }
 }
 
@@ -308,6 +310,38 @@ export default function App() {
           value={settings.forgerHttpTimeout}
           onChange={(e) => setSettings((s) => ({ ...s, forgerHttpTimeout: e.target.value }))}
         />
+        <div className="self-route-block" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border, #333)' }}>
+          <label className="checkbox-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!settings.selfIncludedRouting}
+              onChange={(e) => setSettings((s) => ({ ...s, selfIncludedRouting: e.target.checked }))}
+            />
+            <span>
+              <strong>Self-Included Routing</strong>
+              <span className="sub" style={{ display: 'block', marginTop: '0.25rem' }}>
+                You will act as the middle hop in your own transactions, ensuring total privacy even if other nodes
+                collude. (Requires local node to be active and staked).
+              </span>
+            </span>
+          </label>
+          <label htmlFor="opekey" style={{ marginTop: '0.75rem', display: 'block' }}>
+            LitVM maker private key (64 hex chars, optional 0x)
+          </label>
+          <input
+            id="opekey"
+            type="password"
+            autoComplete="off"
+            value={settings.operatorEthPrivateKeyHex}
+            onChange={(e) => setSettings((s) => ({ ...s, operatorEthPrivateKeyHex: e.target.value }))}
+            placeholder="Stored in settings.json on this machine — protect disk access"
+            className="mono"
+          />
+          <p className="sub" style={{ marginTop: '0.35rem', fontSize: '0.78rem' }}>
+            Same ECDSA key as your registered maker <span className="mono">operator</span> address. Used to mark your
+            row in Scout and to fix N2 when Self-Included Routing is on.
+          </p>
+        </div>
         <div className="row">
           <button type="button" className="primary" disabled={busy} onClick={save}>
             Save settings
@@ -321,7 +355,15 @@ export default function App() {
       <section>
         <h2>Route policy (PoC)</h2>
         <p className="sub" style={{ marginTop: 0 }}>
-          Preset is stored for UX only; routing matches <span className="mono">mln-cli pathfind</span> today.
+          Preset is stored for UX only. Routing matches <span className="mono">mln-cli pathfind</span>
+          {settings.selfIncludedRouting ? (
+            <>
+              {' '}
+              with <strong>self-included</strong> middle hop when enabled in Network settings.
+            </>
+          ) : (
+            <> (standard three-hop selection).</>
+          )}
         </p>
         <div className="preset">
           <button type="button" className={preset === 'fast' ? 'primary' : ''} onClick={() => setPreset('fast')}>
@@ -344,6 +386,32 @@ export default function App() {
             Verified: {scoutSummary.verified?.length ?? 0}, rejected events: {scoutSummary.rejected?.length ?? 0}
           </p>
         )}
+        {scoutSummary?.verified?.length > 0 ? (
+          <div style={{ marginTop: '0.75rem', overflowX: 'auto' }}>
+            <table className="scout-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '0.35rem' }}>Operator</th>
+                  <th style={{ textAlign: 'left', padding: '0.35rem' }}>Stake</th>
+                  <th style={{ textAlign: 'left', padding: '0.35rem' }}>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scoutSummary.verified.map((m, idx) => (
+                  <tr key={m.eventId || idx}>
+                    <td className="mono" style={{ padding: '0.35rem', wordBreak: 'break-all' }}>
+                      {m.operator || m.Operator}
+                    </td>
+                    <td style={{ padding: '0.35rem' }}>{m.stake ?? m.Stake}</td>
+                    <td style={{ padding: '0.35rem' }}>
+                      {m.local || m.Local ? <span className="ok">Local node</span> : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
         {routeMeta && (
           <p className="mono" style={{ marginTop: '0.5rem', color: 'var(--muted)' }}>
             fee_sum_sat_hint={routeMeta.feeSumSat} · verified={routeMeta.verifiedCount} · rejected=
@@ -356,6 +424,11 @@ export default function App() {
               <div key={i} className="hop">
                 <strong>N{i + 1}</strong>{' '}
                 <span className="mono">{h.operator || h.Operator}</span>
+                {h.local || h.Local ? (
+                  <span className="ok" style={{ marginLeft: '0.35rem', fontSize: '0.8rem' }}>
+                    (local)
+                  </span>
+                ) : null}
                 <div className="mono" style={{ marginTop: 2 }}>
                   {h.tor || h.Tor}
                 </div>

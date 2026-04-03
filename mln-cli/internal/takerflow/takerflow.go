@@ -53,7 +53,13 @@ func Scout(ctx context.Context, net config.NetworkSettings) (*ScoutResult, error
 	if err != nil {
 		return nil, err
 	}
-	return &ScoutResult{Verified: res.Verified, Rejected: res.Rejected}, nil
+	verified := append([]scout.VerifiedMaker(nil), res.Verified...)
+	if addr, ok := net.TryOperatorAddress(); ok {
+		for i := range verified {
+			verified[i].Local = verified[i].Operator == addr
+		}
+	}
+	return &ScoutResult{Verified: verified, Rejected: res.Rejected}, nil
 }
 
 // BuildRoute runs scout then pathfind.PickRoute.
@@ -68,7 +74,16 @@ func BuildRoute(ctx context.Context, net config.NetworkSettings, rng *rand.Rand)
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
-	route, err := pathfind.PickRoute(sr.Verified, rng)
+	var route *pathfind.Route
+	if net.SelfIncludedRouting {
+		addr, aerr := net.OperatorEthereumAddress()
+		if aerr != nil {
+			return nil, fmt.Errorf("takerflow: self-included routing: %w", aerr)
+		}
+		route, err = pathfind.PickRouteSelfMiddle(sr.Verified, addr, rng)
+	} else {
+		route, err = pathfind.PickRoute(sr.Verified, rng)
+	}
 	if err != nil {
 		return nil, err
 	}

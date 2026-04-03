@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/config"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/identity"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
 )
@@ -42,7 +44,7 @@ func usage() {
 
 Commands:
   scout     Discover kind-31250 maker ads, verify LitVM registry state
-  pathfind  Pick an ordered 3-hop route from verified makers (min fee hint, stake tie-break)
+  pathfind  Pick an ordered 3-hop route from verified makers (min fee hint, stake tie-break; -self-included for N2=self)
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
 
 Environment (scout & pathfind):
@@ -52,6 +54,8 @@ Environment (scout & pathfind):
   MLN_REGISTRY_ADDR         MwixnetRegistry address
   MLN_GRIEVANCE_COURT_ADDR  optional; if set, must match ad content
   MLN_SCOUT_TIMEOUT         optional subscription timeout (e.g. 45s)
+  MLN_OPERATOR_ETH_KEY      optional; 64-hex LitVM maker private key — scout marks matching row "(local)";
+                              required with pathfind -self-included (fixes N2 to that maker)
 
 `)
 }
@@ -90,7 +94,21 @@ func runScout(args []string) {
 		os.Exit(1)
 	}
 
+	var localAddr common.Address
+	var hasLocal bool
+	if k := strings.TrimSpace(os.Getenv("MLN_OPERATOR_ETH_KEY")); k != "" {
+		if a, err := identity.AddressFromHexPrivateKey(k); err == nil {
+			localAddr = a
+			hasLocal = true
+		}
+	}
+
 	if *jsonOut {
+		if hasLocal {
+			for i := range res.Verified {
+				res.Verified[i].Local = res.Verified[i].Operator == localAddr
+			}
+		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(res); err != nil {
@@ -100,14 +118,18 @@ func runScout(args []string) {
 		return
 	}
 
-	fmt.Printf("%-42s %-10s %-24s %s\n", "OPERATOR", "STATUS", "STAKE", "TOR")
-	fmt.Println(strings.Repeat("-", 120))
+	fmt.Printf("%-42s %-20s %-24s %s\n", "OPERATOR", "STATUS", "STAKE", "TOR")
+	fmt.Println(strings.Repeat("-", 130))
 	for _, m := range res.Verified {
 		tor := m.Tor
 		if len(tor) > 40 {
 			tor = tor[:37] + "..."
 		}
-		fmt.Printf("%-42s %-10s %-24s %s\n", m.Operator.Hex(), "verified", m.Stake, tor)
+		status := "verified"
+		if hasLocal && m.Operator == localAddr {
+			status = "verified (local)"
+		}
+		fmt.Printf("%-42s %-20s %-24s %s\n", m.Operator.Hex(), status, m.Stake, tor)
 	}
 	if !*quiet {
 		for _, r := range res.Rejected {
@@ -122,6 +144,7 @@ func runScout(args []string) {
 func runPathfind(args []string) {
 	fs := flag.NewFlagSet("pathfind", flag.ExitOnError)
 	jsonOut := fs.Bool("json", false, "print route JSON")
+	selfIncluded := fs.Bool("self-included", false, "fix middle hop to maker from MLN_OPERATOR_ETH_KEY")
 	_ = fs.Parse(args)
 
 	relays, chainID, rpcURL, regStr, court, timeout, err := config.ScoutFromEnv()
@@ -151,7 +174,25 @@ func runPathfind(args []string) {
 		os.Exit(1)
 	}
 
-	route, err := pathfind.PickRoute(res.Verified, rand.New(rand.NewSource(time.Now().UnixNano())))
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var route *pathfind.Route
+	var perr error
+	if *selfIncluded {
+		key := strings.TrimSpace(os.Getenv("MLN_OPERATOR_ETH_KEY"))
+		if key == "" {
+			fmt.Fprintln(os.Stderr, "pathfind: -self-included requires MLN_OPERATOR_ETH_KEY")
+			os.Exit(2)
+		}
+		addr, err := identity.AddressFromHexPrivateKey(key)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "pathfind: MLN_OPERATOR_ETH_KEY: %v\n", err)
+			os.Exit(2)
+		}
+		route, perr = pathfind.PickRouteSelfMiddle(res.Verified, addr, rng)
+	} else {
+		route, perr = pathfind.PickRoute(res.Verified, rng)
+	}
+	err = perr
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "pathfind: %v\n", err)
 		os.Exit(1)

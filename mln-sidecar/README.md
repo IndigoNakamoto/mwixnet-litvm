@@ -16,3 +16,5 @@ make build-mln-sidecar
 ## Docker (E2E)
 
 Started by [`deploy/docker-compose.e2e.yml`](../deploy/docker-compose.e2e.yml) on host port **8080**. See [`PHASE_12_E2E_CRUCIBLE.md`](../PHASE_12_E2E_CRUCIBLE.md).
+
+Phase 14 **self-included** routes do not change this service: hop identity and `swap_forward` handling remain in **`mlnd` / `coinswapd`** ([`PHASE_14_SELF_INCLUSION.md`](../PHASE_14_SELF_INCLUSION.md)).

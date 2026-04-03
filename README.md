@@ -35,6 +35,7 @@ Spec detail lives in [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) (roadmap table, sectio
 - **[~] Phase 11 — Taker wallet (Wails)** — Desktop GUI in [`mln-cli/desktop/`](mln-cli/desktop/) (React + Wails v2, `wails` build tag). Build: `make build-mln-wallet`. Developer notes: [`mln-cli/desktop/README.md`](mln-cli/desktop/README.md).
 - **[x] Phase 12 — E2E Crucible (local simulation)** — [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md): [`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml) (Anvil + `nostr-rs-relay` + **`mln-sidecar`** + three `mlnd` makers), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh), generated wallet settings under `deploy/` (gitignored).
 - **[x] Phase 13 — Sidecar shim (`mln-sidecar`)** — Pure-Go HTTP service: **`GET /v1/balance`**, **`POST /v1/swap`** ([`PHASE_10_TAKER_CLI.md`](PHASE_10_TAKER_CLI.md)); mock MWEB handoff for local wallet/CLI; production path forwards to `coinswapd` JSON-RPC. Build: `make build-mln-sidecar`. Module: [`mln-sidecar/`](mln-sidecar/).
+- **[x] Phase 14 — Self-inclusion UX** — [`PHASE_14_SELF_INCLUSION.md`](PHASE_14_SELF_INCLUSION.md): optional **Self-Included Routing** (wallet + `mln-cli pathfind -self-included` + `MLN_OPERATOR_ETH_KEY`); pathfind fixes **N2** to the local registered maker; Scout marks **Local node**; `mln-sidecar` unchanged (middle-hop relay stays `coinswapd` / `mlnd`).
 
 ### Phase 1 local (already shipped)
 

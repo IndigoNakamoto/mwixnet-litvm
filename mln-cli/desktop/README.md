@@ -1,6 +1,6 @@
 # MLN Wallet (Wails desktop)
 
-Phase 11 taker GUI: same stack as `mln-cli` (scout → pathfind → forger) with settings persisted under the OS user config directory (`mln-wallet/settings.json`). The balance panel calls **`GET /v1/balance`** on your MLN sidecar (see [`PHASE_10_TAKER_CLI.md`](../../PHASE_10_TAKER_CLI.md)). For local E2E, start **`mln-sidecar`** via [`deploy/docker-compose.e2e.yml`](../../deploy/docker-compose.e2e.yml) (port **8080**) or `make build-mln-sidecar`; in production, implement the same contract on your `coinswapd` fork or proxy.
+Phase 11 taker GUI: same stack as `mln-cli` (scout → pathfind → forger) with settings persisted under the OS user config directory (`mln-wallet/settings.json`). The balance panel calls **`GET /v1/balance`** on your MLN sidecar (see [`PHASE_10_TAKER_CLI.md`](../../PHASE_10_TAKER_CLI.md)). For local E2E, start **`mln-sidecar`** via [`deploy/docker-compose.e2e.yml`](../../deploy/docker-compose.e2e.yml) (port **8080**) or `make build-mln-sidecar`; in production, implement the same contract on your `coinswapd` fork or proxy. **Self-Included Routing** (optional N2 = your maker) is described in [`PHASE_14_SELF_INCLUSION.md`](../../PHASE_14_SELF_INCLUSION.md).
 
 **Local matrix:** To point the wallet at Docker Anvil + a local Nostr relay, **`mln-sidecar`**, and three `mlnd` makers, follow [`PHASE_12_E2E_CRUCIBLE.md`](../../PHASE_12_E2E_CRUCIBLE.md) and merge `deploy/e2e.wallet-settings.generated.json` into network settings (or paste fields in the UI).
 
