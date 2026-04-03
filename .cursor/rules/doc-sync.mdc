@@ -1,0 +1,18 @@
+---
+description: Documentation sync workflow for top-level MLN markdown—README index, git-aligned status, link/CI audits. Use when editing matched files or when the user asks to sync or align docs with the repo.
+alwaysApply: false
+globs:
+  - README.md
+  - AGENTS.md
+  - PHASE_*.md
+  - research/THREAT_MODEL_MLN.md
+---
+
+# Documentation synchronization
+
+Follow `.cursor/skills/doc-sync/SKILL.md` when:
+
+- The user asks to **sync docs**, **update the readme**, **run a documentation pass**, **align docs with git**, or **check for stale links**, or
+- You are editing roadmap, Documentation table, phase playbook cross-links, or CI/RPC claims in the globbed files above.
+
+Do not use this rule to rewrite `PRODUCT_SPEC.md` economics or appendices; the skill limits spec edits to section 9 implementation status unless the user explicitly expands scope.

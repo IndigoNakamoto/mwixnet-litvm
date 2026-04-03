@@ -127,7 +127,7 @@ git clone https://github.com/ltcmweb/coinswapd.git research/coinswapd
 
 ## Cursor
 
-Rules under [`.cursor/rules/`](.cursor/rules/), skills under [`.cursor/skills/`](.cursor/skills/) (including [`.cursor/skills/doc-sync/SKILL.md`](.cursor/skills/doc-sync/SKILL.md) for documentation synchronization passes).
+Rules under [`.cursor/rules/`](.cursor/rules/) (e.g. [`.cursor/rules/doc-sync.mdc`](.cursor/rules/doc-sync.mdc) when editing top-level docs), skills under [`.cursor/skills/`](.cursor/skills/) (including [`.cursor/skills/doc-sync/SKILL.md`](.cursor/skills/doc-sync/SKILL.md) for documentation synchronization passes).
 
 ## License
 
