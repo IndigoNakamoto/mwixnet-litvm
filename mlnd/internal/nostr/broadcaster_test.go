@@ -29,6 +29,29 @@ func TestTorOnionWithOptionalPort(t *testing.T) {
 	}
 }
 
+func TestLoadBroadcasterFromEnv_relaysWithoutNsec(t *testing.T) {
+	t.Setenv("MLND_NOSTR_RELAYS", "wss://example.com")
+	t.Setenv("MLND_NOSTR_NSEC", "")
+	// Clear related vars so we do not accidentally pick up host env from a full broadcaster config.
+	t.Setenv("MLND_LITVM_CHAIN_ID", "")
+	t.Setenv("MLND_REGISTRY_ADDR", "")
+	bc, err := LoadBroadcasterFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bc != nil {
+		t.Fatal("expected nil broadcaster when MLND_NOSTR_NSEC is empty")
+	}
+}
+
+func TestLoadBroadcasterFromEnv_noRelays(t *testing.T) {
+	t.Setenv("MLND_NOSTR_RELAYS", "")
+	bc, err := LoadBroadcasterFromEnv()
+	if err != nil || bc != nil {
+		t.Fatalf("got bc=%v err=%v", bc, err)
+	}
+}
+
 func TestDTag(t *testing.T) {
 	got := DTag("31337", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
 	want := "mln:v1:31337:0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
@@ -120,6 +143,35 @@ func TestBuildMakerAdEvent_shapeAndSignature(t *testing.T) {
 	wantTor := "http://abcdefghijklmnop123456789012345678901234567890abcdefgh.onion:18081"
 	if tor != wantTor {
 		t.Fatalf("content.tor: got %q want %q", tor, wantTor)
+	}
+}
+
+func TestBuildMakerAdEvent_includesSwapX25519(t *testing.T) {
+	sec := strings.Repeat("3b", 32)
+	swap := strings.Repeat("ab", 32)
+	b := &Broadcaster{
+		cfg: BroadcasterConfig{
+			ChainID:          "31337",
+			Registry:         "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+			GrievanceCourt:   "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+			Operator:         "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+			SwapX25519PubHex: swap,
+		},
+		secHex: sec,
+		log:    log.New(io.Discard, "", 0),
+	}
+	ev, err := b.BuildMakerAdEvent(time.Unix(1700000001, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		SwapX25519PubHex string `json:"swapX25519PubHex"`
+	}
+	if err := json.Unmarshal([]byte(ev.Content), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.SwapX25519PubHex != swap {
+		t.Fatalf("swap key: got %q want %q", body.SwapX25519PubHex, swap)
 	}
 }
 

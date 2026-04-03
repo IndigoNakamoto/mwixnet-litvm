@@ -46,7 +46,7 @@ func TestOperatorStack_SQLiteEvidenceAndMakerAd(t *testing.T) {
 		Signature:     "sig-stacktest",
 	}
 	evHash := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
-	if err := s.SaveReceipt(rec); err != nil {
+	if _, err := s.SaveReceipt(rec); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.GetByEvidenceHash(evHash)
@@ -131,7 +131,7 @@ func TestOperatorStack_ReceiptValidateAndDefense(t *testing.T) {
 		Signature:     "sig-defense",
 	}
 	evidenceHash := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
-	if err := s.SaveReceipt(rec); err != nil {
+	if _, err := s.SaveReceipt(rec); err != nil {
 		t.Fatal(err)
 	}
 	got, err := s.GetByEvidenceHash(evidenceHash)

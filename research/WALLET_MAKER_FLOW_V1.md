@@ -3,6 +3,8 @@
 Status: draft implementation spec for maker-operator tooling (desktop daemon UI, “node wallet,” or ops console).  
 Scope: one maker lifecycle from first-time setup through normal operation, timelocked exit, and grievance awareness, aligned to existing MLN specs and contracts.
 
+**Shipped operator UI (v1):** With `MLND_DASHBOARD_ADDR` set, `mlnd` serves a **loopback Maker control center** (LitVM / Nostr / MWEB pillars, read-only for chain writes). Setup: [`../mlnd/MAKER_DASHBOARD_SETUP.md`](../mlnd/MAKER_DASHBOARD_SETUP.md).
+
 ## Purpose
 
 Define operator-facing UX that:

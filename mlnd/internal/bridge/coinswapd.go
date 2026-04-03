@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
 )
 
@@ -25,6 +26,7 @@ type fileTailState struct {
 // Coinswapd tails *.ndjson and *.jsonl in a directory and calls SaveReceipt per complete line.
 type Coinswapd struct {
 	log    *log.Logger
+	ops    *opslog.Log
 	store  *store.Store
 	dir    string
 	poll   time.Duration
@@ -32,8 +34,8 @@ type Coinswapd struct {
 }
 
 // NewCoinswapd returns a bridge that reads receipt lines from dir into store.
-// poll must be positive; otherwise defaultPollInterval is used.
-func NewCoinswapd(l *log.Logger, st *store.Store, dir string, poll time.Duration) *Coinswapd {
+// poll must be positive; otherwise defaultPollInterval is used. ops may be nil.
+func NewCoinswapd(l *log.Logger, ops *opslog.Log, st *store.Store, dir string, poll time.Duration) *Coinswapd {
 	if l == nil {
 		l = log.Default()
 	}
@@ -42,6 +44,7 @@ func NewCoinswapd(l *log.Logger, st *store.Store, dir string, poll time.Duration
 	}
 	return &Coinswapd{
 		log:    l,
+		ops:    ops,
 		store:  st,
 		dir:    dir,
 		poll:   poll,
@@ -137,8 +140,15 @@ func (c *Coinswapd) tailFile(path string) error {
 			c.log.Printf("mlnd bridge: parse line in %s: %v", path, err)
 			continue
 		}
-		if err := c.store.SaveReceipt(rec); err != nil {
+		inserted, err := c.store.SaveReceipt(rec)
+		if err != nil {
 			c.log.Printf("mlnd bridge: SaveReceipt: %v", err)
+			continue
+		}
+		if inserted && c.ops != nil {
+			c.ops.Append(opslog.Info, "bridge_receipt_ingested", "New hop receipt ingested from coinswapd bridge NDJSON", map[string]string{
+				"file": path,
+			})
 		}
 	}
 	st.partial = append([]byte(nil), buf[lineStart:]...)

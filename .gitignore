@@ -1,5 +1,7 @@
 # mlnd `make build` output
 /bin/
+# Local SQLite vault / default cwd when running mlnd from repo root
+/mlnd.db
 .DS_Store
 # Local Foundry install (foundryup)
 .foundry/

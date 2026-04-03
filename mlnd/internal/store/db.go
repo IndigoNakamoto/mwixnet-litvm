@@ -52,9 +52,10 @@ func NewStore(dbPath string) (*Store, error) {
 }
 
 // SaveReceipt computes the canonical evidenceHash and inserts idempotently.
-func (s *Store) SaveReceipt(r ReceiptRecord) error {
+// inserted is true when a new row was written (false on duplicate evidence_hash).
+func (s *Store) SaveReceipt(r ReceiptRecord) (inserted bool, err error) {
 	if r.EpochID == nil {
-		return fmt.Errorf("SaveReceipt: EpochID is required")
+		return false, fmt.Errorf("SaveReceipt: EpochID is required")
 	}
 	evidenceHash := litvm.ComputeEvidenceHash(r.EvidencePreimage)
 
@@ -65,7 +66,7 @@ func (s *Store) SaveReceipt(r ReceiptRecord) error {
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(evidence_hash) DO NOTHING;
 	`
-	_, err := s.db.Exec(query,
+	res, err := s.db.Exec(query,
 		evidenceHash.Hex(),
 		r.EpochID.String(),
 		r.Accuser.Hex(),
@@ -76,7 +77,21 @@ func (s *Store) SaveReceipt(r ReceiptRecord) error {
 		r.NextHopPubkey,
 		r.Signature,
 	)
-	return err
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// CountReceipts returns the number of rows in hop_receipts.
+func (s *Store) CountReceipts() (int64, error) {
+	var n int64
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM hop_receipts`).Scan(&n)
+	return n, err
 }
 
 // GetByEvidenceHash implements litvm.ReceiptLookup.

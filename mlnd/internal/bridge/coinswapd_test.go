@@ -22,7 +22,7 @@ func TestCoinswapdRun_contextCancel(t *testing.T) {
 
 	l := log.New(io.Discard, "", 0)
 	// Long poll so Run blocks on ctx.Done(), not the ticker.
-	b := NewCoinswapd(l, s, dir, 24*time.Hour)
+	b := NewCoinswapd(l, nil, s, dir, 24*time.Hour)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- b.Run(ctx) }()

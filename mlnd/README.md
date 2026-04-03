@@ -2,6 +2,8 @@
 
 `mlnd` watches `GrievanceOpened` logs for your operator address, can load matching receipts from SQLite, optionally submits `defendGrievance` on LitVM, and (optionally) republishes **kind 31250** maker ads to Nostr relays.
 
+**Step-by-step: local Anvil, env vars, browser URL, troubleshooting:** [`MAKER_DASHBOARD_SETUP.md`](MAKER_DASHBOARD_SETUP.md)
+
 ## LitVM watcher (required)
 
 | Env | Meaning |
@@ -117,11 +119,11 @@ flowchart LR
 
 ## Nostr broadcaster (optional)
 
-Set **`MLND_NOSTR_RELAYS`** (comma-separated `wss://…` URLs) to enable. Also required:
+Set **`MLND_NOSTR_RELAYS`** (comma-separated `wss://…` URLs) so the process can use those relays (dashboard self-check always; see below). To **publish** replaceable maker ads, also set the signing key and related vars:
 
 | Env | Meaning |
 |-----|---------|
-| `MLND_NOSTR_NSEC` | Nostr secret: **nsec1…** bech32 or **64-char** hex (no `0x`) |
+| `MLND_NOSTR_NSEC` | Nostr secret: **nsec1…** bech32 or **64-char** hex (no `0x`). If relays are set but this is **empty**, the broadcaster does not run; the dashboard may still query relays. |
 | `MLND_LITVM_CHAIN_ID` | Decimal chain id string (e.g. `31337`) |
 | `MLND_REGISTRY_ADDR` | `MwixnetRegistry` (hex) |
 | `MLND_COURT_ADDR` | Same as watcher |
@@ -135,8 +137,46 @@ Optional:
 | `MLND_TOR_ONION` | Tor mix API URL for `content.tor` (include port in the URL, or set `MLND_TOR_PORT`) |
 | `MLND_TOR_PORT` | If set and `MLND_TOR_ONION` has no port, the port is appended (e.g. `18081`) |
 | `MLND_FEE_MIN_SAT` / `MLND_FEE_MAX_SAT` | If both set, adds `fees` object (`sat_per_hop`) |
+| `MLND_SWAP_X25519_PUB_HEX` | Optional **64** lowercase hex digits (32-byte Curve25519 pubkey) for `content.swapX25519PubHex` in the maker ad (see [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md)) |
 
 Wire format: [`research/NOSTR_MLN.md`](../research/NOSTR_MLN.md). Relay smoke flow: [`research/E2E_NOSTR_DEMO.md`](../research/E2E_NOSTR_DEMO.md).
+
+## Maker dashboard HTTP (optional)
+
+Full setup guide (Anvil, addresses, paste pitfalls): [`MAKER_DASHBOARD_SETUP.md`](MAKER_DASHBOARD_SETUP.md).
+
+Loopback **control center** for operators: LitVM registry/court views, Nostr ad self-check (kind **31250**), receipt-vault stats, live grievance/defense milestones (SSE). Does **not** hold or accept operator private keys; it is read-only for chain writes.
+
+| Env | Meaning |
+|-----|---------|
+| `MLND_DASHBOARD_ADDR` | If set (e.g. `127.0.0.1:9842`), serves UI + JSON API on that **host:port** |
+| `MLND_REGISTRY_ADDR` | **Required** when the dashboard is enabled (same registry as Nostr ad) |
+| `MLND_HTTP_TOKEN` | Optional shared secret: header `X-MLND-Token`, `Authorization: Bearer …`, or query `?token=` (needed for EventSource) |
+| `MLND_DASHBOARD_ALLOW_LAN` | Set to `1`/`true`/`yes` to allow non-loopback bind hosts (default: loopback only) |
+
+Endpoints: `GET /` (static UI), `GET /api/v1/status` (JSON), `GET /api/v1/events` (SSE, prior milestones replayed then live). Uses the same `MLND_WS_URL` client as the watcher for `eth_call` views.
+
+**zsh paste trap:** If `interactivecomments` is off (common default), text after `#` on the **same line** as `export` is **not** ignored. The shell then tries to parse words like `d-tag` and fails with `export: not valid in this context: d-tag`. Use **only** the lines below (no trailing comments), or run `setopt interactivecomments`, or put comments on the line above.
+
+**Paste each `export` on its own line** (a single long line like `export A=1export B=2` breaks variables). Replace the three `0x…` addresses with real deployed contract / maker addresses from your LitVM setup; `mlnd` rejects the zero address, invalid hex, and literal `YOUR` placeholders.
+
+Minimal example (run from **repo root** so `make build` produces `bin/mlnd`):
+
+```bash
+export MLND_WS_URL=ws://127.0.0.1:8545
+export MLND_COURT_ADDR=0xabcdef0123456789abcdef0123456789abcdef01
+export MLND_OPERATOR_ADDR=0x1234567890123456789012345678901234567890
+export MLND_REGISTRY_ADDR=0xfedcba0987654321fedcba0987654321fedcba09
+export MLND_LITVM_CHAIN_ID=31337
+export MLND_NOSTR_RELAYS=wss://your.relay.example
+export MLND_DASHBOARD_ADDR=127.0.0.1:9842
+make build
+./bin/mlnd
+```
+
+Open `http://127.0.0.1:9842/`. If you set `MLND_HTTP_TOKEN`, open `http://127.0.0.1:9842/?token=YOUR_TOKEN` so the UI can call the API and EventSource.
+
+You can set `MLND_NOSTR_RELAYS` **without** `MLND_NOSTR_NSEC` for dashboard-only use: mlnd logs that the broadcaster is disabled but still uses those relays for read-only maker-ad self-check. Add `MLND_NOSTR_NSEC` when you want to publish kind **31250** ads.
 
 ## coinswapd receipt bridge (optional)
 

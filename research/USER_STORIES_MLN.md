@@ -106,6 +106,7 @@ Privacy routing stacks hide heavy cryptography; the product must **not** force t
 2. **Trust and system status** — Show **persistent connection health** to the engine the wallet trusts (e.g. sidecar / node): clear connected/disconnected state and a short endpoint label. During route/submit, prefer **staged progress copy** (e.g. finding path, negotiating fees, building onion, queued for batch) over an anonymous spinner so the wait reads as real work.
 3. **Information hierarchy** — Lead with **amount**, **destination**, and **total fee**. Long **hex strings** (pubkeys, tx ids, evidence hashes) should be **truncated by default** with one-click **copy full** for debugging; they must not dominate the layout.
 4. **Empty and cold-start states** — First launch or pre-sync should use **warm onboarding** (e.g. syncing network graph, looking for routes) instead of a blank or zero-only screen.
+5. **Maker dashboard (`mlnd` HTTP)** — Operator-only: use **layer labels** (LitVM / Nostr / MWEB), **persistent RPC connection hint**, **staged grievance narrative** (latest milestone from the ops log, not only a raw stream), **truncated hex with copy** for addresses and d-tags, **warm copy** when relays or bridge are not configured, and **Developer**-collapsed blocks for raw JSON. Remains **read-only** for chain writes (withdraw / manual defense stay in wallet or CLI).
 
 Wire-level and role detail remain in `NOSTR_MLN.md` and `PRODUCT_SPEC.md`; wallet step UX lives in the WALLET_* flow docs below.
 

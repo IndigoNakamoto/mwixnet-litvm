@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/ethereum/go-ethereum/common"
 	gnostr "github.com/nbd-wtf/go-nostr"
@@ -32,10 +33,25 @@ type BroadcasterConfig struct {
 	Capabilities   []string
 	ClientName     string
 	ClientVersion  string
+	// SwapX25519PubHex is optional 64 lowercase hex digits (32-byte Curve25519 pubkey).
+	SwapX25519PubHex string
 }
 
 // errRelayBackoff means this relay URL is in exponential backoff; skip until next tick.
 var errRelayBackoff = errors.New("nostr relay in backoff")
+
+// RelayPublishLine is one relay outcome from the last Publish round.
+type RelayPublishLine struct {
+	URL    string `json:"url"`
+	Status string `json:"status"` // ok | skipped | error
+	Detail string `json:"detail,omitempty"`
+}
+
+// LastPublishSnapshot is the most recent maker-ad publish attempt.
+type LastPublishSnapshot struct {
+	At     time.Time            `json:"at"`
+	Relays []RelayPublishLine   `json:"relays"`
+}
 
 // Broadcaster republishes replaceable maker ads on an interval.
 type Broadcaster struct {
@@ -44,11 +60,15 @@ type Broadcaster struct {
 	secHex   string // 64-char hex private key for gnostr.Event.Sign
 	interval time.Duration
 	log      *log.Logger
+	Ops      *opslog.Log
 
 	relayMu        sync.Mutex
 	relayByURL     map[string]*gnostr.Relay
 	relayFailCount map[string]int
 	relayNextTry   map[string]time.Time
+
+	lastPubMu sync.RWMutex
+	lastPub   LastPublishSnapshot
 }
 
 // NewBroadcaster returns a configured broadcaster (e.g. for tests). relays may be empty if only BuildMakerAdEvent is used.
@@ -69,13 +89,21 @@ func NewBroadcaster(cfg BroadcasterConfig, relays []string, secHex string, inter
 }
 
 // LoadBroadcasterFromEnv returns nil if MLND_NOSTR_RELAYS is unset (broadcaster disabled).
+// If relays are set but MLND_NOSTR_NSEC is empty, returns (nil, nil): no publishing, but the
+// dashboard may still use the same relay list for read-only ad self-check.
 func LoadBroadcasterFromEnv() (*Broadcaster, error) {
 	relaysRaw := strings.TrimSpace(os.Getenv("MLND_NOSTR_RELAYS"))
 	if relaysRaw == "" {
 		return nil, nil
 	}
 
-	secHex, err := parseSigningKey(strings.TrimSpace(os.Getenv("MLND_NOSTR_NSEC")))
+	nsec := strings.TrimSpace(os.Getenv("MLND_NOSTR_NSEC"))
+	if nsec == "" {
+		log.Printf("mlnd: MLND_NOSTR_RELAYS is set but MLND_NOSTR_NSEC is empty — maker-ad broadcaster disabled (set MLND_NOSTR_NSEC to publish)")
+		return nil, nil
+	}
+
+	secHex, err := parseSigningKey(nsec)
 	if err != nil {
 		return nil, fmt.Errorf("MLND_NOSTR_NSEC: %w", err)
 	}
@@ -138,17 +166,30 @@ func LoadBroadcasterFromEnv() (*Broadcaster, error) {
 	relays := splitRelays(relaysRaw)
 	torRaw := strings.TrimSpace(os.Getenv("MLND_TOR_ONION"))
 	torNorm := torOnionWithOptionalPort(torRaw, strings.TrimSpace(os.Getenv("MLND_TOR_PORT")))
+	swapHex := strings.TrimSpace(strings.ToLower(os.Getenv("MLND_SWAP_X25519_PUB_HEX")))
+	if swapHex != "" {
+		swapHex = strings.TrimPrefix(strings.TrimPrefix(swapHex, "0x"), "0X")
+		if len(swapHex) != 64 {
+			return nil, fmt.Errorf("MLND_SWAP_X25519_PUB_HEX: want 64 hex digits (optional 0x prefix), got length %d", len(swapHex))
+		}
+		for _, c := range swapHex {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+				return nil, fmt.Errorf("MLND_SWAP_X25519_PUB_HEX: non-hex character")
+			}
+		}
+	}
 	cfg := BroadcasterConfig{
-		ChainID:        chainID,
-		Registry:       regNorm,
-		GrievanceCourt: courtNorm,
-		Operator:       opNorm,
-		TorOnion:       torNorm,
-		FeeMinSat:      feeMin,
-		FeeMaxSat:      feeMax,
-		Capabilities:   []string{"mweb-coinswap-v0"},
-		ClientName:     "mlnd",
-		ClientVersion:  "0",
+		ChainID:          chainID,
+		Registry:         regNorm,
+		GrievanceCourt:   courtNorm,
+		Operator:         opNorm,
+		TorOnion:         torNorm,
+		FeeMinSat:        feeMin,
+		FeeMaxSat:        feeMax,
+		Capabilities:     []string{"mweb-coinswap-v0"},
+		ClientName:       "mlnd",
+		ClientVersion:    "0",
+		SwapX25519PubHex: swapHex,
 	}
 
 	return NewBroadcaster(cfg, relays, secHex, interval, log.Default()), nil
@@ -255,6 +296,9 @@ func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
 			Max:  *b.cfg.FeeMaxSat,
 		}
 	}
+	if b.cfg.SwapX25519PubHex != "" {
+		body.SwapX25519PubHex = b.cfg.SwapX25519PubHex
+	}
 	contentBytes, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -286,29 +330,71 @@ func (b *Broadcaster) BuildMakerAdEvent(now time.Time) (*gnostr.Event, error) {
 	return ev, nil
 }
 
+// Config returns a copy of the static broadcaster configuration (for dashboard “intended ad”).
+func (b *Broadcaster) Config() BroadcasterConfig {
+	if b == nil {
+		return BroadcasterConfig{}
+	}
+	return b.cfg
+}
+
+// LastPublish returns the most recent publish round summary.
+func (b *Broadcaster) LastPublish() LastPublishSnapshot {
+	if b == nil {
+		return LastPublishSnapshot{}
+	}
+	b.lastPubMu.RLock()
+	defer b.lastPubMu.RUnlock()
+	out := b.lastPub
+	if len(out.Relays) > 0 {
+		out.Relays = append([]RelayPublishLine(nil), out.Relays...)
+	}
+	return out
+}
+
 // Publish sends the event to each relay; errors are logged per relay only.
 // Relays are reused across ticks; failed publishes trigger close, exponential backoff, and reconnect.
 func (b *Broadcaster) Publish(ctx context.Context, ev gnostr.Event) {
 	pubCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 
+	lines := make([]RelayPublishLine, 0, len(b.relays))
 	for _, relayURL := range b.relays {
 		r, err := b.ensureRelay(pubCtx, relayURL)
 		if errors.Is(err, errRelayBackoff) {
+			lines = append(lines, RelayPublishLine{URL: relayURL, Status: "skipped", Detail: "relay backoff"})
+			if b.Ops != nil {
+				b.Ops.Append(opslog.Warn, "nostr_publish_skipped", "Relay in backoff; skipped publish", map[string]string{"relay": relayURL})
+			}
 			continue
 		}
 		if err != nil {
 			b.log.Printf("mlnd nostr: connect %s: %v", relayURL, err)
+			lines = append(lines, RelayPublishLine{URL: relayURL, Status: "error", Detail: err.Error()})
+			if b.Ops != nil {
+				b.Ops.Append(opslog.Warn, "nostr_connect_failed", "Could not connect to Nostr relay", map[string]string{"relay": relayURL, "detail": err.Error()})
+			}
 			continue
 		}
 		if err := r.Publish(pubCtx, ev); err != nil {
 			b.log.Printf("mlnd nostr: publish %s: %v", relayURL, err)
 			b.forgetRelayAfterFailure(relayURL)
+			lines = append(lines, RelayPublishLine{URL: relayURL, Status: "error", Detail: err.Error()})
+			if b.Ops != nil {
+				b.Ops.Append(opslog.Warn, "nostr_publish_failed", "Publish to relay failed", map[string]string{"relay": relayURL, "detail": err.Error()})
+			}
 			continue
 		}
 		b.markRelayOK(relayURL)
 		b.log.Printf("mlnd nostr: published kind=%d id=%s… to %s", ev.Kind, trimID(ev.ID), relayURL)
+		lines = append(lines, RelayPublishLine{URL: relayURL, Status: "ok"})
+		if b.Ops != nil {
+			b.Ops.Append(opslog.Info, "nostr_published", "Maker ad published to relay", map[string]string{"relay": relayURL, "eventId": ev.ID})
+		}
 	}
+	b.lastPubMu.Lock()
+	b.lastPub = LastPublishSnapshot{At: time.Now().UTC(), Relays: lines}
+	b.lastPubMu.Unlock()
 }
 
 func (b *Broadcaster) ensureRelay(ctx context.Context, relayURL string) (*gnostr.Relay, error) {

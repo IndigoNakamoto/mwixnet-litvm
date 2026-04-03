@@ -40,8 +40,8 @@ func TestStore_saveAndGet_roundTrip(t *testing.T) {
 
 	ev := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
 
-	if err := s.SaveReceipt(rec); err != nil {
-		t.Fatal(err)
+	if ins, err := s.SaveReceipt(rec); err != nil || !ins {
+		t.Fatalf("SaveReceipt: inserted=%v err=%v", ins, err)
 	}
 
 	got, err := s.GetByEvidenceHash(ev)
@@ -65,8 +65,8 @@ func TestStore_saveAndGet_roundTrip(t *testing.T) {
 	}
 
 	// Idempotent second insert
-	if err := s.SaveReceipt(rec); err != nil {
-		t.Fatal(err)
+	if ins, err := s.SaveReceipt(rec); err != nil || ins {
+		t.Fatalf("second SaveReceipt: inserted=%v err=%v", ins, err)
 	}
 }
 

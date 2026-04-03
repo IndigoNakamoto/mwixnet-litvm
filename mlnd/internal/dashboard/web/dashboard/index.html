@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mlnd — Maker control center</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">mlnd <span class="muted">Maker control center</span></div>
+    <div class="top-right">
+      <span id="rpc-hint" class="rpc-hint muted" title="LitVM JSON-RPC (WebSocket) used by this mlnd process"></span>
+      <div id="conn" class="pill warn">Connecting…</div>
+    </div>
+  </header>
+
+  <div id="banner-auth" class="banner warn hidden"></div>
+  <div id="banner-rpc" class="banner err hidden"></div>
+  <div id="banner-auto" class="banner critical hidden"></div>
+
+  <section id="grievance-strip" class="panel grievance-strip hidden">
+    <div class="grievance-label">Latest grievance workflow</div>
+    <div id="grievance-headline" class="grievance-headline"></div>
+    <div id="grievance-detail" class="grievance-detail muted small"></div>
+  </section>
+
+  <section id="litvm-panel" class="panel global">
+    <h2><span class="layer-badge litvm">LitVM</span> Registry &amp; court <span class="muted">stake · exit · grievances</span></h2>
+    <div id="chain-degraded-overlay" class="chain-overlay hidden">
+      <p class="overlay-msg">Could not read LitVM views. Check <code>MLND_WS_URL</code> and that the chain is up.</p>
+      <p id="chain-overlay-detail" class="small muted"></p>
+    </div>
+    <div id="chain-grid" class="grid3">
+      <div>
+        <div class="label">Operator</div>
+        <div class="hex-row">
+          <span id="op" class="mono" data-full="">—</span>
+          <button type="button" class="copy-btn js-copy" data-for="op" aria-label="Copy full operator address">Copy</button>
+        </div>
+      </div>
+      <div>
+        <div class="label">Stake (native token, smallest units)</div>
+        <div id="stake" class="mono">—</div>
+      </div>
+      <div>
+        <div class="label">Stake frozen</div>
+        <div id="frozen" class="mono">—</div>
+      </div>
+      <div>
+        <div class="label">Open grievances (count)</div>
+        <div id="gcount" class="mono">—</div>
+      </div>
+      <div>
+        <div class="label">Exit queue</div>
+        <div id="exitunlock" class="mono small">—</div>
+      </div>
+      <div>
+        <div class="label">Withdrawal lock until</div>
+        <div id="wdlock" class="mono small">—</div>
+      </div>
+    </div>
+    <p class="small muted mt-doc">Unstaking is not performed here. Exit checklist: <code>research/WALLET_MAKER_FLOW_V1.md</code> in this repository.</p>
+  </section>
+
+  <div class="split">
+    <section id="nostr-panel" class="panel">
+      <h2><span class="layer-badge nostr">Nostr</span> Discovery <span class="muted">ads · relays</span></h2>
+      <p id="nostr-warm" class="warm small hidden"></p>
+      <div class="label">d-tag</div>
+      <div class="hex-row">
+        <span id="dtag" class="mono small" data-full="">—</span>
+        <button type="button" class="copy-btn js-copy" data-for="dtag" aria-label="Copy d-tag">Copy</button>
+      </div>
+      <div class="label mt">Relay self-check</div>
+      <div id="relay-status" class="small">—</div>
+      <div class="label mt">Onion routing key (swap X25519)</div>
+      <div id="swap-drift" class="small">—</div>
+      <div class="label mt">Last publish round</div>
+      <div class="label mt">Intended ad JSON</div>
+      <details class="dev-details">
+        <summary>Developer: raw Nostr / publish payloads</summary>
+        <pre id="lastpub" class="mono small scroll">—</pre>
+        <pre id="intended" class="mono small scroll">—</pre>
+      </details>
+    </section>
+
+    <section id="mweb-panel" class="panel">
+      <h2><span class="layer-badge mweb">MWEB</span> Receipt vault &amp; bridge <span class="muted">coinswapd NDJSON</span></h2>
+      <p id="mweb-warm" class="warm small">Receipt vault is local to this host. Enable <code>MLND_BRIDGE_COINSWAPD</code> to ingest hop receipts from your bridge directory for auto-defense.</p>
+      <div class="label">Receipt rows (SQLite)</div>
+      <div id="receipts" class="mono">—</div>
+      <div class="label mt">Coinswapd bridge</div>
+      <div id="bridge" class="small">—</div>
+      <div class="label mt">Live milestones <span class="muted">SSE — grievance, Nostr, bridge</span></div>
+      <pre id="events" class="mono small scroll events"></pre>
+    </section>
+  </div>
+
+  <section class="panel muted-footer">
+    <p>This dashboard is <strong>read-only</strong> for chain writes (no withdraw or defense signing here). Use your wallet or <code>cast</code>. Token in <code>?token=</code> may be stored in browser history — use a private profile on shared machines.</p>
+    <p class="small">Repository docs: <code>mlnd/MAKER_DASHBOARD_SETUP.md</code> · <code>research/WALLET_MAKER_FLOW_V1.md</code></p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -30,7 +30,7 @@ func TestCoinswapd_tailFile_SaveReceipt(t *testing.T) {
 	}
 
 	lg := log.New(io.Discard, "", 0)
-	c := NewCoinswapd(lg, s, dir, defaultPollInterval)
+	c := NewCoinswapd(lg, nil, s, dir, defaultPollInterval)
 	if err := c.tailFile(path); err != nil {
 		t.Fatal(err)
 	}
