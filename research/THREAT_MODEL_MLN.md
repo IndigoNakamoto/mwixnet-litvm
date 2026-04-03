@@ -1,7 +1,7 @@
 # MLN stack — code review and threat model (accepted snapshot)
 
 **Date:** April 2026  
-**Codebase state:** `main` post-Phase 14  
+**Codebase state:** `main` post-Phase 15  
 **Status:** Reviewed and accepted by the team (Harper, Benjamin, Lucas, Indigo). Findings were validated line-by-line against the repo; no material inaccuracies noted. This document preserves the audit and threat model for the repository record.
 
 **Related:** [`README.md`](../README.md) (roadmap and scaffold disclaimers), [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md), phase docs at repo root, [`AGENTS.md`](../AGENTS.md).
@@ -67,7 +67,7 @@ The repo delivers a **coherent split** across layers: Solidity for registry and 
 | Nostr | Discovery, signed ads | Kind 31250 broadcaster + scout; fixtures in CI |
 | Tor | Transport | Tor URLs in ads; forger validates non-empty Tor strings only (no live probe in reviewed code) |
 
-**Alignment:** Layer boundaries are mostly respected. **Tension to track:** README Phase 3 (“end-to-end integration”) is still open; local E2E uses **mock sidecar**, not real `coinswapd`.
+**Alignment:** Layer boundaries are mostly respected. **Tension to track:** README Phase 3 (“end-to-end integration”) is still open; local E2E defaults to **`-mode=mock`** on **`mln-sidecar`**; **`-mode=rpc`** is implemented client-side but requires a **`coinswapd` fork** exposing **`mweb_submitRoute`** / **`mweb_getBalance`**.
 
 ### 1.4 Smart contracts
 
@@ -99,8 +99,7 @@ function defendGrievance(bytes32 grievanceId, bytes calldata defenseData) extern
 
 **Contract testing**
 
-- **CI:** `contracts.yml` runs `forge build` and `forge test` in Docker on `contracts/**` changes.
-- **Gap:** No scheduled / mandatory Slither or invariant tooling (README lists optional Slither).
+- **CI:** `contracts.yml` runs `forge build` and `forge test` in Docker on `contracts/**` changes, and runs **Slither** (Crytic action) on those paths. Foundry **fuzz / invariant** tests also exercise registry economics (e.g. stake invariants). Continue to **triage** new Slither findings like any static signal—not a substitute for audit.
 
 ### 1.5 Maker daemon (`mlnd`)
 
@@ -183,7 +182,7 @@ function defendGrievance(bytes32 grievanceId, bytes calldata defenseData) extern
 **P2 — Quality / clarity**
 
 5. Document **`math/rand`** as tie-break-only (or switch if policy becomes security-sensitive).
-6. Run **Slither** (or similar) on contracts and track findings.
+6. **Slither** is already enforced in **`.github/workflows/contracts.yml`** on `contracts/**` changes; keep the job green and file issues for any new high-severity findings after triage.
 
 ### 1.10 Conclusion
 
@@ -244,3 +243,4 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | Date | Note |
 |------|------|
 | 2026-04 | Initial commit: external audit narrative + threat tables, team acceptance recorded. |
+| 2026-04 | Doc sync: Slither + invariant tooling reflected as CI-enforced; codebase state bumped post-Phase 15. |

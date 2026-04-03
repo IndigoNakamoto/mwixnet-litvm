@@ -18,10 +18,10 @@ todos:
     content: withdrawalLockUntil + slashingWindow; IGrievanceCourtExit extension; gate requestWithdrawal/withdrawStake
   - id: tests-fuzz
     content: Foundry coverage for splits, locks, partial slash, constructor validation
-  - id: invariant-todo
-    content: contracts/test/InvariantRegistryStake.t.sol — prove registry balance vs sum(stake) / slash paths
-  - id: slither-ci-todo
-    content: .github/workflows/contracts.yml — enable slither job after triage
+  - id: invariant-fuzz
+    content: "Done: InvariantRegistryStake.t.sol — registry balance vs sum(stake), registered makers vs minStake (runs in forge test / CI)"
+  - id: slither-ci
+    content: "Done: crytic/slither-action in .github/workflows/contracts.yml (fail-on high, filtered to ^src/)"
   - id: phase15-doc-readme
     content: This file + README roadmap + AGENTS.md cross-links
 dependencies:
@@ -68,8 +68,8 @@ This phase replaces the **judicial scaffold** (freeze/unfreeze and nominal “sl
 
 ## Security follow-ups (tracked in repo)
 
-1. **Foundry invariants:** [`contracts/test/InvariantRegistryStake.t.sol`](contracts/test/InvariantRegistryStake.t.sol) documents the target: prove **`address(registry).balance == Σ stake[m]`** (or equivalent global accounting) across `deposit`, `withdraw`, `withdrawStake`, and `slashStake`.
-2. **Slither:** [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml) includes a top-of-file **TODO** and a disabled `slither` job until the analyzer is wired and findings are triaged.
+1. **Foundry invariants:** [`contracts/test/InvariantRegistryStake.t.sol`](contracts/test/InvariantRegistryStake.t.sol) runs **`invariant_registryBalanceEqualsSumTrackedStake`** and **`invariant_registeredMakersMeetMinStake`** under `forge test` (including CI). Extend with more handlers or properties as economics evolve.
+2. **Slither:** [`.github/workflows/contracts.yml`](.github/workflows/contracts.yml) runs **Crytic `slither-action`** on `contracts/**` changes with **`fail-on: high`** and `slither-args: --exclude-dependencies --filter-paths "^src/"`. New findings need triage and fixes (or documented waivers)—not a substitute for audit.
 
 ## Operator and client notes
 
