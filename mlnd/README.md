@@ -4,6 +4,8 @@
 
 **Step-by-step: local Anvil, env vars, browser URL, troubleshooting:** [`MAKER_DASHBOARD_SETUP.md`](MAKER_DASHBOARD_SETUP.md)
 
+**Registry stake + `registerMaker`:** `mlnd` does not send those txs; use **`mln-cli maker onboard`** (dry-run by default, `-execute` to broadcast). See [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) Phase 10.4.
+
 ## LitVM watcher (required)
 
 | Env | Meaning |

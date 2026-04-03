@@ -4,32 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-// Minimal ABI for MwixnetRegistry view functions used by the Scout.
-const registryABIJSON = `[
-  {"name":"makerNostrKeyHash","type":"function","stateMutability":"view","inputs":[{"type":"address"}],"outputs":[{"type":"bytes32"}]},
-  {"name":"stake","type":"function","stateMutability":"view","inputs":[{"type":"address"}],"outputs":[{"type":"uint256"}]},
-  {"name":"minStake","type":"function","stateMutability":"view","inputs":[],"outputs":[{"type":"uint256"}]},
-  {"name":"stakeFrozen","type":"function","stateMutability":"view","inputs":[{"type":"address"}],"outputs":[{"type":"bool"}]}
-]`
-
-var parsedABI abi.ABI
-
-func init() {
-	a, err := abi.JSON(strings.NewReader(registryABIJSON))
-	if err != nil {
-		panic(err)
-	}
-	parsedABI = a
-}
 
 // Verification is the outcome of on-chain checks for one maker.
 type Verification struct {

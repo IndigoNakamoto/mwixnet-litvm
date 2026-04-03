@@ -366,10 +366,10 @@ Work can ship in layers without building the full Wails wizard on day one:
 | Phase | Scope | Outcome |
 | --- | --- | --- |
 | **A** | Docs + dashboard copy | Ordered **checklist** in setup doc and/or UI: prerequisites → stake/register (external for now) → connectivity → ad env → operational view. Deep links to canonical paths. |
-| **B** | **`mln-cli maker onboard`** (name TBD) | RPC read `minStake` / stake / registration; submit `deposit` + `registerMaker` with auto `nostrKeyHash`; clear errors and retries. |
+| **B** | **`mln-cli maker onboard`** (shipped) | RPC read `minStake` / stake / `makerNostrKeyHash` / `exitUnlockTime` / `stakeFrozen`; dry-run by default; `-execute` sends `deposit` (if needed) + `registerMaker` with `nostrKeyHash` from `MLN_NOSTR_PUBKEY_HEX` or `MLN_NOSTR_NSEC`. See [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) (Phase 10.4). |
 | **C** | Desktop or extended loopback UI | Wizard driving **B**, writes consistent **`mlnd`** config, embeds or opens the existing dashboard as **status**. |
 
-Phase **B** is the recommended **first executable milestone** after **A**: it delivers bundle signing value without requiring a full GUI.
+Phase **B** is implemented as **`mln-cli maker onboard`**; Phase **A** checklist polish and Phase **C** UI can build on it.
 
 ### Layer boundaries (unchanged)
 

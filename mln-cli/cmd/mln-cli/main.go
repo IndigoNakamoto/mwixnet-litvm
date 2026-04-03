@@ -14,7 +14,9 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/config"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/identity"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/nostridentity"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/registry"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
 )
 
@@ -30,6 +32,8 @@ func main() {
 		runPathfind(os.Args[2:])
 	case "forger":
 		runForger(os.Args[2:])
+	case "maker":
+		runMaker(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -46,6 +50,7 @@ Commands:
   scout     Discover kind-31250 maker ads, verify LitVM registry state
   pathfind  Pick an ordered 3-hop route from verified makers (min fee hint, stake tie-break; -self-included for N2=self)
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
+  maker onboard  Plan or execute MwixnetRegistry deposit + registerMaker (LitVM maker onboarding)
 
 Environment (scout & pathfind):
   MLN_NOSTR_RELAYS          comma-separated wss:// relays
@@ -57,7 +62,62 @@ Environment (scout & pathfind):
   MLN_OPERATOR_ETH_KEY      optional; 64-hex LitVM maker private key — scout marks matching row "(local)";
                               required with pathfind -self-included (fixes N2 to that maker)
 
+Environment (maker onboard):
+  MLN_LITVM_HTTP_URL        LitVM HTTP JSON-RPC (required)
+  MLN_REGISTRY_ADDR         MwixnetRegistry address (required)
+  MLN_LITVM_CHAIN_ID        decimal chain id (required)
+  MLN_OPERATOR_ETH_KEY      64-hex LitVM key that signs txs and is the maker address (required)
+  MLN_NOSTR_PUBKEY_HEX      64-hex x-only Nostr pubkey, or set MLN_NOSTR_NSEC (hex or nsec1…)
+
 `)
+}
+
+func runMaker(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "maker: need subcommand (e.g. onboard)")
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "onboard":
+		runMakerOnboard(args[1:])
+	default:
+		fmt.Fprintf(os.Stderr, "maker: unknown subcommand %q\n", args[0])
+		os.Exit(2)
+	}
+}
+
+func runMakerOnboard(args []string) {
+	fs := flag.NewFlagSet("maker onboard", flag.ExitOnError)
+	execute := fs.Bool("execute", false, "broadcast deposit and/or registerMaker (default is dry-run plan only)")
+	forceReregister := fs.Bool("force-reregister", false, "allow registerMaker when on-chain makerNostrKeyHash differs (overwrites binding)")
+	_ = fs.Parse(args)
+
+	env, err := config.OnboardFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "config: %v\n", err)
+		os.Exit(2)
+	}
+	pubHex, err := nostridentity.PubkeyHexFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "nostr identity: %v\n", err)
+		os.Exit(2)
+	}
+
+	ctx := context.Background()
+	err = registry.RunOnboard(ctx, registry.OnboardOpts{
+		RPCHTTP:         env.RPCHTTP,
+		Registry:        env.Registry,
+		ChainID:         env.ChainID,
+		PrivateKeyHex:   env.PrivateKeyHex,
+		NostrPubHex:     pubHex,
+		Execute:         *execute,
+		ForceReregister: *forceReregister,
+		Out:             os.Stdout,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "maker onboard: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func runScout(args []string) {
