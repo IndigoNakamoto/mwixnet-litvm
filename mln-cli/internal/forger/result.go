@@ -1,5 +1,7 @@
 package forger
 
+import "time"
+
 // DryRunResult summarizes a successful route Tor validation (no sidecar I/O).
 type DryRunResult struct {
 	Hops []HopTorSummary `json:"hops"`
@@ -13,5 +15,14 @@ type HopTorSummary struct {
 
 // ExecuteResult is returned when the sidecar accepts the route (HTTP OK and ok=true).
 type ExecuteResult struct {
-	Detail string `json:"detail,omitempty"`
+	Detail         string `json:"detail,omitempty"`
+	PendingCleared bool   `json:"pendingCleared,omitempty"` // wait-batch observed pendingOnions==0
+}
+
+// BatchOptions controls optional POST /v1/route/batch and polling GET /v1/route/status after submit.
+type BatchOptions struct {
+	TriggerBatch    bool
+	WaitPendingZero bool
+	PollInterval    time.Duration
+	Timeout         time.Duration
 }

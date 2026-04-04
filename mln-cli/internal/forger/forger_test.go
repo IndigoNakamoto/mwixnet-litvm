@@ -6,7 +6,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
@@ -177,6 +180,56 @@ func TestDryRun_prefixesBareOnionHost(t *testing.T) {
 	}
 	if res.Hops[0].Tor != "http://n1.onion:8080" {
 		t.Fatalf("got %q", res.Hops[0].Tor)
+	}
+}
+
+func TestSidecarBaseFromSwapURL(t *testing.T) {
+	t.Parallel()
+	got, err := SidecarBaseFromSwapURL("http://127.0.0.1:8080/v1/swap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "http://127.0.0.1:8080"; got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestExecuteWithBatchOptions_triggerAndWait(t *testing.T) {
+	t.Parallel()
+
+	var pending atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/swap", func(w http.ResponseWriter, r *http.Request) {
+		pending.Store(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true,"detail":"submitted"}`))
+	})
+	mux.HandleFunc("/v1/route/batch", func(w http.ResponseWriter, r *http.Request) {
+		pending.Store(0)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true,"detail":"batch ok"}`))
+	})
+	mux.HandleFunc("/v1/route/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		n := pending.Load()
+		_, _ = w.Write([]byte(`{"ok":true,"pendingOnions":` + strconv.FormatInt(int64(n), 10) + `,"mlnRouteHops":0,"nodeIndex":0,"neutrinoConnectedPeers":0}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	swapURL := srv.URL + "/v1/swap"
+	ctx := context.Background()
+	res, err := ExecuteWithBatchOptions(ctx, testRoute(), swapURL, "mweb1qq", 1_000_000, &BatchOptions{
+		TriggerBatch:    true,
+		WaitPendingZero: true,
+		PollInterval:    50 * time.Millisecond,
+		Timeout:         2 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.PendingCleared {
+		t.Fatal("expected pending cleared")
 	}
 }
 

@@ -55,7 +55,7 @@ build-mln-cli:
 	@mkdir -p "$(MK_ROOT)/bin"
 	cd "$(MK_ROOT)/mln-cli" && go build -o "$(MK_ROOT)/bin/mln-cli" ./cmd/mln-cli
 
-# No CGO. Output: bin/mln-sidecar (MLN HTTP shim for /v1/balance + /v1/swap)
+# No CGO. Output: bin/mln-sidecar (MLN HTTP shim: /v1/balance, /v1/swap, /v1/route/status, /v1/route/batch)
 build-mln-sidecar:
 	@mkdir -p "$(MK_ROOT)/bin"
 	cd "$(MK_ROOT)/mln-sidecar" && go build -o "$(MK_ROOT)/bin/mln-sidecar" ./cmd/mln-sidecar

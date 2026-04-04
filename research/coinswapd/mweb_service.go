@@ -116,6 +116,53 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 	return map[string]bool{"accepted": true}, nil
 }
 
+// RouteStatus is returned by mweb_getRouteStatus for operator polling after mweb_submitRoute.
+type RouteStatus struct {
+	PendingOnions          int  `json:"pendingOnions"`
+	MlnRouteHops           int  `json:"mlnRouteHops"`
+	NodeIndex              int  `json:"nodeIndex"`
+	NeutrinoConnectedPeers int  `json:"neutrinoConnectedPeers"`
+}
+
+// GetRouteStatus reports how many onions are persisted locally and whether an MLN route is pinned.
+func (m *mwebService) GetRouteStatus(ctx context.Context) (RouteStatus, error) {
+	_ = ctx
+	onions, err := loadOnions(db)
+	if err != nil {
+		return RouteStatus{}, mlnroute.Internal(err.Error())
+	}
+	m.ss.mu.Lock()
+	mlnHops := len(m.ss.mlnPeers)
+	nodeIdx := m.ss.nodeIndex
+	m.ss.mu.Unlock()
+	if mlnHops != mlnroute.ExpectedHops {
+		mlnHops = 0
+	}
+	peers := 0
+	if cs != nil {
+		peers = int(cs.ConnectedCount())
+	}
+	return RouteStatus{
+		PendingOnions:          len(onions),
+		MlnRouteHops:           mlnHops,
+		NodeIndex:              nodeIdx,
+		NeutrinoConnectedPeers: peers,
+	}, nil
+}
+
+// RunBatch invokes the same midnight batch entrypoint synchronously (validate → peel → forward/backward).
+// swap_forward / swap_backward to peer makers still run asynchronously inside coinswapd when dialing succeeds.
+func (m *mwebService) RunBatch(ctx context.Context) (map[string]interface{}, error) {
+	_ = ctx
+	if err := m.ss.performSwap(); err != nil {
+		return nil, mlnroute.Internal(err.Error())
+	}
+	return map[string]interface{}{
+		"triggered": true,
+		"detail":    "performSwap finished its synchronous steps; P2P swap_forward/swap_backward may still be in flight",
+	}, nil
+}
+
 func mlNodesFromRequest(req *mlnroute.Request, rawKeys [][]byte) []config.Node {
 	nodes := make([]config.Node, len(req.Route))
 	for i, h := range req.Route {

@@ -47,6 +47,26 @@ func newJSONRPCStub(t *testing.T) *httptest.Server {
 					"detail":       "stub",
 				},
 			}
+		case "mweb_getRouteStatus":
+			resp = map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      json.RawMessage(req.ID),
+				"result": map[string]interface{}{
+					"pendingOnions":          0,
+					"mlnRouteHops":           0,
+					"nodeIndex":              0,
+					"neutrinoConnectedPeers": 0,
+				},
+			}
+		case "mweb_runBatch":
+			resp = map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      json.RawMessage(req.ID),
+				"result": map[string]interface{}{
+					"triggered": true,
+					"detail":    "stub",
+				},
+			}
 		default:
 			resp = map[string]interface{}{
 				"jsonrpc": "2.0",
@@ -105,6 +125,30 @@ func TestHTTP_RPC_swapAndBalance(t *testing.T) {
 	}
 	if !strings.Contains(string(balBody), `"ok":true`) || !strings.Contains(string(balBody), `"availableSat":10`) {
 		t.Fatalf("balance body: %s", balBody)
+	}
+
+	stResp, err := srv.Client().Get(srv.URL + "/v1/route/status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stResp.Body.Close() })
+	stBody, _ := io.ReadAll(stResp.Body)
+	if stResp.StatusCode != http.StatusOK || !strings.Contains(string(stBody), `"pendingOnions":0`) {
+		t.Fatalf("route status: %d %s", stResp.StatusCode, stBody)
+	}
+
+	bReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, srv.URL+"/v1/route/batch", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	batchResp, err := srv.Client().Do(bReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = batchResp.Body.Close() })
+	batchBody, _ := io.ReadAll(batchResp.Body)
+	if batchResp.StatusCode != http.StatusOK || !strings.Contains(string(batchBody), `"ok":true`) {
+		t.Fatalf("batch: %d %s", batchResp.StatusCode, batchBody)
 	}
 }
 

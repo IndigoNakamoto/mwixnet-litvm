@@ -16,6 +16,7 @@ The coinswapd fork (outside this repo) should expose:
 
 - **`mweb_submitRoute`** — params: one object matching [`mln-cli` `RequestPayload`](../mln-cli/internal/forger/client.go) (`route`, `destination`, `amount`; each hop may include optional `swapX25519PubHex` per [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md)). Builds/persists the swap server-side.
 - **`mweb_getBalance`** — no params. Result object: `availableSat`, `spendableSat` (uint64), optional `detail` string — same semantics as [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) / `GET /v1/balance`.
+- **`mweb_getRouteStatus`** / **`mweb_runBatch`** — no params. Status = pending onion count + MLN route metadata; runBatch = trigger **`performSwap()`** (see spec §2.6–2.7). Sidecar maps them to **`GET /v1/route/status`** and **`POST /v1/route/batch`**.
 
 Vanilla ltcmweb exposes `swap_Swap(onion.Onion)` only; see [`research/COINSWAPD_TEARDOWN.md`](../research/COINSWAPD_TEARDOWN.md).
 
@@ -25,6 +26,8 @@ Fork integration spec (wire contract, onion build checklist, optional `swapX2551
 
 - **`GET /v1/balance`** — in `mock`, fixed mock balances; in `rpc`, `mweb_getBalance`. On RPC failure returns **502** with `ok: false`.
 - **`POST /v1/swap`** — MLN route JSON; in `mock`, validates and logs simulated onion; in `rpc`, `mweb_submitRoute`. Validation errors **400**; RPC errors **502**.
+- **`GET /v1/route/status`** — in `mock`, empty queue; in `rpc`, `mweb_getRouteStatus` (**502** on RPC error).
+- **`POST /v1/route/batch`** — in `mock`, no-op success; in `rpc`, `mweb_runBatch` (**502** on RPC error).
 
 ## Run
 
@@ -45,6 +48,6 @@ See [`PHASE_12_E2E_CRUCIBLE.md`](../PHASE_12_E2E_CRUCIBLE.md).
 
 ## `mw-rpc-stub` (Phase 3a integration helper)
 
-The repo ships **`cmd/mw-rpc-stub`**: a minimal HTTP JSON-RPC server that implements **`mweb_getBalance`** and **`mweb_submitRoute`** so **`mln-sidecar -mode=rpc`** can be tested without running the full **`research/coinswapd`** stack (Neutrino, MWEB keys, etc.). Build from the repository root: **`make build-mw-rpc-stub`** → **`bin/mw-rpc-stub`** (default **`-addr :8546`**). Runbook: [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
+The repo ships **`cmd/mw-rpc-stub`**: a minimal HTTP JSON-RPC server that implements **`mweb_getBalance`**, **`mweb_submitRoute`**, **`mweb_getRouteStatus`**, and **`mweb_runBatch`** (virtual pending queue) so **`mln-sidecar -mode=rpc`** + **`mln-cli forger -trigger-batch -wait-batch`** can be tested without the full **`research/coinswapd`** stack. Build: **`make build-mw-rpc-stub`** → **`bin/mw-rpc-stub`** (default **`-addr :8546`**). Runbook: [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
 
 Phase 14 **self-included** routes do not change this service: hop identity and `swap_forward` handling remain in **`mlnd` / `coinswapd`** ([`PHASE_14_SELF_INCLUSION.md`](../PHASE_14_SELF_INCLUSION.md)).

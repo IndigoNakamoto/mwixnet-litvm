@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
@@ -47,6 +49,117 @@ func NewSidecarClient(url string) *SidecarClient {
 			Timeout: 30 * time.Second,
 		},
 	}
+}
+
+// SidecarBaseFromSwapURL returns the sidecar origin + path prefix without /v1/swap (for /v1/route/* helpers).
+func SidecarBaseFromSwapURL(swapURL string) (string, error) {
+	u, err := url.Parse(strings.TrimSpace(swapURL))
+	if err != nil {
+		return "", fmt.Errorf("forger: parse sidecar URL: %w", err)
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return "", fmt.Errorf("forger: sidecar URL must include scheme and host")
+	}
+	p := strings.TrimSuffix(strings.TrimSpace(u.Path), "/")
+	if strings.HasSuffix(p, "/v1/swap") {
+		p = strings.TrimSuffix(p, "/v1/swap")
+	}
+	u.Path = p
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	u.RawQuery, u.Fragment = "", ""
+	return strings.TrimRight(u.String(), "/"), nil
+}
+
+// RouteStatusPayload is GET /v1/route/status from mln-sidecar.
+type RouteStatusPayload struct {
+	Ok                     bool   `json:"ok"`
+	PendingOnions          int    `json:"pendingOnions"`
+	MlnRouteHops           int    `json:"mlnRouteHops"`
+	NodeIndex              int    `json:"nodeIndex"`
+	NeutrinoConnectedPeers int    `json:"neutrinoConnectedPeers"`
+	Detail                 string `json:"detail,omitempty"`
+	Error                  string `json:"error,omitempty"`
+}
+
+// BatchPayload is POST /v1/route/batch from mln-sidecar.
+type BatchPayload struct {
+	Ok     bool   `json:"ok"`
+	Detail string `json:"detail,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// GetRouteStatus calls GET /v1/route/status on the sidecar hosting swapURL.
+func (c *SidecarClient) GetRouteStatus(ctx context.Context, swapURL string) (*RouteStatusPayload, error) {
+	base, err := SidecarBaseFromSwapURL(swapURL)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v1/route/status", nil)
+	if err != nil {
+		return nil, fmt.Errorf("forger: status request: %w", err)
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("forger: route status http: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("forger: read status: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("forger: route status HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	var out RouteStatusPayload
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, fmt.Errorf("forger: route status JSON: %w", err)
+	}
+	if !out.Ok {
+		msg := strings.TrimSpace(out.Error)
+		if msg == "" {
+			msg = "route status ok=false"
+		}
+		return nil, fmt.Errorf("forger: %s (%s)", msg, strings.TrimSpace(out.Detail))
+	}
+	return &out, nil
+}
+
+// RunBatch calls POST /v1/route/batch (triggers coinswapd performSwap via sidecar RPC).
+func (c *SidecarClient) RunBatch(ctx context.Context, swapURL string) (*BatchPayload, error) {
+	base, err := SidecarBaseFromSwapURL(swapURL)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/route/batch", nil)
+	if err != nil {
+		return nil, fmt.Errorf("forger: batch request: %w", err)
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("forger: batch http: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("forger: read batch: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("forger: batch HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	var out BatchPayload
+	if err := json.Unmarshal(body, &out); err != nil {
+		return nil, fmt.Errorf("forger: batch JSON: %w", err)
+	}
+	if !out.Ok {
+		msg := strings.TrimSpace(out.Error)
+		if msg == "" {
+			msg = "batch ok=false"
+		}
+		return nil, fmt.Errorf("forger: %s (%s)", msg, strings.TrimSpace(out.Detail))
+	}
+	return &out, nil
 }
 
 // SubmitRoute marshals the route and POSTs it to the sidecar URL.

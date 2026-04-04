@@ -281,6 +281,10 @@ func runForger(args []string) {
 	dest := fs.String("dest", "", "destination MWEB address (required with -dry-run=false)")
 	amount := fs.Uint64("amount", 0, "amount to swap in satoshis (required with -dry-run=false)")
 	sidecarURL := fs.String("coinswapd-url", "http://127.0.0.1:8080/v1/swap", "MLN extension URL of local coinswapd sidecar")
+	triggerBatch := fs.Bool("trigger-batch", false, "after submit, POST /v1/route/batch (forwards to mweb_runBatch on coinswapd)")
+	waitBatch := fs.Bool("wait-batch", false, "poll GET /v1/route/status until pendingOnions==0 or -batch-timeout")
+	batchPoll := fs.Duration("batch-poll", 2*time.Second, "poll interval for -wait-batch")
+	batchTimeout := fs.Duration("batch-timeout", 2*time.Minute, "max wait for pendingOnions==0 with -wait-batch")
 	_ = fs.Parse(args)
 
 	if *routePath == "" {
@@ -315,10 +319,27 @@ func runForger(args []string) {
 		os.Exit(2)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxTimeout := 10 * time.Second
+	if *triggerBatch || *waitBatch {
+		ctxTimeout = *batchTimeout + 45*time.Second
+		if ctxTimeout < 45*time.Second {
+			ctxTimeout = 45 * time.Second
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
-	if err := forger.ExecuteCLI(ctx, &route, *sidecarURL, *dest, *amount, os.Stderr); err != nil {
+	var batch *forger.BatchOptions
+	if *triggerBatch || *waitBatch {
+		batch = &forger.BatchOptions{
+			TriggerBatch:    *triggerBatch,
+			WaitPendingZero: *waitBatch,
+			PollInterval:    *batchPoll,
+			Timeout:         *batchTimeout,
+		}
+	}
+
+	if err := forger.ExecuteCLIWithBatch(ctx, &route, *sidecarURL, *dest, *amount, batch, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}

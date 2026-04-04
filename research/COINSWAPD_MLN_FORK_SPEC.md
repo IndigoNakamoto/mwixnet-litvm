@@ -108,6 +108,31 @@ Today [`ValidateSwapRequest`](../mln-sidecar/internal/mweb/translator.go) requir
 
 Operators MUST align listen port and sidecar URL. Document in runbooks: either run the fork on **8546** or pass **`-rpc-url http://127.0.0.1:8080`** (or Tor proxy URL) to the sidecar.
 
+### 2.6 `mweb_getRouteStatus`
+
+- **Params:** none.
+- **Result** (JSON object):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `pendingOnions` | number | Count of onions persisted in the local `coinswap-onions` DB bucket (after `mweb_submitRoute` / `saveOnion`). Drops to **0** after a successful `finalize` + `SendTransaction` (fork clears spent rows). |
+| `mlnRouteHops` | number | **3** when an MLN route is pinned (`mlnPeers`), else **0**. |
+| `nodeIndex` | number | Taker node index (must be **0** for `mweb_submitRoute` to accept). |
+| `neutrinoConnectedPeers` | number | Neutrino peer count (sync visibility). |
+
+`mln-sidecar` exposes this as **`GET /v1/route/status`** in **`-mode=rpc`**.
+
+### 2.7 `mweb_runBatch`
+
+- **Params:** none.
+- **Result:** object such as `{ "triggered": true, "detail": "…" }`.
+
+Invokes the same **`performSwap()`** path as the UTC **midnight** tick (load DB onions → peel → `forward` / `backward` / `finalize`). **`swap_forward` / `swap_backward`** to peer makers still run **asynchronously** inside the fork when `rpc.Dial` succeeds; this RPC only guarantees the **synchronous** portion returned to the caller.
+
+`mln-sidecar` exposes this as **`POST /v1/route/batch`** in **`-mode=rpc`**.
+
+**`mw-rpc-stub`** implements §2.6–2.7 with a virtual pending counter so CI can clear the queue without Neutrino.
+
 ---
 
 ## 3. Key material and maker binding
@@ -166,6 +191,10 @@ Read order (matches [COINSWAPD_TEARDOWN.md](COINSWAPD_TEARDOWN.md)):
 ### 5.2 `mweb_getBalance`
 
 Expose wallet/MWEB coin state consistent with what `validateOnion` uses, returning `availableSat` / `spendableSat` (+ optional `detail`).
+
+### 5.2a `mweb_getRouteStatus` / `mweb_runBatch`
+
+Implement §2.6–2.7 on `mwebService` with access to the same `swapService` + `walletdb` used for `saveOnion`. After **`finalize`** successfully submits an MWEB tx, **delete** the spent onions from the DB so `pendingOnions` matches operator expectations.
 
 ### 5.3 Cryptography boundary
 

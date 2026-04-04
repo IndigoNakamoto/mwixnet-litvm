@@ -389,8 +389,17 @@ func (s *swapService) finalize(
 	}
 	txBody.Sort()
 
-	return cs.SendTransaction(&wire.MsgTx{
+	if err := cs.SendTransaction(&wire.MsgTx{
 		Version: 2,
 		Mweb:    &wire.MwebTx{TxBody: txBody},
-	})
+	}); err != nil {
+		return err
+	}
+	// Remove spent onions from local DB so mweb_getRouteStatus / operators can observe completion.
+	for _, o := range s.onions {
+		if err := deleteOnion(db, o.Onion); err != nil {
+			return fmt.Errorf("delete onion after broadcast: %w", err)
+		}
+	}
+	return nil
 }

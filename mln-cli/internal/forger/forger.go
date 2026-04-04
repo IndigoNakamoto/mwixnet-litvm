@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
 )
@@ -57,6 +58,11 @@ func DryRunCLI(route *pathfind.Route, w io.Writer) error {
 
 // Execute validates the route and POSTs it to the sidecar URL (destination MWEB address and amount in satoshis).
 func Execute(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64) (*ExecuteResult, error) {
+	return ExecuteWithBatchOptions(ctx, route, sidecarURL, dest, amount, nil)
+}
+
+// ExecuteWithBatchOptions POSTs the route, then optionally triggers mweb_runBatch and/or waits for pendingOnions==0.
+func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, batch *BatchOptions) (*ExecuteResult, error) {
 	if strings.TrimSpace(dest) == "" {
 		return nil, fmt.Errorf("forger: destination MWEB address is required (-dest)")
 	}
@@ -84,13 +90,67 @@ func Execute(ctx context.Context, route *pathfind.Route, sidecarURL, dest string
 		return nil, fmt.Errorf("forger: %s", msg)
 	}
 
-	return &ExecuteResult{Detail: strings.TrimSpace(resp.Detail)}, nil
+	out := &ExecuteResult{Detail: strings.TrimSpace(resp.Detail)}
+	if batch == nil {
+		return out, nil
+	}
+
+	if batch.TriggerBatch {
+		bresp, err := client.RunBatch(ctx, sidecarURL)
+		if err != nil {
+			return nil, err
+		}
+		if bresp != nil && strings.TrimSpace(bresp.Detail) != "" {
+			if out.Detail != "" {
+				out.Detail += "; "
+			}
+			out.Detail += strings.TrimSpace(bresp.Detail)
+		}
+	}
+
+	if batch.WaitPendingZero {
+		poll := batch.PollInterval
+		if poll <= 0 {
+			poll = 2 * time.Second
+		}
+		timeout := batch.Timeout
+		if timeout <= 0 {
+			timeout = 2 * time.Minute
+		}
+		deadline := time.Now().Add(timeout)
+		for time.Now().Before(deadline) {
+			st, err := client.GetRouteStatus(ctx, sidecarURL)
+			if err != nil {
+				return nil, err
+			}
+			if st.PendingOnions == 0 {
+				out.PendingCleared = true
+				return out, nil
+			}
+			t := time.NewTimer(poll)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				return nil, ctx.Err()
+			case <-t.C:
+			}
+			t.Stop()
+		}
+		return nil, fmt.Errorf("forger: -wait-batch timeout (%s) with pendingOnions still > 0 (try -trigger-batch or wait for coinswapd batch)", timeout)
+	}
+
+	return out, nil
 }
 
 // ExecuteCLI runs Execute and prints progress and outcome to w (typically os.Stderr).
 func ExecuteCLI(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, w io.Writer) error {
+	return ExecuteCLIWithBatch(ctx, route, sidecarURL, dest, amount, nil, w)
+}
+
+// ExecuteCLIWithBatch runs ExecuteWithBatchOptions with optional batch / wait flags.
+func ExecuteCLIWithBatch(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, batch *BatchOptions, w io.Writer) error {
 	fmt.Fprintf(w, "Submitting route to coinswapd sidecar at %s...\n", sidecarURL)
-	res, err := Execute(ctx, route, sidecarURL, dest, amount)
+	res, err := ExecuteWithBatchOptions(ctx, route, sidecarURL, dest, amount, batch)
 	if err != nil {
 		return err
 	}
@@ -98,6 +158,16 @@ func ExecuteCLI(ctx context.Context, route *pathfind.Route, sidecarURL, dest str
 	if res != nil && res.Detail != "" {
 		fmt.Fprintf(w, "Detail: %s\n", res.Detail)
 	}
-	fmt.Fprintln(w, "Note: MWEB batch processing in coinswapd runs at epoch cutover (local midnight); there may be no immediate chain txid.")
+	if batch != nil && batch.TriggerBatch {
+		fmt.Fprintln(w, "Batch trigger sent (POST /v1/route/batch → mweb_runBatch).")
+	}
+	if batch != nil && batch.WaitPendingZero {
+		if res != nil && res.PendingCleared {
+			fmt.Fprintln(w, "[SUCCESS] Route status reports pendingOnions=0 (local DB queue cleared after broadcast or stub).")
+		}
+	}
+	if batch == nil || !batch.WaitPendingZero {
+		fmt.Fprintln(w, "Tip: use -trigger-batch / -wait-batch for POST /v1/route/batch and GET /v1/route/status; full P2P hops still need live maker RPCs.")
+	}
 	return nil
 }

@@ -25,11 +25,31 @@ type SwapResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
-// NewMux registers the MLN HTTP contract (GET /v1/balance, POST /v1/swap).
+// RouteStatusResponse is GET /v1/route/status (forger wait / operators).
+type RouteStatusResponse struct {
+	Ok                     bool   `json:"ok"`
+	PendingOnions          int    `json:"pendingOnions"`
+	MlnRouteHops           int    `json:"mlnRouteHops"`
+	NodeIndex              int    `json:"nodeIndex"`
+	NeutrinoConnectedPeers int    `json:"neutrinoConnectedPeers"`
+	Detail                 string `json:"detail,omitempty"`
+	Error                  string `json:"error,omitempty"`
+}
+
+// BatchResponse is POST /v1/route/batch.
+type BatchResponse struct {
+	Ok     bool   `json:"ok"`
+	Detail string `json:"detail,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// NewMux registers the MLN HTTP contract (GET /v1/balance, POST /v1/swap, route batch helpers).
 func NewMux(bridge mweb.Bridge) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/balance", methodOnly(http.MethodGet, handleBalance(bridge)))
 	mux.HandleFunc("/v1/swap", methodOnly(http.MethodPost, handleSwap(bridge)))
+	mux.HandleFunc("/v1/route/status", methodOnly(http.MethodGet, handleRouteStatus(bridge)))
+	mux.HandleFunc("/v1/route/batch", methodOnly(http.MethodPost, handleRunBatch(bridge)))
 	mux.HandleFunc("/healthz", methodOnly(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -99,6 +119,45 @@ func handleSwap(bridge mweb.Bridge) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, SwapResponse{
+			Ok:     true,
+			Detail: detail,
+		})
+	}
+}
+
+func handleRouteStatus(bridge mweb.Bridge) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		st, err := bridge.HandleRouteStatus(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, RouteStatusResponse{
+				Ok:    false,
+				Error: "mweb rpc failed",
+				Detail: err.Error(),
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, RouteStatusResponse{
+			Ok:                     true,
+			PendingOnions:          st.PendingOnions,
+			MlnRouteHops:           st.MlnRouteHops,
+			NodeIndex:              st.NodeIndex,
+			NeutrinoConnectedPeers: st.NeutrinoConnectedPeers,
+		})
+	}
+}
+
+func handleRunBatch(bridge mweb.Bridge) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		detail, err := bridge.HandleRunBatch(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, BatchResponse{
+				Ok:     false,
+				Error:  "mweb rpc failed",
+				Detail: err.Error(),
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, BatchResponse{
 			Ok:     true,
 			Detail: detail,
 		})

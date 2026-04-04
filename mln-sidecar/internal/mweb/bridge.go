@@ -10,6 +10,18 @@ type Bridge interface {
 	// HandleSwap validates and processes the swap; on success detail is the HTTP response detail field.
 	HandleSwap(ctx context.Context, req *SwapRequest) (detail string, err error)
 	HandleBalance(ctx context.Context) (availableSat, spendableSat uint64, detail string, err error)
+	// HandleRouteStatus polls mweb_getRouteStatus (RPC mode); mock returns zeros.
+	HandleRouteStatus(ctx context.Context) (*RouteStatus, error)
+	// HandleRunBatch invokes mweb_runBatch (RPC mode); mock no-op success.
+	HandleRunBatch(ctx context.Context) (detail string, err error)
+}
+
+// RouteStatus mirrors research/coinswapd mweb_getRouteStatus for HTTP JSON.
+type RouteStatus struct {
+	PendingOnions          int `json:"pendingOnions"`
+	MlnRouteHops           int `json:"mlnRouteHops"`
+	NodeIndex              int `json:"nodeIndex"`
+	NeutrinoConnectedPeers int `json:"neutrinoConnectedPeers"`
 }
 
 // InvalidSwapRequest marks validation failures that the HTTP layer should map to 400.
@@ -41,6 +53,16 @@ func (b *MockBridge) HandleSwap(_ context.Context, req *SwapRequest) (string, er
 // HandleBalance returns the same hardcoded values as the original sidecar handlers.
 func (b *MockBridge) HandleBalance(_ context.Context) (availableSat, spendableSat uint64, detail string, err error) {
 	return 125_000_000, 120_000_000, "Mock balance for E2E", nil
+}
+
+// HandleRouteStatus returns an empty queue in mock mode.
+func (b *MockBridge) HandleRouteStatus(_ context.Context) (*RouteStatus, error) {
+	return &RouteStatus{}, nil
+}
+
+// HandleRunBatch is a no-op in mock mode.
+func (b *MockBridge) HandleRunBatch(_ context.Context) (string, error) {
+	return "mock: no batch RPC", nil
 }
 
 // IsInvalidSwapRequest reports whether err is (or wraps) *InvalidSwapRequest.

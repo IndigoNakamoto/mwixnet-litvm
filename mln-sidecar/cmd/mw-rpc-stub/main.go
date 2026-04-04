@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 type rpcRequest struct {
@@ -57,6 +58,9 @@ func writeRPC(w http.ResponseWriter, id json.RawMessage, result interface{}, rpc
 func main() {
 	addr := flag.String("addr", ":8546", "listen address (e.g. :8546)")
 	flag.Parse()
+
+	var stubMu sync.Mutex
+	stubPending := 0
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -116,12 +120,33 @@ func main() {
 				}
 			}
 			log.Printf("mweb_submitRoute ok destination=%s amount=%d", sr.Destination, sr.Amount)
-			writeRPC(w, req.ID, nil, nil)
+			stubMu.Lock()
+			stubPending++
+			stubMu.Unlock()
+			writeRPC(w, req.ID, map[string]interface{}{"accepted": true}, nil)
 		case "mweb_getBalance":
 			writeRPC(w, req.ID, map[string]interface{}{
 				"availableSat": uint64(10),
 				"spendableSat": uint64(9),
 				"detail":       "mw-rpc-stub",
+			}, nil)
+		case "mweb_getRouteStatus":
+			stubMu.Lock()
+			n := stubPending
+			stubMu.Unlock()
+			writeRPC(w, req.ID, map[string]interface{}{
+				"pendingOnions":          n,
+				"mlnRouteHops":           0,
+				"nodeIndex":              0,
+				"neutrinoConnectedPeers": 0,
+			}, nil)
+		case "mweb_runBatch":
+			stubMu.Lock()
+			stubPending = 0
+			stubMu.Unlock()
+			writeRPC(w, req.ID, map[string]interface{}{
+				"triggered": true,
+				"detail":    "mw-rpc-stub: cleared virtual pending queue",
 			}, nil)
 		default:
 			writeRPC(w, req.ID, nil, &struct {
@@ -131,7 +156,7 @@ func main() {
 		}
 	})
 
-	log.Printf("mw-rpc-stub listening on %s (mweb_getBalance, mweb_submitRoute)", *addr)
+	log.Printf("mw-rpc-stub listening on %s (mweb_getBalance, mweb_submitRoute, mweb_getRouteStatus, mweb_runBatch)", *addr)
 	server := &http.Server{Addr: *addr, Handler: mux}
 	if err := server.ListenAndServe(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

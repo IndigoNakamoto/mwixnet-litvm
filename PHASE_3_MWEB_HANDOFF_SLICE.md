@@ -8,7 +8,42 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Status: complete** for the **documented stub stack** as of **2026-04-03**.
 
-**Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) (contracts deploy + three makers registered), then **`mln-cli pathfind -json`** and **`mln-cli forger`** posting to **`http://127.0.0.1:8080/v1/swap`**; stub logged **`mweb_submitRoute ok`** and forger reported route accepted. **Regression anchor:** script exits **`0`** after printing **`Phase 3a stub handoff checks passed.`** Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
+**Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) (contracts deploy + three makers registered), then **`mln-cli pathfind -json`** and **`mln-cli forger`** with **`-trigger-batch -wait-batch`** (POST **`/v1/route/batch`** → **`mweb_runBatch`**, poll **`GET /v1/route/status`** until **`pendingOnions`** is **0** on the stub). Stub logs **`mweb_submitRoute ok`**; forger prints route accepted and cleared pending queue. **Regression anchor:** script exits **`0`** after **`Phase 3a stub handoff checks passed.`** Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
+
+## Completed swap path (operators): submit → batch → status
+
+**Status — completed swap path achieved (in-repo):** Operators and CI can run **submit → `mweb_runBatch` → poll `mweb_getRouteStatus`** end-to-end via **`mln-sidecar`** + **`mln-cli forger -trigger-batch -wait-batch`**; **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** passes with **`pendingOnions`** returning to **0** on **`mw-rpc-stub`**. README **Phase 3** stays unchecked until **live multi-hop maker RPCs**, **`.onion`**, and **public LitVM** grievance path (see gaps in this doc and **`PRODUCT_SPEC.md`**).
+
+**Normative wire:** [research/COINSWAPD_MLN_FORK_SPEC.md](research/COINSWAPD_MLN_FORK_SPEC.md) §2.6–2.7 (`mweb_getRouteStatus`, `mweb_runBatch`).
+
+1. **Preconditions (real `coinswapd-research`):** Neutrino synced, **`-mweb-scan-secret`** + **`-mweb-spend-secret`**, **`-a`** fee MWEB address, hop **`swapX25519PubHex`** (or **`-mweb-pubkey-map`** JSON), funded MWEB coin matching **`-amount`**, **`-mln-local-taker`** for MLN-only taker topology. Set **Tor/SOCKS** env on **coinswapd** if hop URLs are **`.onion`**.
+
+2. **`mweb_getBalance`** / **`GET /v1/balance`** — confirm spendable funds.
+
+3. **`mweb_submitRoute`** / **`POST /v1/swap`** — same MLN route JSON as before; success returns **`{ "accepted": true }`** on the fork.
+
+4. **Trigger batch (do not rely only on UTC midnight):** **`mweb_runBatch`** or **`POST /v1/route/batch`** through **`mln-sidecar`**, or start **`coinswapd`** with **`-f`** once (legacy “swap at startup”). This runs **`performSwap()`** synchronously up to async **`swap_forward`** calls.
+
+5. **Poll completion:** **`mweb_getRouteStatus`** or **`GET /v1/route/status`**. **`pendingOnions`** should reach **0** after **`finalize`** + **`SendTransaction`** clears the local DB (fork behavior). If peers are unreachable, onions may remain; fix **RPC/Tor** to next hops.
+
+6. **`mln-cli` one-liner (sidecar URL):**  
+   `mln-cli forger -route-json route.json -dry-run=false -dest <ltcmweb1…> -amount <sat> -coinswapd-url http://127.0.0.1:8080/v1/swap -trigger-batch -wait-batch`
+
+**`mw-rpc-stub`:** simulates **`pendingOnions`** increment on submit and clears it on **`mweb_runBatch`** so **`-wait-batch`** can pass in CI without Neutrino.
+
+**Remaining gaps vs on-chain “mixed” proof:** multi-hop **`swap_forward` / `swap_backward`** still require **live maker `coinswapd` RPC** endpoints; LitVM grievance path and L1 inclusion proofs remain per **`PRODUCT_SPEC.md`** / Phase 15 docs.
+
+## Release candidate regression (before every `v*` tag)
+
+From repo root, run these **before** tagging an **`mln` / stack release candidate** so the MWEB handoff path does not drift. Build **`make build-mw-rpc-stub`** first; the full path needs **`make build-mln-cli`** (and Docker for Compose).
+
+1. **Stub + full Scout → pathfind → forger:**  
+   `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`  
+   Expect exit **`0`** and **`Phase 3a stub handoff checks passed.`**
+
+2. **Research fork smoke (host JSON-RPC; no `E2E_MWEB_FULL`):** on a machine with **`make build-research-coinswapd`** and a valid full mainnet MWEB fee address (**`ltcmweb1…`**, see [Quick path](#quick-path-stub--compose) step 3):  
+   `MWEB_RPC_BACKEND=coinswapd COINSWAPD_FEE_MWEB="$ADDR" ./scripts/e2e-mweb-handoff-stub.sh`  
+   Expect **`GET /v1/balance`** OK and **`POST /v1/swap`** → **502** (expected with stub-shaped body).
 
 ## Integration slice (research fork + Tor-shaped URLs) — 2026-04-03
 

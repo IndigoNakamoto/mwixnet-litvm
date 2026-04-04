@@ -69,6 +69,15 @@ func newMwebStubServer(t *testing.T, swapErr string, balanceResult interface{}) 
 			write(nil, nil)
 		case rpcMethodGetBalance:
 			write(balanceResult, nil)
+		case rpcMethodGetRouteStatus:
+			write(map[string]interface{}{
+				"pendingOnions":          0,
+				"mlnRouteHops":           0,
+				"nodeIndex":              0,
+				"neutrinoConnectedPeers": 0,
+			}, nil)
+		case rpcMethodRunBatch:
+			write(map[string]interface{}{"triggered": true, "detail": "stub"}, nil)
 		default:
 			write(nil, &struct {
 				Code    int    `json:"code"`
@@ -123,6 +132,25 @@ func TestRPCBridge_HandleSwap_rpcError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "insufficient funds") {
 		t.Fatalf("err: %v", err)
+	}
+}
+
+func TestRPCBridge_HandleRouteStatus_and_RunBatch(t *testing.T) {
+	t.Parallel()
+	stub := newMwebStubServer(t, "", rpcBalanceResult{AvailableSat: 1, SpendableSat: 1})
+	t.Cleanup(stub.Close)
+
+	b := NewRPCBridge(stub.URL)
+	st, err := b.HandleRouteStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.PendingOnions != 0 {
+		t.Fatalf("pending %d", st.PendingOnions)
+	}
+	d, err := b.HandleRunBatch(context.Background())
+	if err != nil || !strings.Contains(d, "stub") {
+		t.Fatalf("batch: %q %v", d, err)
 	}
 }
 

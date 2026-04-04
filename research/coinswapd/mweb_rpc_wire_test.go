@@ -21,6 +21,14 @@ func (*mwebRPCStub) SubmitRoute(context.Context, mlnroute.Request) (interface{},
 	return map[string]bool{"accepted": true}, nil
 }
 
+func (*mwebRPCStub) GetRouteStatus(context.Context) (RouteStatus, error) {
+	return RouteStatus{PendingOnions: 0, MlnRouteHops: 3}, nil
+}
+
+func (*mwebRPCStub) RunBatch(context.Context) (map[string]interface{}, error) {
+	return map[string]interface{}{"triggered": true}, nil
+}
+
 func TestMWEBJSONRPCMethodNames(t *testing.T) {
 	t.Parallel()
 	srv := rpc.NewServer()
@@ -56,5 +64,21 @@ func TestMWEBJSONRPCMethodNames(t *testing.T) {
 	var submitted interface{}
 	if err := c.CallContext(context.Background(), &submitted, "mweb_submitRoute", req); err != nil {
 		t.Fatalf("mweb_submitRoute: %v", err)
+	}
+
+	var rs RouteStatus
+	if err := c.CallContext(context.Background(), &rs, "mweb_getRouteStatus"); err != nil {
+		t.Fatalf("mweb_getRouteStatus: %v", err)
+	}
+	if rs.MlnRouteHops != 3 {
+		t.Fatalf("route status: %+v", rs)
+	}
+
+	var batch map[string]interface{}
+	if err := c.CallContext(context.Background(), &batch, "mweb_runBatch"); err != nil {
+		t.Fatalf("mweb_runBatch: %v", err)
+	}
+	if batch["triggered"] != true {
+		t.Fatalf("batch: %+v", batch)
 	}
 }

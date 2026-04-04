@@ -194,8 +194,10 @@ if [[ "${E2E_MWEB_FULL:-}" == "1" ]]; then
 	"${ROOT}/bin/mln-cli" forger -route-json "${ROUTE_JSON}" -dry-run=false \
 		-dest "mweb1x" \
 		-amount 1000000 \
-		-coinswapd-url "http://127.0.0.1:8080/v1/swap"
-	echo "mln-cli forger (rpc sidecar) OK"
+		-coinswapd-url "http://127.0.0.1:8080/v1/swap" \
+		-trigger-batch -wait-batch \
+		-batch-poll 500ms -batch-timeout 30s
+	echo "mln-cli forger (rpc sidecar + batch/status) OK"
 fi
 
 echo

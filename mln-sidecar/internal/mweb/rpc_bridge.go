@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	rpcMethodSubmitRoute = "mweb_submitRoute"
-	rpcMethodGetBalance  = "mweb_getBalance"
+	rpcMethodSubmitRoute   = "mweb_submitRoute"
+	rpcMethodGetBalance    = "mweb_getBalance"
+	rpcMethodGetRouteStatus = "mweb_getRouteStatus"
+	rpcMethodRunBatch      = "mweb_runBatch"
 )
 
 // rpcBalanceResult matches the expected JSON shape from mweb_getBalance (fork contract).
@@ -69,4 +71,37 @@ func (b *RPCBridge) HandleBalance(ctx context.Context) (availableSat, spendableS
 		return 0, 0, "", fmt.Errorf("mweb_getBalance: %w", err)
 	}
 	return out.AvailableSat, out.SpendableSat, out.Detail, nil
+}
+
+// HandleRouteStatus calls mweb_getRouteStatus (no params).
+func (b *RPCBridge) HandleRouteStatus(ctx context.Context) (*RouteStatus, error) {
+	c, err := rpc.DialContext(ctx, b.URL)
+	if err != nil {
+		return nil, fmt.Errorf("mweb rpc dial: %w", err)
+	}
+	defer c.Close()
+
+	var st RouteStatus
+	if err := c.CallContext(ctx, &st, rpcMethodGetRouteStatus); err != nil {
+		return nil, fmt.Errorf("mweb_getRouteStatus: %w", err)
+	}
+	return &st, nil
+}
+
+// HandleRunBatch calls mweb_runBatch (no params).
+func (b *RPCBridge) HandleRunBatch(ctx context.Context) (string, error) {
+	c, err := rpc.DialContext(ctx, b.URL)
+	if err != nil {
+		return "", fmt.Errorf("mweb rpc dial: %w", err)
+	}
+	defer c.Close()
+
+	var result map[string]interface{}
+	if err := c.CallContext(ctx, &result, rpcMethodRunBatch); err != nil {
+		return "", fmt.Errorf("mweb_runBatch: %w", err)
+	}
+	if d, _ := result["detail"].(string); d != "" {
+		return d, nil
+	}
+	return "mweb_runBatch ok", nil
 }

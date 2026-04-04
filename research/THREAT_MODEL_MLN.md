@@ -1,7 +1,7 @@
 # MLN stack — code review and threat model (accepted snapshot)
 
 **Date:** April 2026  
-**Codebase state:** `main` post-Phase 15  
+**Codebase state:** `main` post-Phase 15; Phase 3a + integration slice (stub E2E + `coinswapd-research` host smoke) as of 2026-04  
 **Status:** Reviewed and accepted by the team (Harper, Benjamin, Lucas, Indigo). Findings were validated line-by-line against the repo; no material inaccuracies noted. This document preserves the audit and threat model for the repository record.
 
 **Related:** [`README.md`](../README.md) (roadmap and scaffold disclaimers), [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md), phase docs at repo root, [`AGENTS.md`](../AGENTS.md), adversarial narrative [`RED_TEAM_MLN.md`](RED_TEAM_MLN.md).
@@ -65,9 +65,9 @@ The repo delivers a **coherent split** across layers: Solidity for registry and 
 | MWEB | Privacy + per-hop fees | Not implemented here; sidecar mocks or forwards |
 | LitVM | Registry, stake freeze, grievance lifecycle | Contracts + `mlnd` watcher/defender |
 | Nostr | Discovery, signed ads | Kind 31250 broadcaster + scout; fixtures in CI |
-| Tor | Transport | Tor URLs in ads; forger validates non-empty Tor strings only (no live probe in reviewed code) |
+| Tor | Transport | Tor URLs in ads; **`mln-cli pathfind`** requires non-empty maker **`tor`**; forger normalizes bare **`*.onion`** to **`http://`** for RPC dial (no live Tor probe in reviewed code; **`coinswapd`** may need operator proxy for `.onion`) |
 
-**Alignment:** Layer boundaries are mostly respected. **Tension to track:** README Phase 3 (“end-to-end integration”) is still open; local E2E defaults to **`-mode=mock`** on **`mln-sidecar`**; **`-mode=rpc`** is implemented client-side but requires a **`coinswapd` fork** exposing **`mweb_submitRoute`** / **`mweb_getBalance`**.
+**Alignment:** Layer boundaries are mostly respected. **Tension to track:** README Phase 3 (“end-to-end integration”) is still open (live `.onion` round + L2 slash path on public LitVM); local E2E defaults to **`-mode=mock`** on **`mln-sidecar`**; **`-mode=rpc`** forwards to in-repo **`research/coinswapd/`** (**`mweb_submitRoute`** / **`mweb_getBalance`**) with stub + host smoke verified — full swap completion and production hardening remain open.
 
 ### 1.4 Smart contracts
 
@@ -247,3 +247,5 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | 2026-04 | [`RED_TEAM_MLN.md`](RED_TEAM_MLN.md) added; §1.1 / §1.4 / table “GrievanceCourt economics” aligned with Phase 15 slash and exoneration bond (bond no longer refunded to accuser on exonerate). |
 | 2026-04 | Doc sync: **`mln-cli maker onboard`** (operator LitVM txs) and **`mlnd` loopback dashboard** (`MLND_DASHBOARD_ADDR`, optional token) noted as new operator surfaces alongside existing hot-key / sidecar rows. |
 | 2026-04 | Phase 3 integration slice: **`research/coinswapd`** build target + optional host smoke vs **`mln-sidecar -mode=rpc`**; hop **`tor`** URL normalization and pathfind **Tor-required** filtering — operator proxy (`HTTP_PROXY` / Tor SOCKS) still required for live `.onion` RPC dials inside **coinswapd**. |
+| 2026-04 | Doc sync: §1.3 Tor row + §1.3 alignment paragraph vs shipped **`pathfind`** Tor requirement and in-tree **`coinswapd`** fork (vs “fork required” wording). |
+| 2026-04 | **`mln-sidecar`** adds **`GET /v1/route/status`** and **`POST /v1/route/batch`** (same trust boundary as **`/v1/swap`**: unauthenticated HTTP; loopback-only in ops guidance). |
