@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
-- **Phase 3a MWEB handoff (verified):** full local E2E via `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — Scout/pathfind/forger → `mln-sidecar -mode=rpc` → `mweb_submitRoute` on `mw-rpc-stub` (see [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)).
+- **Phase 3a E2E MWEB handoff GREEN:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` → `Phase 3a stub handoff checks passed.` ([`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)).
 - Added full Cursor AI agent team (6 new skills + 6 new rules + architecture diagrams skill + AGENTS.md update).
 - **`mln-cli maker onboard`**: Bundle-signing for LitVM `deposit` + `registerMaker`; dry-run by default; `-execute`, `-force-reregister`; `nostrKeyHash` from hex, **`npub1…`**, or `nsec`. See [PHASE_10_TAKER_CLI.md](PHASE_10_TAKER_CLI.md) Phase 10.4.
 - **`mlnd` loopback Maker dashboard** (when `MLND_DASHBOARD_ADDR` is set): read-only UI at **`http://127.0.0.1:9842/`** (or your chosen host:port), JSON status, SSE + `opslog` for operator narrative (LitVM / Nostr / MWEB). *Landed on `main` before Phase B CLI; listed here for the next release tag.*

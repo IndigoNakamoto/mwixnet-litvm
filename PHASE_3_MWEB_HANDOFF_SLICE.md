@@ -8,7 +8,7 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Status: complete** for the **documented stub stack** as of **2026-04-03**.
 
-**Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) deploy + maker registration, then **`mln-cli pathfind -json`** and **`mln-cli forger`** posting to **`http://127.0.0.1:8080/v1/swap`**; stub logged **`mweb_submitRoute ok`** and forger reported route accepted. Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
+**Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) (contracts deploy + three makers registered), then **`mln-cli pathfind -json`** and **`mln-cli forger`** posting to **`http://127.0.0.1:8080/v1/swap`**; stub logged **`mweb_submitRoute ok`** and forger reported route accepted. **Regression anchor:** script exits **`0`** after printing **`Phase 3a stub handoff checks passed.`** Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
 
 This **does not** close README **Phase 3** (full Nostr → Tor → MWixnet round → L2 path). **Promote path** to real MWEB JSON-RPC remains [`research/coinswapd/`](research/coinswapd/) on a separate port — see [Promote path](#promote-path-researchcoinswapd) below.
 

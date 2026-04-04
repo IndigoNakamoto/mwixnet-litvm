@@ -44,7 +44,9 @@ This phase adds **defaults and packaging** so operators and takers can aim at **
 
 *Sources: [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md); [`AGENTS.md`](AGENTS.md) (MWEB privacy engine vs LitVM registry vs Nostr discovery).*
 
-**2026-04-03:** **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** exercised Nostr + local LitVM (**Anvil**) for scout/pathfind and **`mln-cli` forger** → **`mln-sidecar`** (`GET /v1/balance`, `POST /v1/swap`) → **`mweb_submitRoute`** on **`mw-rpc-stub`** (JSON-RPC stand-in for [`research/coinswapd/`](research/coinswapd/)). This playbook (Phase 16) still covers **public** relay + EVM RPC defaults for operators; it does not replace Phase 3a’s local MWEB handoff runbook.
+**2026-04-03:** **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** exercised Nostr + local LitVM (**Anvil**) for scout/pathfind and **`mln-cli` forger** → **`mln-sidecar`** (`GET /v1/balance`, `POST /v1/swap`) → **`mweb_submitRoute`** on **`mw-rpc-stub`** (JSON-RPC stand-in for [`research/coinswapd/`](research/coinswapd/)). Success string on **`0`** exit: **`Phase 3a stub handoff checks passed.`** This playbook (Phase 16) still covers **public** relay + EVM RPC defaults for operators; it does not replace Phase 3a’s local MWEB handoff runbook.
+
+Sequence diagram below follows [`.cursor/skills/mln-architecture-diagrams/SKILL.md`](.cursor/skills/mln-architecture-diagrams/SKILL.md) (layer boundaries per [`AGENTS.md`](AGENTS.md)).
 
 ```mermaid
 sequenceDiagram
