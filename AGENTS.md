@@ -32,6 +32,7 @@
 | Taker CLI (`mln-cli`); maker onboard (`mln-cli maker onboard`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`); optional self-as-N2 routing (Phase 14); optional `mlnd` loopback Maker dashboard (`MLND_DASHBOARD_ADDR`) | `PHASE_10_TAKER_CLI.md`, `PHASE_14_SELF_INCLUSION.md`, `mln-cli/desktop/README.md`, `mlnd/MAKER_DASHBOARD_SETUP.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar + `swap_forward`), `research/COINSWAPD_MLN_FORK_SPEC.md`, `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mln-cli/internal/pathfind/`, `mlnd/pkg/makerad`, `mln-sidecar/` |
 | Documentation sync pass (README `PHASE_*` index parity, git-aligned status blurbs, PoC vs production, link and CI/RPC audit) | `.cursor/skills/doc-sync/SKILL.md`, `.cursor/rules/doc-sync.mdc` |
 | Program hygiene (priorities, blockers, milestone/release readiness from canonical docs + git; not a second roadmap) | `.cursor/skills/mln-pm/SKILL.md` |
+| Implementation Cursor Skills | mln-go-engineer, mln-contracts, mln-frontend-wails, mln-qa, mln-deployment, mln-observability, mln-architecture-diagrams | Handles Go daemons, Solidity, Wails/React desktop, testing, operator packaging, and architecture diagrams while respecting AGENTS.md boundaries and PRODUCT_SPEC.md |
 
 Prefer quoting or linking paths into those docs instead of inventing APIs or economics.
 

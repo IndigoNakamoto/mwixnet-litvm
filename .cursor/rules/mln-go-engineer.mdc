@@ -1,0 +1,17 @@
+---
+description: >-
+  Go engineering for mln-cli, mlnd, and mln-sidecar. Use when editing Go under those trees—preserve MWEB vs
+  LitVM separation and coinswapd-reference accuracy.
+alwaysApply: false
+globs:
+  - mln-cli/**/*
+  - mlnd/**/*
+  - mln-sidecar/**/*
+---
+
+# MLN Go engineer (rule)
+
+- Follow **`.cursor/skills/mln-go-engineer/SKILL.md`** for module boundaries, RPC/sidecar patterns, Nostr, and Wails Go bindings.
+- **`mln-cli`** and **`mlnd`**: **Go 1.22**, **`go-ethereum` v1.14.x**; **`mln-sidecar`**: **Go 1.20**, older **`go-ethereum`** — do not unify versions casually.
+- For **`coinswapd`** / **`mweb_*`** behavior and onion JSON, defer to **`.cursor/skills/coinswapd-reference/SKILL.md`** and **`research/COINSWAPD_TEARDOWN.md`**.
+- Do not blur **LitVM** economics with **MWEB** routing fees or **Nostr** discovery authority — see **`AGENTS.md`**.

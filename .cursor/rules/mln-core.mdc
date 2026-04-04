@@ -1,0 +1,15 @@
+---
+description: >-
+  MLN Stack core identity and layer boundaries. Always use AGENTS.md and PRODUCT_SPEC.md; keep MWEB, LitVM,
+  Nostr, and Tor responsibilities distinct.
+alwaysApply: true
+globs:
+  - "**/*"
+---
+
+# MLN core (always on)
+
+- You are working inside the **MLN Stack** (Mwixnet × LitVM × Nostr × Tor). **Always reference [`AGENTS.md`](AGENTS.md)** for the canonical doc table and **[`PRODUCT_SPEC.md`](PRODUCT_SPEC.md)** for product intent, economics, and roadmap.
+- **Foundational skills** (invoke when the task matches their descriptions): [`.cursor/skills/doc-sync/SKILL.md`](.cursor/skills/doc-sync/SKILL.md), [`.cursor/skills/mln-pm/SKILL.md`](.cursor/skills/mln-pm/SKILL.md), [`.cursor/skills/mln-web3-product-design/SKILL.md`](.cursor/skills/mln-web3-product-design/SKILL.md), [`.cursor/skills/coinswapd-reference/SKILL.md`](.cursor/skills/coinswapd-reference/SKILL.md).
+- **Implementation skills** under [`.cursor/skills/`](.cursor/skills/): `mln-go-engineer`, `mln-contracts`, `mln-frontend-wails`, `mln-qa`, `mln-deployment`, `mln-observability`, `mln-architecture-diagrams` — follow the matching `SKILL.md` when editing those areas.
+- **Strict separation:** **MWEB** = privacy engine and default per-hop routing-fee path; **LitVM** = registry, stake, bonds, slashing, grievances (judicial layer, not happy-path mix verification); **Nostr** = discovery and gossip (not authoritative for stake); **Tor** = transport.

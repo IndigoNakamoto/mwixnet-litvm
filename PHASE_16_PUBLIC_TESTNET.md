@@ -40,6 +40,31 @@ This phase adds **defaults and packaging** so operators and takers can aim at **
 
 **Local closed-loop testing** remains [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) ([`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml)).
 
+## Layer map (onboarding)
+
+*Sources: [`AGENTS.md`](AGENTS.md) (layer boundaries); [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) section 9 (P0–P3 roadmap and in-repo implementation status aligned to those layers).*
+
+```mermaid
+flowchart TB
+  subgraph nostrLayer [Nostr]
+    NostrDisc[Discovery_and_gossip_not_stake_authority]
+  end
+  subgraph torLayer [Tor]
+    TorTrans[Transport]
+  end
+  subgraph mwebLayer [MWEB]
+    MwebMix[Privacy_engine_and_per_hop_routing_fees]
+  end
+  subgraph litvmLayer [LitVM]
+    LitvmEco[Registry_stake_bonds_slashing_grievances]
+  end
+  Client[Client_or_operator]
+  Client --> NostrDisc
+  Client --> TorTrans
+  TorTrans --> MwebMix
+  Client --> LitvmEco
+```
+
 ---
 
 ## 1. Protocol admin — deploy and verify contracts

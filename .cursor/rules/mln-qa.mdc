@@ -1,0 +1,19 @@
+---
+description: >-
+  QA and CI for MLN: Go tests, Foundry tests/scripts, workflows, deploy compose used in validation. Use when
+  editing tests or GitHub Actions—run the narrowest relevant suite before merge.
+alwaysApply: false
+globs:
+  - "**/*_test.go"
+  - contracts/test/**/*
+  - contracts/script/**/*
+  - .github/workflows/**/*
+  - deploy/**/*
+---
+
+# MLN QA (rule)
+
+- Follow **`.cursor/skills/mln-qa/SKILL.md`** for **`go test`**, **`make contracts-test`**, Makefile integration targets, and workflow expectations.
+- **Playwright / desktop browser automation** is **not in-tree** today; treat as **future optional** unless explicitly added.
+- Do not disable **Slither**, **fuzz**, or **invariant** coverage to green CI without documented risk (**`research/THREAT_MODEL_MLN.md`**).
+- For **contract** test semantics, defer to **`.cursor/skills/mln-contracts/SKILL.md`**; for **compose/release** workflow edits, **`.cursor/skills/mln-deployment/SKILL.md`**.

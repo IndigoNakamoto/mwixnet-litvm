@@ -1,0 +1,15 @@
+---
+description: >-
+  Wails + Vite + React desktop UI for MLN taker wallet. Use when editing mln-cli/desktop/—taker-first UX and
+  trust UI defer to mln-web3-product-design.
+alwaysApply: false
+globs:
+  - mln-cli/desktop/**/*
+---
+
+# MLN frontend Wails (rule)
+
+- Follow **`.cursor/skills/mln-frontend-wails/SKILL.md`** for the desktop frontend and Wails-related layout.
+- Follow **`.cursor/skills/mln-web3-product-design/SKILL.md`** for **taker-first** surfaces, trust indicators, IA, and canonical wallet/maker UX docs under **`research/`** and **`mlnd/MAKER_DASHBOARD_SETUP.md`**.
+- For **Go / Wails backend** changes under **`mln-cli/desktop/`**, coordinate with **`.cursor/skills/mln-go-engineer/SKILL.md`**.
+- Do not put **UI mockup detail** into **`PRODUCT_SPEC.md`** unless the user explicitly expands scope (**`AGENTS.md`** editing norms).

@@ -1,0 +1,21 @@
+---
+description: >-
+  Deployment, Docker Compose, GitHub Actions releases, and env templates for MLN operators. Use when editing
+  deploy/, workflows, or .env examples—no secrets in git.
+alwaysApply: false
+globs:
+  - deploy/**/*
+  - .github/workflows/**/*
+  - .env.compose.example
+  - contracts/.env.example
+  - deploy/.env.testnet.example
+  - mlnd/.env.example
+  - docker-compose.yml
+---
+
+# MLN deployment (rule)
+
+- Follow **`.cursor/skills/mln-deployment/SKILL.md`** for Compose stacks, **`mlnd-release`**, Makefile image/binary targets, and env templates.
+- **Never commit** real private keys, relay passwords, or Tor secrets — only **`.example`** files and documentation.
+- After changing **defaults** (RPC, chain IDs, relay URLs), cross-check **`PHASE_16_PUBLIC_TESTNET.md`**, **`mln-cli/internal/config/settings.go`**, and **`README.md`** via **`.cursor/skills/doc-sync/SKILL.md`** when phase claims are affected.
+- For **CI test behavior**, coordinate with **`.cursor/skills/mln-qa/SKILL.md`**.

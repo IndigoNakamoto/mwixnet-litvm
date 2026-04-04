@@ -136,7 +136,11 @@ The MLN **`mweb_*`** JSON-RPC extensions live in the **tracked** in-repo fork **
 
 ## Cursor
 
-Rules under [`.cursor/rules/`](.cursor/rules/) (e.g. [`.cursor/rules/doc-sync.mdc`](.cursor/rules/doc-sync.mdc) when editing top-level docs), skills under [`.cursor/skills/`](.cursor/skills/) (including [`.cursor/skills/doc-sync/SKILL.md`](.cursor/skills/doc-sync/SKILL.md) for documentation synchronization passes and [`.cursor/skills/mln-pm/SKILL.md`](.cursor/skills/mln-pm/SKILL.md) for priorities, blockers, and release-readiness grounded in docs + git).
+**Always-on rule:** [`.cursor/rules/mln-core.mdc`](.cursor/rules/mln-core.mdc) — MLN identity, `AGENTS.md` / `PRODUCT_SPEC.md`, layer boundaries, pointers to skills.
+
+**Scoped rules:** [`.cursor/rules/doc-sync.mdc`](.cursor/rules/doc-sync.mdc) (top-level docs / phase tables), [`.cursor/rules/mln-architecture.mdc`](.cursor/rules/mln-architecture.mdc) (protocol + stack map), [`.cursor/rules/mln-product-design.mdc`](.cursor/rules/mln-product-design.mdc) (UX docs + `mlnd` product copy), [`.cursor/rules/mln-go-engineer.mdc`](.cursor/rules/mln-go-engineer.mdc), [`.cursor/rules/mln-contracts.mdc`](.cursor/rules/mln-contracts.mdc), [`.cursor/rules/mln-frontend-wails.mdc`](.cursor/rules/mln-frontend-wails.mdc), [`.cursor/rules/mln-qa.mdc`](.cursor/rules/mln-qa.mdc), [`.cursor/rules/mln-deployment.mdc`](.cursor/rules/mln-deployment.mdc).
+
+**Skills (invoke when the task matches each `SKILL.md` description):** [doc-sync](.cursor/skills/doc-sync/SKILL.md), [mln-pm](.cursor/skills/mln-pm/SKILL.md), [mln-web3-product-design](.cursor/skills/mln-web3-product-design/SKILL.md), [coinswapd-reference](.cursor/skills/coinswapd-reference/SKILL.md), [mln-go-engineer](.cursor/skills/mln-go-engineer/SKILL.md), [mln-contracts](.cursor/skills/mln-contracts/SKILL.md), [mln-frontend-wails](.cursor/skills/mln-frontend-wails/SKILL.md), [mln-qa](.cursor/skills/mln-qa/SKILL.md), [mln-deployment](.cursor/skills/mln-deployment/SKILL.md), [mln-observability](.cursor/skills/mln-observability/SKILL.md), [mln-architecture-diagrams](.cursor/skills/mln-architecture-diagrams/SKILL.md).
 
 ## License
 
