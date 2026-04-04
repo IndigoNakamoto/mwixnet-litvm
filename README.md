@@ -101,7 +101,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Keep a Changelog–style notes for tagged releases and unreleased work |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
-| [`Makefile`](Makefile) | Contracts (`contracts-build`, `contracts-test`, `deploy-local`, `test-grievance`), operator smoke (`test-operator-smoke`, `test-full-stack`), `mlnd` / CLI / wallet / sidecar / `mw-rpc-stub` builds, Docker images — see phase playbooks below for context |
+| [`Makefile`](Makefile) | Contracts (`contracts-build`, `contracts-test`, `deploy-local`, `broadcast-litvm`, `record-litvm-deploy`), operator smoke (`test-operator-smoke`, `test-full-stack`), `mlnd` / CLI / wallet / sidecar / `mw-rpc-stub` builds, Docker images — see phase playbooks below for context |
 | [`PHASE_2_NOSTR.md`](PHASE_2_NOSTR.md) | Phase 2: Nostr wire v1 (kinds 31250–31251), [`nostr/fixtures/`](nostr/fixtures/), CI validation, Scout deployment filters, address rotation |
 | [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) | Phase 3a: `mln-sidecar -mode=rpc` + `mweb_*` stub (or fork) without official LitVM — **stub + `E2E_MWEB_FULL` path verified 2026-04-03**; [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh), [`deploy/docker-compose.e2e.sidecar-rpc.yml`](deploy/docker-compose.e2e.sidecar-rpc.yml); Go wire tests + stub payload validation |
 | [`PHASE_5_NOSTR_TOR_BRIDGE.md`](PHASE_5_NOSTR_TOR_BRIDGE.md) | Phase 5: Nostr relay behavior, Tor URL clarity, receipt bridge scaffold (`mlnd`) |

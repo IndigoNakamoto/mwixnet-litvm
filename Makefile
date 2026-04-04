@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local broadcast-litvm record-litvm-deploy test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -24,6 +24,14 @@ contracts-fmt:
 
 deploy-local:
 	./scripts/deploy-local-anvil.sh
+
+# LitVM public testnet: requires forge on PATH + contracts/.env (PRIVATE_KEY, RPC_URL from official docs).
+broadcast-litvm:
+	./scripts/broadcast-litvm-testnet.sh
+
+# After broadcast: writes deploy/litvm-addresses.generated.env (gitignored) for merge into deploy/.env.testnet.
+record-litvm-deploy:
+	python3 "$(MK_ROOT)/scripts/record-litvm-deploy.py" --write "$(MK_ROOT)/deploy/litvm-addresses.generated.env"
 
 # Requires Anvil on ANVIL_RPC_URL + Docker; deploys then opens grievance with golden vectors.
 test-grievance:

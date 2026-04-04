@@ -66,6 +66,8 @@ cd contracts
 forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast
 ```
 
+From **repo root**, the same path is wrapped as **`make broadcast-litvm`** ([`scripts/broadcast-litvm-testnet.sh`](../scripts/broadcast-litvm-testnet.sh)); then **`make record-litvm-deploy`** writes [`deploy/litvm-addresses.generated.env`](../deploy/litvm-addresses.generated.env) for `mlnd` / taker env (see [`PHASE_16_PUBLIC_TESTNET.md`](../PHASE_16_PUBLIC_TESTNET.md) section 0).
+
 Verification (optional, Etherscan-compatible chains): add `--verify --etherscan-api-key "$ETHERSCAN_API_KEY"` (set in `.env`; see [`PHASE_16_PUBLIC_TESTNET.md`](../PHASE_16_PUBLIC_TESTNET.md)).
 
 Optional env overrides: `MIN_STAKE`, `CHALLENGE_WINDOW`, `GRIEVANCE_BOND_MIN` (see `Deploy.s.sol`).

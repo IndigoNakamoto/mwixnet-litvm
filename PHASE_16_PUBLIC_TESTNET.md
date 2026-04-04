@@ -90,6 +90,25 @@ flowchart TB
 
 ---
 
+## 0. Instant runbook — when LitVM publishes HTTP RPC, chain ID, and faucet
+
+Do this sequence **once** when official endpoints are live ([`research/LITVM.md`](research/LITVM.md), [add to wallet](https://docs.litvm.com/get-started-on-testnet/add-to-wallet)). Values are **not** hardcoded in-repo; copy decimals and URLs from LitVM docs.
+
+| Step | Action |
+| ---- | ------ |
+| 1 | **Fund** a throwaway deployer with testnet **`zkLTC`** (faucet per LitVM docs). |
+| 2 | **`contracts/.env`:** copy [`contracts/.env.example`](contracts/.env.example) → `contracts/.env`. Set **`PRIVATE_KEY`** (deployer) and **`RPC_URL`** (HTTP JSON-RPC for the LitVM testnet chain). Optional: **`ETHERSCAN_API_KEY`** if verification API is documented. |
+| 3 | **Broadcast** registry + court: from repo root, **`make broadcast-litvm`** (runs [`scripts/broadcast-litvm-testnet.sh`](scripts/broadcast-litvm-testnet.sh); requires **`forge`** on PATH) **or** manually from `contracts/`: `forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast -vvv` ([`contracts/script/Deploy.s.sol`](contracts/script/Deploy.s.sol) — chain id is implied by the RPC; broadcast lands under `contracts/broadcast/Deploy.s.sol/<chainId>/run-latest.json`). |
+| 4 | **Record addresses:** **`make record-litvm-deploy`** → writes gitignored **`deploy/litvm-addresses.generated.env`** with **`MLND_LITVM_CHAIN_ID`**, **`MLND_REGISTRY_ADDR`**, **`MLND_COURT_ADDR`**, plus commented **`MLN_*`** exports for takers. Or: `python3 scripts/record-litvm-deploy.py --write deploy/litvm-addresses.generated.env` (optional **`--broadcast-json`** if you have multiple runs). |
+| 5 | **Operator env:** copy [`deploy/.env.testnet.example`](deploy/.env.testnet.example) → **`deploy/.env.testnet`**. Append or merge the generated fragment (same **`MLND_***` keys). Set **`MLND_WS_URL`** to the **WebSocket** JSON-RPC for that chain (required by `mlnd`; not interchangeable with HTTP). Fill **`MLND_OPERATOR_*`**, **`MLND_NOSTR_NSEC`**, relays. |
+| 6 | **Start makers:** `docker compose -f deploy/docker-compose.testnet.yml up -d` (optional **`--profile sidecar`** for mock HTTP sidecar on **8080**). |
+| 7 | **Nostr:** `mlnd` embeds **`litvm.registry`** / **`litvm.grievanceCourt`** from env in kind **31250** content ([`research/NOSTR_MLN.md`](research/NOSTR_MLN.md)). After an address change, **restart `mlnd`** so replaceable ads update. Takers running **`mln-cli scout`** must use the **same** registry (and optional court) as in ads — Scout rejects **registry address mismatch**. |
+| 8 | **Takers / wallet:** set **`registryAddr`**, **`grievanceCourtAddr`**, LitVM **HTTP** RPC + **chain id** in Wails or **`mln-cli`** env to match the deployment ([`mln-cli/internal/config/settings.go`](mln-cli/internal/config/settings.go)). |
+
+**Verify (optional):** add `--verify --etherscan-api-key "$ETHERSCAN_API_KEY"` to `forge script` when LitVM documents a compatible explorer API (same command as section 1 below).
+
+---
+
 ## 1. Protocol admin — deploy and verify contracts
 
 **Prerequisites**
@@ -193,6 +212,9 @@ Full local matrix (Anvil + local relay + three makers + generated settings): [`P
 
 | Artifact | Role |
 | -------- | ---- |
+| [`scripts/broadcast-litvm-testnet.sh`](scripts/broadcast-litvm-testnet.sh) | One-command Foundry broadcast (host `forge` + `contracts/.env`) |
+| [`scripts/record-litvm-deploy.py`](scripts/record-litvm-deploy.py) | Parse `run-latest.json` → `deploy/litvm-addresses.generated.env` |
+| [`Makefile`](Makefile) | **`make broadcast-litvm`**, **`make record-litvm-deploy`** |
 | [`deploy/docker-compose.testnet.yml`](deploy/docker-compose.testnet.yml) | `mlnd` + optional `mln-sidecar` (profile `sidecar`) |
 | [`deploy/.env.testnet.example`](deploy/.env.testnet.example) | Operator env template |
 | [`contracts/.env.example`](contracts/.env.example) | Foundry `PRIVATE_KEY`, `RPC_URL`, `ETHERSCAN_API_KEY` |
