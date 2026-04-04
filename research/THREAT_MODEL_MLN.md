@@ -1,7 +1,7 @@
 # MLN stack — code review and threat model (accepted snapshot)
 
 **Date:** April 2026  
-**Codebase state:** `main` post-Phase 15; Phase 3a + integration slice (stub E2E + `coinswapd-research` host smoke) as of 2026-04  
+**Codebase state:** `main` post-Phase 15; Phase 3a + integration slice + **completed swap path** on **`mw-rpc-stub`** (`mweb_runBatch` / `mweb_getRouteStatus`, sidecar **`/v1/route/*`**, E2E **`E2E_MWEB_FULL=1`**) as of 2026-04  
 **Status:** Reviewed and accepted by the team (Harper, Benjamin, Lucas, Indigo). Findings were validated line-by-line against the repo; no material inaccuracies noted. This document preserves the audit and threat model for the repository record.
 
 **Related:** [`README.md`](../README.md) (roadmap and scaffold disclaimers), [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md), phase docs at repo root, [`AGENTS.md`](../AGENTS.md), adversarial narrative [`RED_TEAM_MLN.md`](RED_TEAM_MLN.md).
@@ -36,7 +36,7 @@ The repo delivers a **coherent split** across layers: Solidity for registry and 
 **Highest-impact gaps (must fix before treating as economic security)**
 
 1. **`GrievanceCourt` does not verify `defenseData`** — accused can call `defendGrievance` with arbitrary bytes. **Phase 15** implements **real slashing** and **exoneration bond to accused**, but outcomes can still diverge from receipt reality until a **verifier** exists. README and phase docs still mark contracts **not audited**; not a safe judicial layer for production **integrity** claims without `defenseData` enforcement.
-2. **`mln-sidecar` default server binds `0.0.0.0`** with **no authentication** — any process that can reach the port can POST routes / read mock balance (local-dev appropriate; dangerous if exposed).
+2. **`mln-sidecar` default server binds `0.0.0.0`** with **no authentication** — any process that can reach the port can POST routes, trigger batch, read route status, and read mock balance (local-dev appropriate; dangerous if exposed).
 3. **Operator / taker secrets on disk**: wallet stores **`OperatorEthPrivateKeyHex` in plaintext JSON** under the user config dir (`0o600` file, `0o700` dir) — documented in code comments but still a **high-value target** for malware or backups.
 4. **Forger → sidecar HTTP** uses default `http.Client` with **no TLS pinning** — acceptable for loopback; risky if extended to remote URLs without HTTPS and strong trust model.
 
