@@ -101,6 +101,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | -------- | ------- |
 | [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Full architecture, economics, roadmap, evidence preimage (appendix 13), MWEB appendix (14), open questions |
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
+| [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md) | Cursor rules/skills vs `AGENTS.md`; pairing Cursor with external models (Grok, Gemini, Claude) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Keep a Changelog–style notes for tagged releases and unreleased work |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
 | [`Makefile`](Makefile) | Contracts (`contracts-build`, `contracts-test`, `deploy-local`, `broadcast-litvm`, `record-litvm-deploy`), operator smoke (`test-operator-smoke`, `test-full-stack`), `mlnd` / CLI / wallet / sidecar / `mw-rpc-stub` / `coinswapd-research` builds, Docker images — see phase playbooks below for context |
@@ -144,6 +145,8 @@ The MLN **`mweb_*`** JSON-RPC extensions live in the **tracked** in-repo fork **
 **Scoped rules:** [`.cursor/rules/doc-sync.mdc`](.cursor/rules/doc-sync.mdc) (top-level docs / phase tables), [`.cursor/rules/mln-architecture.mdc`](.cursor/rules/mln-architecture.mdc) (protocol + stack map), [`.cursor/rules/mln-product-design.mdc`](.cursor/rules/mln-product-design.mdc) (UX docs + `mlnd` product copy), [`.cursor/rules/mln-go-engineer.mdc`](.cursor/rules/mln-go-engineer.mdc), [`.cursor/rules/mln-contracts.mdc`](.cursor/rules/mln-contracts.mdc), [`.cursor/rules/mln-frontend-wails.mdc`](.cursor/rules/mln-frontend-wails.mdc), [`.cursor/rules/mln-qa.mdc`](.cursor/rules/mln-qa.mdc), [`.cursor/rules/mln-deployment.mdc`](.cursor/rules/mln-deployment.mdc).
 
 **Skills (invoke when the task matches each `SKILL.md` description):** [doc-sync](.cursor/skills/doc-sync/SKILL.md), [mln-pm](.cursor/skills/mln-pm/SKILL.md), [mln-web3-product-design](.cursor/skills/mln-web3-product-design/SKILL.md), [coinswapd-reference](.cursor/skills/coinswapd-reference/SKILL.md), [mln-go-engineer](.cursor/skills/mln-go-engineer/SKILL.md), [mln-contracts](.cursor/skills/mln-contracts/SKILL.md), [mln-frontend-wails](.cursor/skills/mln-frontend-wails/SKILL.md), [mln-qa](.cursor/skills/mln-qa/SKILL.md), [mln-deployment](.cursor/skills/mln-deployment/SKILL.md), [mln-observability](.cursor/skills/mln-observability/SKILL.md), [mln-architecture-diagrams](.cursor/skills/mln-architecture-diagrams/SKILL.md).
+
+> See `docs/AGENT_HANDOFF.md` for how to collaborate between Cursor and external models (Grok, Gemini, etc.).
 
 ## License
 
