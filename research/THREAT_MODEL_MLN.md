@@ -249,3 +249,4 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | 2026-04 | Phase 3 integration slice: **`research/coinswapd`** build target + optional host smoke vs **`mln-sidecar -mode=rpc`**; hop **`tor`** URL normalization and pathfind **Tor-required** filtering — operator proxy (`HTTP_PROXY` / Tor SOCKS) still required for live `.onion` RPC dials inside **coinswapd**. |
 | 2026-04 | Doc sync: §1.3 Tor row + §1.3 alignment paragraph vs shipped **`pathfind`** Tor requirement and in-tree **`coinswapd`** fork (vs “fork required” wording). |
 | 2026-04 | **`mln-sidecar`** adds **`GET /v1/route/status`** and **`POST /v1/route/batch`** (same trust boundary as **`/v1/swap`**: unauthenticated HTTP; loopback-only in ops guidance). |
+| 2026-04 | Doc sync: header **codebase state** + §1.1 sidecar gap text for **completed swap path** (`mweb_runBatch` / status); **`AGENTS` / README / PRODUCT_SPEC §9** parity. |
