@@ -1,7 +1,7 @@
 # MLN stack — code review and threat model (accepted snapshot)
 
 **Date:** April 2026  
-**Codebase state:** `main` post-Phase 15; Phase 3a + integration slice + **completed swap path** on **`mw-rpc-stub`** (`mweb_runBatch` / `mweb_getRouteStatus`, sidecar **`/v1/route/*`**, E2E **`E2E_MWEB_FULL=1`**) as of 2026-04  
+**Codebase state:** `main` post-Phase 15; Phase 3a + integration slice + **completed swap path** on **`mw-rpc-stub`** (`mweb_runBatch` / `mweb_getRouteStatus`, sidecar **`/v1/route/*`**, E2E **`E2E_MWEB_FULL=1`**) plus **real funded operator runbook** (`E2E_MWEB_FUNDED=1`, **`swapX25519PubHex`** via bootstrap, optional **`-mweb-dev-clear-pending-after-batch`** — DEV ONLY) as of 2026-04  
 **Status:** Reviewed and accepted by the team (Harper, Benjamin, Lucas, Indigo). Findings were validated line-by-line against the repo; no material inaccuracies noted. This document preserves the audit and threat model for the repository record.
 
 **Related:** [`README.md`](../README.md) (roadmap and scaffold disclaimers), [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md), phase docs at repo root, [`AGENTS.md`](../AGENTS.md), adversarial narrative [`RED_TEAM_MLN.md`](RED_TEAM_MLN.md).
@@ -251,3 +251,4 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | 2026-04 | **`mln-sidecar`** adds **`GET /v1/route/status`** and **`POST /v1/route/batch`** (same trust boundary as **`/v1/swap`**: unauthenticated HTTP; loopback-only in ops guidance). |
 | 2026-04 | Doc sync: header **codebase state** + §1.1 sidecar gap text for **completed swap path** (`mweb_runBatch` / status); **`AGENTS` / README / PRODUCT_SPEC §9** parity. |
 | 2026-04 | Fork **`research/coinswapd`**: **`-mweb-dev-clear-pending-after-batch`** (DEV ONLY) clears onion DB after **`mweb_runBatch`** without **`SendTransaction`** — operator misconfiguration risk if enabled on production nodes; see [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) §2.7a. |
+| 2026-04 | Doc sync: threat model **codebase state** line reflects **`feat(mweb): real funded swap path`** (committed operator E2E + runbook; production **`pendingOnions=0`** still implies real **`finalize`** / P2P per Phase 3 doc). |
