@@ -1,6 +1,8 @@
 # MLN Nostr wire profile (Phase 2)
 
-**Status:** draft wire spec for Phase 2 — discovery and gossip only. Stake and grievance truth live on **LitVM** ([`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) §5–6). This document is the canonical place for **event kinds**, **`content` JSON**, and **identity binding** to [`MwixnetRegistry`](../contracts/src/MwixnetRegistry.sol).
+**Status:** **normative v1** for kinds **31250–31251** — discovery and gossip only. Stake and grievance truth live on **LitVM** ([`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) §5–6). This document is the canonical place for **event kinds**, **`content` JSON**, and **identity binding** to [`MwixnetRegistry`](../contracts/src/MwixnetRegistry.sol).
+
+**In-repo closure:** Golden fixtures and CI validation live under [`nostr/`](../nostr/); playbook and operator notes: [`PHASE_2_NOSTR.md`](../PHASE_2_NOSTR.md).
 
 ## Principles
 
@@ -158,4 +160,5 @@ Some deployments use **31240–31246** for **round request → coordinator bid �
 
 ## See also
 
+- [`PHASE_2_NOSTR.md`](../PHASE_2_NOSTR.md) — Phase 2 playbook (fixtures, CI, Scout, address rotation).
 - [`USER_STORIES_MLN.md`](USER_STORIES_MLN.md) — User stories, coordination model, epoch semantics, wallet auto-route policy (PoC).

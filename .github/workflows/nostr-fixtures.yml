@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "nostr/**"
+      - "scripts/mln_nostr_wire.py"
       - ".github/workflows/nostr-fixtures.yml"
   pull_request:
     paths:
       - "nostr/**"
+      - "scripts/mln_nostr_wire.py"
       - ".github/workflows/nostr-fixtures.yml"
 
 jobs:
@@ -18,3 +20,6 @@ jobs:
 
       - name: Validate MLN Nostr fixtures
         run: python3 nostr/validate_fixtures.py
+
+      - name: Check Python wire helpers match fixture schema
+        run: python3 nostr/check_wire_helpers.py

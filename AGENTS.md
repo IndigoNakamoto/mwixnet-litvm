@@ -15,7 +15,7 @@
 | Red-team narratives + tabletop exercise (extends threat model; not a separate audit) | `research/RED_TEAM_MLN.md` |
 | Maker exit queue / cooldown / slashing window (registry + grievances) | `PRODUCT_SPEC.md` section 5.1.1, `contracts/src/MwixnetRegistry.sol`, `PHASE_15_ECONOMIC_HARDENING.md` |
 | Appendix 13 hash helpers (`evidenceHash`, `grievanceId`) | `contracts/src/EvidenceLib.sol` |
-| Nostr wire profile (MLN kinds, tags, `content` JSON, `nostrKeyHash` binding) | `research/NOSTR_MLN.md` |
+| Nostr wire profile (MLN kinds, tags, `content` JSON, `nostrKeyHash` binding) | `research/NOSTR_MLN.md`, `PHASE_2_NOSTR.md`, `nostr/validate_fixtures.py`, `.github/workflows/nostr-fixtures.yml` |
 | Archived Nostr doc stub (historical `NOSTR_EVENTS` filename) | `research/NOSTR_EVENTS.md` |
 | User stories, coordination / epochs, wallet route policy (PoC), taker-first UX principles | `research/USER_STORIES_MLN.md` |
 | Wallet UX wireframes (taker / maker) | `research/WALLET_TAKER_FLOW_V1.md`, `research/WALLET_MAKER_FLOW_V1.md` |
@@ -51,7 +51,7 @@ The teardown documents **entry points** and the **`ltcd`** dependency boundary (
 
 ## Current phase
 
-**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**, including **`mln-cli maker onboard`** and an **optional `mlnd` Maker dashboard** (loopback by default); **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM. **Phase 3a** (MWEB route JSON → **`mln-sidecar -mode=rpc`** → **`mweb_submitRoute`**) is **verified** on the **`mw-rpc-stub`** path with **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** as of **2026-04-03** (`PHASE_3_MWEB_HANDOFF_SLICE.md`); full Phase 3 integration remains open. **Security docs:** `research/THREAT_MODEL_MLN.md` (accepted audit snapshot + threat tables), `research/RED_TEAM_MLN.md` (red-team narratives; extends the threat model).
+**Phase 1 (local):** contracts, `EvidenceLib`, fuzz and invariant tests, Slither on `contracts/**` in GitHub Actions, `make contracts-test`, `scripts/deploy-local-anvil.sh` — see `README.md` roadmap. **Implementation phases 10–16** (through public testnet readiness packaging) are **shipped in-tree**, including **`mln-cli maker onboard`** and an **optional `mlnd` Maker dashboard** (loopback by default); **LitVM testnet broadcast** on the official chain remains pending public RPC from LitVM. **Phase 2** (Nostr kinds **31250–31251**, fixtures + CI, Scout deployment filters, `mlnd` ads) is **documented as v1 complete** (`research/NOSTR_MLN.md`, `PHASE_2_NOSTR.md`). **Phase 3a** (MWEB route JSON → **`mln-sidecar -mode=rpc`** → **`mweb_submitRoute`**) is **verified** on the **`mw-rpc-stub`** path with **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** as of **2026-04-03** (`PHASE_3_MWEB_HANDOFF_SLICE.md`); full Phase 3 integration remains open. **Security docs:** `research/THREAT_MODEL_MLN.md` (accepted audit snapshot + threat tables), `research/RED_TEAM_MLN.md` (red-team narratives; extends the threat model).
 
 **Phase 1 (testnet):** when LitVM publishes endpoints, broadcast and record addresses (`research/LITVM.md`, `PHASE_16_PUBLIC_TESTNET.md`).
 
