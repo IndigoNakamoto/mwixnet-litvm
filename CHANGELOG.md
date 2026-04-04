@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- **QA:** Re-ran `python3 nostr/validate_fixtures.py` and `python3 nostr/check_wire_helpers.py` (Nostr wire hygiene; mln-pm quick win).
 - **Celebrate:** Full in-repo **MWEB completed swap round-trip** (route submit → **`mweb_runBatch`** → **`pendingOnions=0`**) verified with **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** — same operator knobs apply to **`coinswapd-research`** per Phase 3 runbook.
 - **MWEB completed-swap operator path:** `research/coinswapd` **`mweb_getRouteStatus`** / **`mweb_runBatch`**, DB cleanup after **`finalize`**, **`mln-sidecar`** **`GET /v1/route/status`** + **`POST /v1/route/batch`**, **`mln-cli forger`** **`-trigger-batch` / `-wait-batch`**, **`mw-rpc-stub`** virtual pending queue; see [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) and [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md).
 - **QA:** Ran `python3 nostr/validate_fixtures.py` and `python3 nostr/check_wire_helpers.py` (Nostr wire hygiene before release-candidate workflow).
@@ -22,6 +23,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
+- **Docs:** [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) + [`README.md`](README.md) permanent regression-anchor note for PRs touching sidecar/forger/coinswapd; [`contracts/.env.example`](contracts/.env.example) / [`deploy/.env.testnet.example`](deploy/.env.testnet.example) cross-refs to [`PHASE_16_PUBLIC_TESTNET.md`](PHASE_16_PUBLIC_TESTNET.md) section 0; [`AGENTS.md`](AGENTS.md) Phase 3a table row.
 - **`scripts/e2e-mweb-handoff-stub.sh`:** **`E2E_MWEB_FULL=1`** path runs **`mln-cli forger`** with **`-trigger-batch -wait-batch`** (sidecar **`/v1/route/*`** + stub **`mweb_runBatch`**).
 - **Docs:** Release-candidate Phase 3a regression checklist in [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) and [`README.md`](README.md); [`contracts/.env.example`](contracts/.env.example) / [`deploy/.env.testnet.example`](deploy/.env.testnet.example) aligned with `make broadcast-litvm` / `make record-litvm-deploy` and [`PHASE_16_PUBLIC_TESTNET.md`](PHASE_16_PUBLIC_TESTNET.md) section 0.
 - **`mlnd`**: Reject placeholder / zero registry–court–operator addresses; relays without `MLND_NOSTR_NSEC` → read-only (no publish). Optional **`MLND_FEE_MIN_SAT` / `MLND_FEE_MAX_SAT`**, **`MLND_SWAP_X25519_PUB_HEX`** in maker ads.

@@ -33,17 +33,21 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Remaining gaps vs on-chain “mixed” proof:** multi-hop **`swap_forward` / `swap_backward`** still require **live maker `coinswapd` RPC** endpoints; LitVM grievance path and L1 inclusion proofs remain per **`PRODUCT_SPEC.md`** / Phase 15 docs.
 
+## Permanent regression anchor (PRs + release tags)
+
+**Run before merging any PR** that touches **`mln-sidecar/`**, **`research/coinswapd/`**, or **`mln-cli`** paths that affect the forger / sidecar handoff (**`internal/forger/`**, **`internal/pathfind/`**, **`internal/takerflow/`**, **`cmd/mln-cli/`** forger flags), **and** before every **`v*`** release tag on the stack. From repo root:
+
+1. **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** — expect exit **`0`** and **`Phase 3a stub handoff checks passed.`** (build **`make build-mw-rpc-stub`**, **`make build-mln-cli`**; Docker for Compose).
+
+2. **Research fork variant (host JSON-RPC; no `E2E_MWEB_FULL`):** on a suitable host, **`make build-research-coinswapd`**, full **`ltcmweb1…`** **`COINSWAPD_FEE_MWEB`**, then  
+   `MWEB_RPC_BACKEND=coinswapd COINSWAPD_FEE_MWEB="$ADDR" ./scripts/e2e-mweb-handoff-stub.sh`  
+   — expect balance path OK and stub-shaped **`POST /v1/swap`** → **502** (see [Quick path](#quick-path-stub--compose) step 3).
+
+Skipping these after handoff-affecting edits risks silent regressions in **`mweb_*`**, **`/v1/route/*`**, or **`mln-cli forger`**.
+
 ## Release candidate regression (before every `v*` tag)
 
-From repo root, run these **before** tagging an **`mln` / stack release candidate** so the MWEB handoff path does not drift. Build **`make build-mw-rpc-stub`** first; the full path needs **`make build-mln-cli`** (and Docker for Compose).
-
-1. **Stub + full Scout → pathfind → forger:**  
-   `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`  
-   Expect exit **`0`** and **`Phase 3a stub handoff checks passed.`**
-
-2. **Research fork smoke (host JSON-RPC; no `E2E_MWEB_FULL`):** on a machine with **`make build-research-coinswapd`** and a valid full mainnet MWEB fee address (**`ltcmweb1…`**, see [Quick path](#quick-path-stub--compose) step 3):  
-   `MWEB_RPC_BACKEND=coinswapd COINSWAPD_FEE_MWEB="$ADDR" ./scripts/e2e-mweb-handoff-stub.sh`  
-   Expect **`GET /v1/balance`** OK and **`POST /v1/swap`** → **502** (expected with stub-shaped body).
+Same commands as **Permanent regression anchor** above; release candidates must run both stub **`E2E_MWEB_FULL=1`** and, when feasible, the **`MWEB_RPC_BACKEND=coinswapd`** smoke on a dev host.
 
 ## Integration slice (research fork + Tor-shaped URLs) — 2026-04-03
 

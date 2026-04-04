@@ -65,7 +65,7 @@ When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/a
 
 ### Release process (`mlnd` binaries)
 
-**Before every release candidate (`v*` tag):** run Phase 3a regressions documented in [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) (*Release candidate regression*): **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** (stub stack + Scout/pathfind/forger), and on a suitable host **`MWEB_RPC_BACKEND=coinswapd`** with full **`COINSWAPD_FEE_MWEB`** per that playbook (research fork balance path + expected **502** on stub-shaped swap). Also run Nostr wire hygiene: **`python3 nostr/validate_fixtures.py && python3 nostr/check_wire_helpers.py`**.
+**Permanent MWEB handoff regression anchor:** before merging a PR that changes **`mln-sidecar/`**, **`research/coinswapd/`**, or **`mln-cli`** forger/sidecar-related code, and before every **`v*`** tag, run **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** plus (on a suitable host) the **`MWEB_RPC_BACKEND=coinswapd`** variant with full **`COINSWAPD_FEE_MWEB`** — see [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) (*Permanent regression anchor*). Also run Nostr wire hygiene: **`python3 nostr/validate_fixtures.py && python3 nostr/check_wire_helpers.py`**.
 
 Push a version tag matching `v*` (e.g. `v0.1.0`). [`.github/workflows/mlnd-release.yml`](.github/workflows/mlnd-release.yml) builds **linux/amd64** and **linux/arm64** with CGO (SQLite), then attaches `mlnd-linux-amd64` and `mlnd-linux-arm64` to the GitHub Release. ARM runners need a **public** repository (or adjust the workflow). Docker: `make docker-build` → image `mlnd:local`.
 
@@ -105,7 +105,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |
 | [`Makefile`](Makefile) | Contracts (`contracts-build`, `contracts-test`, `deploy-local`, `broadcast-litvm`, `record-litvm-deploy`), operator smoke (`test-operator-smoke`, `test-full-stack`), `mlnd` / CLI / wallet / sidecar / `mw-rpc-stub` / `coinswapd-research` builds, Docker images — see phase playbooks below for context |
 | [`PHASE_2_NOSTR.md`](PHASE_2_NOSTR.md) | Phase 2: Nostr wire v1 (kinds 31250–31251), [`nostr/fixtures/`](nostr/fixtures/), CI validation, Scout deployment filters, address rotation |
-| [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) | Phase 3a: `mln-sidecar -mode=rpc` + `mweb_*` stub or **`coinswapd-research`**; **completed swap path** (submit → batch → status, **`E2E_MWEB_FULL=1`**); Tor URL normalization; gaps vs live P2P / LitVM |
+| [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) | Phase 3a: `mln-sidecar -mode=rpc` + `mweb_*` stub or **`coinswapd-research`**; **completed swap path**; **PR + `v*` regression anchors** (`E2E_MWEB_FULL=1`, optional **`MWEB_RPC_BACKEND=coinswapd`**); Tor URL normalization; gaps vs live P2P / LitVM |
 | [`PHASE_5_NOSTR_TOR_BRIDGE.md`](PHASE_5_NOSTR_TOR_BRIDGE.md) | Phase 5: Nostr relay behavior, Tor URL clarity, receipt bridge scaffold (`mlnd`) |
 | [`PHASE_6_BRIDGE_INTEGRATION.md`](PHASE_6_BRIDGE_INTEGRATION.md) | Phase 6: NDJSON receipt bridge → `mlnd` SQLite, identity threading vs `coinswapd` |
 | [`PHASE_7_END_TO_END.md`](PHASE_7_END_TO_END.md) | Phase 7: golden NDJSON → `mlnd` bridge → LitVM grievance operator smoke (`make test-operator-smoke`) |
