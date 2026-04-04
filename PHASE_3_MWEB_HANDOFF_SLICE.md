@@ -4,6 +4,20 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Out of scope for this slice:** official [LitVM testnet](https://docs.litvm.com/) RPC, real Tor hops, Neutrino-backed [`research/coinswapd/`](research/coinswapd/) in CI, and on-chain slash resolution on a public chain.
 
+## Completion (stub + full CLI path)
+
+**Status: complete** for the **documented stub stack** as of **2026-04-03**.
+
+**Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) deploy + maker registration, then **`mln-cli pathfind -json`** and **`mln-cli forger`** posting to **`http://127.0.0.1:8080/v1/swap`**; stub logged **`mweb_submitRoute ok`** and forger reported route accepted. Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
+
+This **does not** close README **Phase 3** (full Nostr → Tor → MWixnet round → L2 path). **Promote path** to real MWEB JSON-RPC remains [`research/coinswapd/`](research/coinswapd/) on a separate port — see [Promote path](#promote-path-researchcoinswapd) below.
+
+## Status (regression / hardening)
+
+- **`mln-sidecar -mode=rpc`:** [`internal/mweb/rpc_bridge.go`](mln-sidecar/internal/mweb/rpc_bridge.go) normalizes `-rpc-url` (trim space, trailing slash) and calls **`mweb_submitRoute`** / **`mweb_getBalance`** via go-ethereum `rpc.Client` (same method names as [`research/coinswapd/mweb_service.go`](research/coinswapd/mweb_service.go)).
+- **Tests:** [`mln-sidecar/internal/mweb/rpc_bridge_test.go`](mln-sidecar/internal/mweb/rpc_bridge_test.go) asserts JSON-RPC **params** for `mweb_submitRoute` decode to the fork’s route object (including optional per-hop **`swapX25519PubHex`**). [`mln-sidecar/internal/api/server_rpc_test.go`](mln-sidecar/internal/api/server_rpc_test.go) covers HTTP 502 on upstream RPC errors for swap and balance. [`research/coinswapd/mlnroute/sidecar_wire_test.go`](research/coinswapd/mlnroute/sidecar_wire_test.go) golden-unmarshals the same JSON as [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh).
+- **`mw-rpc-stub`:** validates **`mweb_submitRoute`** payload shape (3 hops, destination, amount) so Compose/curl exercises fail loudly if the sidecar wire drifts.
+
 ## Goal
 
 Validate the **integration contract** from [research/COINSWAPD_MLN_FORK_SPEC.md](research/COINSWAPD_MLN_FORK_SPEC.md): `mln-cli forger` / Wails **Send Privately** → **`GET /v1/balance`** and **`POST /v1/swap`** on the sidecar → **`mweb_getBalance`** / **`mweb_submitRoute`** on a JSON-RPC peer.

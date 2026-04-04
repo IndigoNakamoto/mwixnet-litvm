@@ -148,3 +148,70 @@ func TestHTTP_RPC_swapUpstreamError(t *testing.T) {
 		t.Fatalf("body: %s", body)
 	}
 }
+
+func TestHTTP_RPC_balanceUpstreamError(t *testing.T) {
+	t.Parallel()
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req rpcWire
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      json.RawMessage(req.ID),
+			"error": map[string]interface{}{
+				"code":    -32000,
+				"message": "balance engine down",
+			},
+		})
+	}))
+	t.Cleanup(stub.Close)
+
+	srv := httptest.NewServer(NewMux(mweb.NewRPCBridge(stub.URL)))
+	t.Cleanup(srv.Close)
+
+	resp, err := srv.Client().Get(srv.URL + "/v1/balance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("want 502, got %d: %s", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), "balance unavailable") || !strings.Contains(string(body), "balance engine down") {
+		t.Fatalf("body: %s", body)
+	}
+}
+
+func TestHTTP_RPC_swapWithAllHopX25519Keys(t *testing.T) {
+	t.Parallel()
+	stub := newJSONRPCStub(t)
+	t.Cleanup(stub.Close)
+
+	srv := httptest.NewServer(NewMux(mweb.NewRPCBridge(stub.URL)))
+	t.Cleanup(srv.Close)
+
+	key := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	payload := `{"route":[` +
+		`{"tor":"http://n1","feeMinSat":1,"swapX25519PubHex":"` + key + `"},` +
+		`{"tor":"http://n2","feeMinSat":2,"swapX25519PubHex":"` + key + `"},` +
+		`{"tor":"http://n3","feeMinSat":3,"swapX25519PubHex":"` + key + `"}],` +
+		`"destination":"mweb1x","amount":1000000}`
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, srv.URL+"/v1/swap", strings.NewReader(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("swap status %d: %s", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), `"ok":true`) {
+		t.Fatalf("swap body: %s", body)
+	}
+}

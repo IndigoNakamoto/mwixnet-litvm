@@ -3,6 +3,7 @@ package mweb
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -24,9 +25,16 @@ type RPCBridge struct {
 	URL string
 }
 
+// normalizeRPCURL trims whitespace and a trailing slash so Dial matches coinswapd / stub listeners.
+func normalizeRPCURL(raw string) string {
+	s := strings.TrimSpace(raw)
+	s = strings.TrimSuffix(s, "/")
+	return s
+}
+
 // NewRPCBridge dials nothing at construction; each call uses a short-lived client.
 func NewRPCBridge(rawURL string) *RPCBridge {
-	return &RPCBridge{URL: rawURL}
+	return &RPCBridge{URL: normalizeRPCURL(rawURL)}
 }
 
 // HandleSwap validates locally, then forwards the MLN payload to mweb_submitRoute.

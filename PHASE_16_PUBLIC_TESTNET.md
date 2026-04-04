@@ -40,6 +40,27 @@ This phase adds **defaults and packaging** so operators and takers can aim at **
 
 **Local closed-loop testing** remains [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) ([`deploy/docker-compose.e2e.yml`](deploy/docker-compose.e2e.yml)).
 
+### MWEB handoff success (Phase 3a, local)
+
+*Sources: [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md); [`AGENTS.md`](AGENTS.md) (MWEB privacy engine vs LitVM registry vs Nostr discovery).*
+
+**2026-04-03:** **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** exercised Nostr + local LitVM (**Anvil**) for scout/pathfind and **`mln-cli` forger** → **`mln-sidecar`** (`GET /v1/balance`, `POST /v1/swap`) → **`mweb_submitRoute`** on **`mw-rpc-stub`** (JSON-RPC stand-in for [`research/coinswapd/`](research/coinswapd/)). This playbook (Phase 16) still covers **public** relay + EVM RPC defaults for operators; it does not replace Phase 3a’s local MWEB handoff runbook.
+
+```mermaid
+sequenceDiagram
+  participant T as mln_cli_taker
+  participant N as Nostr_relay
+  participant A as LitVM_Anvil
+  participant S as mln_sidecar_mode_rpc
+  participant M as mweb_JSON_RPC_peer_stub_or_fork
+  T->>N: discovery_pathfind
+  T->>A: stake_verify
+  T->>S: POST_v1_swap_route_JSON
+  S->>M: mweb_submitRoute
+  M-->>S: accepted
+  S-->>T: HTTP_200_ok
+```
+
 ## Layer map (onboarding)
 
 *Sources: [`AGENTS.md`](AGENTS.md) (layer boundaries); [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) section 9 (P0–P3 roadmap and in-repo implementation status aligned to those layers).*

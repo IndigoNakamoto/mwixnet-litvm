@@ -19,6 +19,41 @@ type rpcRequest struct {
 	ID      json.RawMessage `json:"id"`
 }
 
+// submitRouteBody matches the single param object mln-sidecar sends to mweb_submitRoute (parity with research/coinswapd/mlnroute).
+type submitRouteBody struct {
+	Route []struct {
+		Tor              string `json:"tor"`
+		FeeMinSat        uint64 `json:"feeMinSat"`
+		SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+	} `json:"route"`
+	Destination string `json:"destination"`
+	Amount      uint64 `json:"amount"`
+}
+
+func writeRPC(w http.ResponseWriter, id json.RawMessage, result interface{}, rpcErr *struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}) {
+	w.Header().Set("Content-Type", "application/json")
+	var out map[string]interface{}
+	if rpcErr != nil {
+		out = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      json.RawMessage(id),
+			"error":   rpcErr,
+		}
+	} else {
+		out = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      json.RawMessage(id),
+			"result":  result,
+		}
+	}
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		log.Printf("encode: %v", err)
+	}
+}
+
 func main() {
 	addr := flag.String("addr", ":8546", "listen address (e.g. :8546)")
 	flag.Parse()
@@ -39,38 +74,60 @@ func main() {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
-		var resp map[string]interface{}
 		switch req.Method {
 		case "mweb_submitRoute":
-			log.Printf("mweb_submitRoute params_len=%d", len(req.Params))
-			resp = map[string]interface{}{
-				"jsonrpc": "2.0",
-				"id":      json.RawMessage(req.ID),
-				"result":  nil,
+			var params []json.RawMessage
+			if err := json.Unmarshal(req.Params, &params); err != nil {
+				writeRPC(w, req.ID, nil, &struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+				}{Code: -32602, Message: "invalid params: " + err.Error()})
+				return
 			}
+			if len(params) != 1 {
+				writeRPC(w, req.ID, nil, &struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+				}{Code: -32602, Message: fmt.Sprintf("mweb_submitRoute expects 1 param object, got %d", len(params))})
+				return
+			}
+			var sr submitRouteBody
+			if err := json.Unmarshal(params[0], &sr); err != nil {
+				writeRPC(w, req.ID, nil, &struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+				}{Code: -32602, Message: "route body: " + err.Error()})
+				return
+			}
+			if len(sr.Route) != 3 || sr.Destination == "" || sr.Amount == 0 {
+				writeRPC(w, req.ID, nil, &struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+				}{Code: -32602, Message: "route must have 3 hops, non-empty destination, positive amount"})
+				return
+			}
+			for i, h := range sr.Route {
+				if h.Tor == "" {
+					writeRPC(w, req.ID, nil, &struct {
+						Code    int    `json:"code"`
+						Message string `json:"message"`
+					}{Code: -32602, Message: fmt.Sprintf("hop %d: tor required", i)})
+					return
+				}
+			}
+			log.Printf("mweb_submitRoute ok destination=%s amount=%d", sr.Destination, sr.Amount)
+			writeRPC(w, req.ID, nil, nil)
 		case "mweb_getBalance":
-			resp = map[string]interface{}{
-				"jsonrpc": "2.0",
-				"id":      json.RawMessage(req.ID),
-				"result": map[string]interface{}{
-					"availableSat": uint64(10),
-					"spendableSat": uint64(9),
-					"detail":       "mw-rpc-stub",
-				},
-			}
+			writeRPC(w, req.ID, map[string]interface{}{
+				"availableSat": uint64(10),
+				"spendableSat": uint64(9),
+				"detail":       "mw-rpc-stub",
+			}, nil)
 		default:
-			resp = map[string]interface{}{
-				"jsonrpc": "2.0",
-				"id":      json.RawMessage(req.ID),
-				"error": map[string]interface{}{
-					"code":    -32601,
-					"message": "method not found: " + req.Method,
-				},
-			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Printf("encode: %v", err)
+			writeRPC(w, req.ID, nil, &struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+			}{Code: -32601, Message: "method not found: " + req.Method})
 		}
 	})
 
