@@ -133,6 +133,14 @@ Invokes the same **`performSwap()`** path as the UTC **midnight** tick (load DB 
 
 **`mw-rpc-stub`** implements §2.6–2.7 with a virtual pending counter so CI can clear the queue without Neutrino.
 
+### 2.7a Dev-only: `-mweb-dev-clear-pending-after-batch` (`research/coinswapd`)
+
+When this **boolean flag** is passed to **`bin/coinswapd-research`**, **`mweb_runBatch`** still runs **`performSwap()`** (peel / forward sync steps as today), then **deletes every onion still stored** in the local `coinswap-onions` DB **without** **`finalize`** or **`SendTransaction`**. **`mweb_getRouteStatus`** then reports **`pendingOnions: 0`**.
+
+**Use:** controlled-host smoke only (e.g. **`E2E_MWEB_FUNDED_DEV_CLEAR=1`** in [`scripts/e2e-mweb-handoff-stub.sh`](../scripts/e2e-mweb-handoff-stub.sh)) when you need to exercise **`mweb_submitRoute` → `mweb_runBatch` → status** end-to-end **without** three live maker **`swap_forward`** peers.
+
+**Never use in production:** it **does not** complete a real MWEB mix or broadcast; it only empties the local queue.
+
 ---
 
 ## 3. Key material and maker binding

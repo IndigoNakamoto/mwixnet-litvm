@@ -8,11 +8,18 @@
 #   E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh
 #     → also bootstrap, start makers, mln-cli pathfind + forger (builds mln-cli if needed).
 #
-# Optional real fork (Neutrino + keys; swap may fail without funded MWEB UTXO):
+# Optional real fork (Neutrino + keys; default curl swap expects 502 without keys/UTXO):
 #   MWEB_RPC_BACKEND=coinswapd COINSWAPD_FEE_MWEB='ltcmweb1qq<full string from wallet>' ./scripts/e2e-mweb-handoff-stub.sh
 #   ltcmweb/ltcd mainnet Bech32 HRP is "ltcmweb" → addresses start with ltcmweb1 (not mweb1). Paste the full string; no … or ...
-#   (-a must decode as mainnet MWEB; bad strings make coinswapd exit: "decoded address is of unknown format")
-#   E2E_MWEB_FULL=1 is not supported with coinswapd (forger needs wallet state); use stub for full CLI path.
+#
+# Funded operator path (real scan/spend, exact UTXO amount, swap keys in route → submit 200 → batch → pendingOnions=0):
+#   E2E_MWEB_FUNDED=1 MWEB_RPC_BACKEND=coinswapd \
+#     MWEB_SCAN_SECRET=... MWEB_SPEND_SECRET=... \
+#     COINSWAPD_FEE_MWEB='ltcmweb1...' E2E_MWEB_DEST='ltcmweb1...' E2E_MWEB_AMOUNT=<sat exact coin> \
+#     E2E_MWEB_FUNDED_DEV_CLEAR=1 ./scripts/e2e-mweb-handoff-stub.sh
+#   E2E_MWEB_FUNDED_DEV_CLEAR=1 adds -mweb-dev-clear-pending-after-batch on coinswapd (DEV ONLY: DB clear without chain finalize).
+#   Without DEV_CLEAR, pendingOnions hits 0 only after a real multi-hop finalize (live maker coinswapd RPCs).
+#   Requires jq; runs e2e-bootstrap + makers unless E2E_MWEB_SKIP_BOOTSTRAP=1.
 #
 # See PHASE_3_MWEB_HANDOFF_SLICE.md
 
@@ -46,9 +53,30 @@ stub)
 	RPC_PID=$!
 	;;
 coinswapd)
-	if [[ "${E2E_MWEB_FULL:-}" == "1" ]]; then
-		echo "E2E_MWEB_FULL with MWEB_RPC_BACKEND=coinswapd is unsupported (forger needs funded coinswapd wallet)." >&2
+	if [[ "${E2E_MWEB_FULL:-}" == "1" && "${E2E_MWEB_FUNDED:-}" != "1" ]]; then
+		echo "E2E_MWEB_FULL with MWEB_RPC_BACKEND=coinswapd requires E2E_MWEB_FUNDED=1 (real keys, UTXO, route with swapX25519PubHex)." >&2
 		exit 1
+	fi
+	if [[ "${E2E_MWEB_FUNDED:-}" == "1" ]]; then
+		if ! command -v jq >/dev/null 2>&1; then
+			echo "error: E2E_MWEB_FUNDED=1 requires jq (brew install jq / apt install jq)." >&2
+			exit 1
+		fi
+		: "${MWEB_SCAN_SECRET:?E2E_MWEB_FUNDED=1 requires MWEB_SCAN_SECRET (hex 32-byte MWEB scan key)}"
+		: "${MWEB_SPEND_SECRET:?E2E_MWEB_FUNDED=1 requires MWEB_SPEND_SECRET (hex 32-byte MWEB spend key)}"
+		: "${E2E_MWEB_DEST:?E2E_MWEB_FUNDED=1 requires E2E_MWEB_DEST (full ltcmweb1… receive address)}"
+		: "${E2E_MWEB_AMOUNT:?E2E_MWEB_FUNDED=1 requires E2E_MWEB_AMOUNT (satoshis; must match a spendable MWEB coin value exactly)}"
+		case "${E2E_MWEB_DEST}" in
+		*\<*|*\>*|*…*|*...*)
+			echo "error: E2E_MWEB_DEST looks truncated or placeholder." >&2
+			exit 1
+			;;
+		esac
+		dest_lc="$(printf '%s' "${E2E_MWEB_DEST}" | tr '[:upper:]' '[:lower:]')"
+		if [[ "${dest_lc}" != ltcmweb1* ]]; then
+			echo "error: E2E_MWEB_DEST must be mainnet MWEB (prefix ltcmweb1)." >&2
+			exit 1
+		fi
 	fi
 	: "${COINSWAPD_FEE_MWEB:?set COINSWAPD_FEE_MWEB to a mainnet MWEB stealth address (-a)}"
 	case "${COINSWAPD_FEE_MWEB}" in
@@ -78,8 +106,17 @@ coinswapd)
 	fi
 	make build-research-coinswapd
 	RANDK="$(openssl rand -hex 32)"
-	MWEB_SCAN="${MWEB_SCAN_SECRET:-$(openssl rand -hex 32)}"
-	MWEB_SPEND="${MWEB_SPEND_SECRET:-$(openssl rand -hex 32)}"
+	if [[ "${E2E_MWEB_FUNDED:-}" == "1" ]]; then
+		MWEB_SCAN="${MWEB_SCAN_SECRET}"
+		MWEB_SPEND="${MWEB_SPEND_SECRET}"
+	else
+		MWEB_SCAN="${MWEB_SCAN_SECRET:-$(openssl rand -hex 32)}"
+		MWEB_SPEND="${MWEB_SPEND_SECRET:-$(openssl rand -hex 32)}"
+	fi
+	COIN_EXTRA=( )
+	if [[ "${E2E_MWEB_FUNDED_DEV_CLEAR:-}" == "1" ]]; then
+		COIN_EXTRA+=( -mweb-dev-clear-pending-after-batch )
+	fi
 	echo "=== Starting coinswapd-research on :${LISTEN_PORT} (Neutrino; HTTP RPC when main returns) ==="
 	"${BIN_COIN}" \
 		-l "${LISTEN_PORT}" \
@@ -88,6 +125,7 @@ coinswapd)
 		-mweb-scan-secret "${MWEB_SCAN}" \
 		-mweb-spend-secret "${MWEB_SPEND}" \
 		-mln-local-taker \
+		"${COIN_EXTRA[@]}" \
 		${COINSWAPD_EXTRA_FLAGS:-} &
 	RPC_PID=$!
 	echo "=== Waiting for coinswapd JSON-RPC on ${LISTEN_PORT} ==="
@@ -155,6 +193,8 @@ if [[ "${MWEB_RPC_BACKEND}" == "stub" ]]; then
 		exit 1
 	}
 	echo "POST /v1/swap OK"
+elif [[ "${E2E_MWEB_FUNDED:-}" == "1" ]]; then
+	echo "POST /v1/swap: skipping stub-shaped curl (E2E_MWEB_FUNDED uses mln-cli forger below)."
 else
 	# coinswapd: expect JSON-RPC / wallet failure (missing keys or UTXO), not transport failure.
 	swap_code=$(curl -sS -o /tmp/mln-mweb-swap.out -w '%{http_code}' -X POST "http://127.0.0.1:8080/v1/swap" \
@@ -171,7 +211,41 @@ else
 	fi
 fi
 
-if [[ "${E2E_MWEB_FULL:-}" == "1" ]]; then
+if [[ "${E2E_MWEB_FUNDED:-}" == "1" ]]; then
+	echo "=== E2E_MWEB_FUNDED: bootstrap + makers + mln-cli pathfind/forger (coinswapd) ==="
+	if [[ "${E2E_MWEB_SKIP_BOOTSTRAP:-}" != "1" ]]; then
+		./scripts/e2e-bootstrap.sh
+	fi
+	docker compose -f "${COMPOSE_BASE}" -f "${COMPOSE_RPC}" --profile makers up -d --build
+
+	sleep 8
+
+	# shellcheck source=/dev/null
+	source "${ROOT}/deploy/e2e.generated.env"
+	export MLN_NOSTR_RELAYS="${E2E_NOSTR_RELAY_WS}"
+	export MLN_LITVM_CHAIN_ID="${E2E_CHAIN_ID}"
+	export MLN_LITVM_HTTP_URL="${E2E_ANVIL_HTTP}"
+	export MLN_REGISTRY_ADDR="${E2E_MWIXNET_REGISTRY}"
+	export MLN_GRIEVANCE_COURT_ADDR="${E2E_GRIEVANCE_COURT}"
+	export MLN_SCOUT_TIMEOUT="${MLN_SCOUT_TIMEOUT:-45s}"
+
+	make build-mln-cli
+	ROUTE_JSON="${ROOT}/deploy/e2e.mweb-funded.route.json"
+	"${ROOT}/bin/mln-cli" pathfind -json >"${ROUTE_JSON}"
+	if ! jq -e '(.hops | length == 3) and ([.hops[] | .swapX25519PubHex // ""] | map(length == 64) | all)' "${ROUTE_JSON}" >/dev/null; then
+		echo "error: pathfind route must have 3 hops each with 64-char swapX25519PubHex (re-run e2e-bootstrap so maker env includes MLND_SWAP_X25519_PUB_HEX)." >&2
+		exit 1
+	fi
+	BATCH_POLL="${E2E_MWEB_BATCH_POLL:-500ms}"
+	BATCH_TIMEOUT="${E2E_MWEB_BATCH_TIMEOUT:-5m}"
+	"${ROOT}/bin/mln-cli" forger -route-json "${ROUTE_JSON}" -dry-run=false \
+		-dest "${E2E_MWEB_DEST}" \
+		-amount "${E2E_MWEB_AMOUNT}" \
+		-coinswapd-url "http://127.0.0.1:8080/v1/swap" \
+		-trigger-batch -wait-batch \
+		-batch-poll "${BATCH_POLL}" -batch-timeout "${BATCH_TIMEOUT}"
+	echo "mln-cli forger (funded coinswapd + batch/status) OK"
+elif [[ "${E2E_MWEB_FULL:-}" == "1" ]]; then
 	echo "=== E2E_MWEB_FULL: bootstrap + makers + mln-cli pathfind/forger ==="
 	./scripts/e2e-bootstrap.sh
 	docker compose -f "${COMPOSE_BASE}" -f "${COMPOSE_RPC}" --profile makers up -d --build

@@ -150,6 +150,7 @@ write_maker_env() {
   local addr_lc="$3"
   local nsec_hex="$4"
   local tor_url="$5"
+  local swap_x25519_pub_hex="$6"
 
   cat >"$path" <<EOF
 MLND_WS_URL=ws://anvil:8545
@@ -165,12 +166,19 @@ MLND_OPERATOR_PRIVATE_KEY=$pk
 MLND_TOR_ONION=$tor_url
 MLND_FEE_MIN_SAT=1
 MLND_FEE_MAX_SAT=10
+MLND_SWAP_X25519_PUB_HEX=$swap_x25519_pub_hex
 EOF
 }
 
-write_maker_env "$DEPLOY_DIR/e2e.maker1.env" "$MAKER1_PK" "$ADDR1_LC" "$MAKER1_NSEC_HEX" "http://127.0.0.1:8081"
-write_maker_env "$DEPLOY_DIR/e2e.maker2.env" "$MAKER2_PK" "$ADDR2_LC" "$MAKER2_NSEC_HEX" "http://127.0.0.1:8082"
-write_maker_env "$DEPLOY_DIR/e2e.maker3.env" "$MAKER3_PK" "$ADDR3_LC" "$MAKER3_NSEC_HEX" "http://127.0.0.1:8083"
+# Fixed X25519 pub hex values for Phase 3a funded-route smoke (Nostr ads → pathfind → mweb_submitRoute).
+# Generated once via X25519 keygen; safe to commit — they are public keys only.
+E2E_SWAP_PUB_MAKER1=72a140d084c2a4f86a8a842bd3944810720812f65bff1ddf9ec1396900f71d09
+E2E_SWAP_PUB_MAKER2=a8c28e54ec5602e805411b18426767731fd35ec43cbe48eea5e4f177e8777511
+E2E_SWAP_PUB_MAKER3=78ea23ce22bc0d099422a5136db73f51c466cb267009f14efe1aa855e25ba73a
+
+write_maker_env "$DEPLOY_DIR/e2e.maker1.env" "$MAKER1_PK" "$ADDR1_LC" "$MAKER1_NSEC_HEX" "http://127.0.0.1:8081" "$E2E_SWAP_PUB_MAKER1"
+write_maker_env "$DEPLOY_DIR/e2e.maker2.env" "$MAKER2_PK" "$ADDR2_LC" "$MAKER2_NSEC_HEX" "http://127.0.0.1:8082" "$E2E_SWAP_PUB_MAKER2"
+write_maker_env "$DEPLOY_DIR/e2e.maker3.env" "$MAKER3_PK" "$ADDR3_LC" "$MAKER3_NSEC_HEX" "http://127.0.0.1:8083" "$E2E_SWAP_PUB_MAKER3"
 
 WALLET_JSON="$DEPLOY_DIR/e2e.wallet-settings.generated.json"
 RELAY_WS="${E2E_NOSTR_HOST_WS:-ws://127.0.0.1:7080/}"

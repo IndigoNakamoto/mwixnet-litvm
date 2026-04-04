@@ -250,3 +250,4 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | 2026-04 | Doc sync: §1.3 Tor row + §1.3 alignment paragraph vs shipped **`pathfind`** Tor requirement and in-tree **`coinswapd`** fork (vs “fork required” wording). |
 | 2026-04 | **`mln-sidecar`** adds **`GET /v1/route/status`** and **`POST /v1/route/batch`** (same trust boundary as **`/v1/swap`**: unauthenticated HTTP; loopback-only in ops guidance). |
 | 2026-04 | Doc sync: header **codebase state** + §1.1 sidecar gap text for **completed swap path** (`mweb_runBatch` / status); **`AGENTS` / README / PRODUCT_SPEC §9** parity. |
+| 2026-04 | Fork **`research/coinswapd`**: **`-mweb-dev-clear-pending-after-batch`** (DEV ONLY) clears onion DB after **`mweb_runBatch`** without **`SendTransaction`** — operator misconfiguration risk if enabled on production nodes; see [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) §2.7a. |

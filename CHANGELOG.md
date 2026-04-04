@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- **Real funded MWEB handoff:** `E2E_MWEB_FUNDED=1` script path, bootstrap `MLND_SWAP_X25519_PUB_HEX` for `swapX25519PubHex` in routes, and `coinswapd-research -mweb-dev-clear-pending-after-batch` (DEV ONLY) for operator `pendingOnions=0` smoke — [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md), [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md) §2.7a.
 - **QA:** Re-ran `python3 nostr/validate_fixtures.py` and `python3 nostr/check_wire_helpers.py` (Nostr wire hygiene; mln-pm quick win).
 - **Celebrate:** Full in-repo **MWEB completed swap round-trip** (route submit → **`mweb_runBatch`** → **`pendingOnions=0`**) verified with **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** — same operator knobs apply to **`coinswapd-research`** per Phase 3 runbook.
 - **MWEB completed-swap operator path:** `research/coinswapd` **`mweb_getRouteStatus`** / **`mweb_runBatch`**, DB cleanup after **`finalize`**, **`mln-sidecar`** **`GET /v1/route/status`** + **`POST /v1/route/batch`**, **`mln-cli forger`** **`-trigger-batch` / `-wait-batch`**, **`mw-rpc-stub`** virtual pending queue; see [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) and [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md).

@@ -45,6 +45,10 @@ var (
 
 	// MLN / local E2E: skip config.AliveNodes identity match (random -k is never in the public mesh list).
 	mlnLocalTaker = flag.Bool("mln-local-taker", false, "skip swap-mesh node probe; force node 0 (peers come from mweb_submitRoute only)")
+
+	// DEV ONLY: after mweb_runBatch's performSwap, delete any onions still in the local DB (no chain finalize).
+	// Enables pendingOnions=0 smoke on a host without live swap_forward/swap_backward peers. Never use in production.
+	mwebDevClearPendingAfterBatch = flag.Bool("mweb-dev-clear-pending-after-batch", false, "DEV ONLY: clear persisted onions after batch without broadcast")
 )
 
 func main() {
@@ -128,10 +132,11 @@ func main() {
 		return
 	}
 	mwebSvc := &mwebService{
-		ss:        ss,
-		scanKey:   scanKey,
-		spendKey:  spendKey,
-		pubkeyMap: pubmap,
+		ss:                        ss,
+		scanKey:                   scanKey,
+		spendKey:                  spendKey,
+		pubkeyMap:                 pubmap,
+		devClearPendingAfterBatch: *mwebDevClearPendingAfterBatch,
 	}
 
 	rpcServer := rpc.NewServer()

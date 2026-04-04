@@ -16,7 +16,7 @@ The coinswapd fork (outside this repo) should expose:
 
 - **`mweb_submitRoute`** — params: one object matching [`mln-cli` `RequestPayload`](../mln-cli/internal/forger/client.go) (`route`, `destination`, `amount`; each hop may include optional `swapX25519PubHex` per [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md)). Builds/persists the swap server-side.
 - **`mweb_getBalance`** — no params. Result object: `availableSat`, `spendableSat` (uint64), optional `detail` string — same semantics as [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md) / `GET /v1/balance`.
-- **`mweb_getRouteStatus`** / **`mweb_runBatch`** — no params. Status = pending onion count + MLN route metadata; runBatch = trigger **`performSwap()`** (see spec §2.6–2.7). Sidecar maps them to **`GET /v1/route/status`** and **`POST /v1/route/batch`**.
+- **`mweb_getRouteStatus`** / **`mweb_runBatch`** — no params. Status = pending onion count + MLN route metadata; runBatch = trigger **`performSwap()`** (see [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md) §2.6–2.7; fork may support §2.7a dev-only DB clear). Sidecar maps them to **`GET /v1/route/status`** and **`POST /v1/route/batch`**.
 
 Vanilla ltcmweb exposes `swap_Swap(onion.Onion)` only; see [`research/COINSWAPD_TEARDOWN.md`](../research/COINSWAPD_TEARDOWN.md).
 

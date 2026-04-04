@@ -27,6 +27,9 @@ type mwebService struct {
 	scanKey   *mw.SecretKey
 	spendKey  *mw.SecretKey
 	pubkeyMap map[string]string
+
+	// When true, RunBatch deletes any onions still in the DB after performSwap (no finalize). See main flag.
+	devClearPendingAfterBatch bool
 }
 
 func decodeSecretKeyHex(label, s string) (*mw.SecretKey, error) {
@@ -78,7 +81,7 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 
 	rawKeys, err := mlnroute.ResolveX25519PubKeys(&req, m.pubkeyMap)
 	if err != nil {
-		return nil, mlnroute.InvalidParams("swap keys required: "+err.Error())
+		return nil, mlnroute.InvalidParams("swap keys required: " + err.Error())
 	}
 	peerPub, err := mlnroute.ECDHPublicKeys(rawKeys)
 	if err != nil {
@@ -118,10 +121,10 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 
 // RouteStatus is returned by mweb_getRouteStatus for operator polling after mweb_submitRoute.
 type RouteStatus struct {
-	PendingOnions          int  `json:"pendingOnions"`
-	MlnRouteHops           int  `json:"mlnRouteHops"`
-	NodeIndex              int  `json:"nodeIndex"`
-	NeutrinoConnectedPeers int  `json:"neutrinoConnectedPeers"`
+	PendingOnions          int `json:"pendingOnions"`
+	MlnRouteHops           int `json:"mlnRouteHops"`
+	NodeIndex              int `json:"nodeIndex"`
+	NeutrinoConnectedPeers int `json:"neutrinoConnectedPeers"`
 }
 
 // GetRouteStatus reports how many onions are persisted locally and whether an MLN route is pinned.
@@ -157,9 +160,25 @@ func (m *mwebService) RunBatch(ctx context.Context) (map[string]interface{}, err
 	if err := m.ss.performSwap(); err != nil {
 		return nil, mlnroute.Internal(err.Error())
 	}
+	detail := "performSwap finished its synchronous steps; P2P swap_forward/swap_backward may still be in flight"
+	if m.devClearPendingAfterBatch {
+		onions, err := loadOnions(db)
+		if err != nil {
+			return nil, mlnroute.Internal(err.Error())
+		}
+		for _, o := range onions {
+			if err := deleteOnion(db, o); err != nil {
+				return nil, mlnroute.Internal(err.Error())
+			}
+		}
+		if len(onions) > 0 {
+			fmt.Printf("mweb-dev-clear-pending-after-batch: removed %d onion(s) from DB without chain finalize (DEV ONLY)\n", len(onions))
+			detail = fmt.Sprintf("devClearPendingAfterBatch: cleared %d onion(s) from local DB (no broadcast)", len(onions))
+		}
+	}
 	return map[string]interface{}{
 		"triggered": true,
-		"detail":    "performSwap finished its synchronous steps; P2P swap_forward/swap_backward may still be in flight",
+		"detail":    detail,
 	}, nil
 }
 

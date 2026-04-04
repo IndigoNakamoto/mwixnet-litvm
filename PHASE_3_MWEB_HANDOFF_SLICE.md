@@ -10,6 +10,24 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) (contracts deploy + three makers registered), then **`mln-cli pathfind -json`** and **`mln-cli forger`** with **`-trigger-batch -wait-batch`** (POST **`/v1/route/batch`** → **`mweb_runBatch`**, poll **`GET /v1/route/status`** until **`pendingOnions`** is **0** on the stub). Stub logs **`mweb_submitRoute ok`**; forger prints route accepted and cleared pending queue. **Regression anchor:** script exits **`0`** after **`Phase 3a stub handoff checks passed.`** Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
 
+## Real funded swap path achieved
+
+**Status (in-repo, 2026-04-03):** The handoff script and fork support a **non-stub** submit path: real **`MWEB_SCAN_SECRET` / `MWEB_SPEND_SECRET`**, **`E2E_MWEB_DEST`** and **`E2E_MWEB_AMOUNT`** (must equal a spendable MWEB coin value exactly), per-hop **`swapX25519PubHex`** (via **`MLND_SWAP_X25519_PUB_HEX`** in [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) maker envs → **`mln-cli pathfind -json`**), then **`mln-cli forger -trigger-batch -wait-batch`**. Optional **`E2E_MWEB_FUNDED_DEV_CLEAR=1`** enables **`-mweb-dev-clear-pending-after-batch`** on **`coinswapd-research`** so **`pendingOnions`** returns to **0** after **`mweb_runBatch`** without chain finalize (**DEV ONLY** — see [research/COINSWAPD_MLN_FORK_SPEC.md](research/COINSWAPD_MLN_FORK_SPEC.md) section 2.7a). Production-shaped **`pendingOnions=0`** still requires **`finalize`** / **`SendTransaction`** after live P2P hops.
+
+**Verification command** (host runs **`coinswapd-research`**; Docker stack from the script; replace placeholders with your wallet values):
+
+```bash
+MWEB_RPC_BACKEND=coinswapd \
+  COINSWAPD_FEE_MWEB='ltcmweb1<your full fee MWEB address>' \
+  MWEB_SCAN_SECRET='<64-hex>' MWEB_SPEND_SECRET='<64-hex>' \
+  E2E_MWEB_DEST='ltcmweb1<your full receive>' \
+  E2E_MWEB_AMOUNT=<satoshis matching one spendable coin exactly> \
+  E2E_MWEB_FUNDED=1 E2E_MWEB_FUNDED_DEV_CLEAR=1 \
+  ./scripts/e2e-mweb-handoff-stub.sh
+```
+
+(Omit **`E2E_MWEB_FUNDED_DEV_CLEAR=1`** only if you depend on a real multi-hop finalize; **`forger -wait-batch`** may time out without live maker RPCs.)
+
 ## Completed swap path (operators): submit → batch → status
 
 **Status — completed swap path achieved (in-repo):** Operators and CI can run **submit → `mweb_runBatch` → poll `mweb_getRouteStatus`** end-to-end via **`mln-sidecar`** + **`mln-cli forger -trigger-batch -wait-batch`**; **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`** passes with **`pendingOnions`** returning to **0** on **`mw-rpc-stub`**. README **Phase 3** stays unchecked until **live multi-hop maker RPCs**, **`.onion`**, and **public LitVM** grievance path (see gaps in this doc and **`PRODUCT_SPEC.md`**).
@@ -54,7 +72,7 @@ Same commands as **Permanent regression anchor** above; release candidates must 
 **Shipped in this repo (not a full Phase 3 close):**
 
 - **`make build-research-coinswapd`** → **`bin/coinswapd-research`** (Go **1.23** toolchain; Neutrino mainnet on start — see [`research/coinswapd/main.go`](research/coinswapd/main.go)).
-- **Optional E2E backend:** `MWEB_RPC_BACKEND=coinswapd` in [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh) starts the fork on **`STUB_ADDR`** (default **`:8546`**) when **`COINSWAPD_FEE_MWEB`** is set (mainnet MWEB fee address for **`-a`**), passing **`-mln-local-taker`** so startup skips **`getNodes()`** / **`config.AliveNodes`** (which otherwise requires **`-k`**’s public key to match a [hardcoded public mesh entry](research/coinswapd/config/nodes.go)). The script waits for **`mweb_getBalance`** on the host, brings up Compose, asserts **`GET /v1/balance`** via the sidecar, and accepts **502** on **`POST /v1/swap`** when the fork rejects the stub-shaped body (missing **`swapX25519PubHex`** / no UTXO). **`E2E_MWEB_FULL=1`** is **rejected** in this mode (forger needs a funded wallet and keys on the route).
+- **Optional E2E backend:** `MWEB_RPC_BACKEND=coinswapd` in [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh) starts the fork on **`STUB_ADDR`** (default **`:8546`**) when **`COINSWAPD_FEE_MWEB`** is set (mainnet MWEB fee address for **`-a`**), passing **`-mln-local-taker`** so startup skips **`getNodes()`** / **`config.AliveNodes`**. Default script path still uses a **stub-shaped** **`POST /v1/swap`** body and expects **502** (missing keys / UTXO). For **`E2E_MWEB_FUNDED=1`**, see [Real funded operator path](#real-funded-operator-path-coinswapd-research) below ( **`E2E_MWEB_FULL=1`** alone with **`coinswapd`** remains invalid unless **`E2E_MWEB_FUNDED=1`** ).
 - **Tor / mix URL normalization:** [`mln-sidecar/internal/mweb/translator.go`](mln-sidecar/internal/mweb/translator.go) and [`mln-cli/internal/forger/torurl.go`](mln-cli/internal/forger/torurl.go) prefix **`http://`** when a hop **`tor`** string has no URI scheme (typical for ads that publish `something.onion:port` only). **`mln-cli pathfind`** only considers makers with **non-empty** **`tor`** in the verified set so routes are viable for real transport.
 - **Where real Tor applies:** [`research/coinswapd/swap.go`](research/coinswapd/swap.go) uses **`rpc.Dial(node.Url)`** for inter-node **`swap_forward` / `swap_backward`**. Go’s default HTTP transport honors **`HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`** (e.g. **`socks5h://127.0.0.1:9050`**) so **`http://…onion…`** hop URLs can resolve once Tor is running on the host running **coinswapd**. The **sidecar** only forwards route JSON; it does not dial maker `.onion` hosts. Set the same proxy env vars on the **coinswapd** process (and on **mln-sidecar** only if **`-rpc-url`** itself points through Tor).
 
@@ -65,6 +83,59 @@ Same commands as **Permanent regression anchor** above; release candidates must 
 **Observed:** **`mln-local-taker: skipping getNodes`** at fork startup; Neutrino header sync on the host; **`GET /v1/balance`** via **`mln-sidecar -mode=rpc`** → **200** / **`ok: true`** (**`mweb_getBalance`** live); **`POST /v1/swap`** with the **stub-shaped** body → sidecar **502** (**expected**: missing **`swapX25519PubHex`** / no UTXO); exit **0** and **`Phase 3a stub handoff checks passed.`**
 
 This **does not** close README **Phase 3** (full Nostr → Tor → MWixnet round → L2 path). **Promote path** details: [Promote path](#promote-path-researchcoinswapd) below.
+
+### Real funded operator path (`coinswapd-research`)
+
+**Goal:** **`mweb_getBalance`** → **`mweb_submitRoute`** (full MLN JSON with per-hop **`swapX25519PubHex`**) → **`mweb_runBatch`** → poll **`mweb_getRouteStatus`** until **`pendingOnions`** is **0**, without relying on a stub-shaped **502** body.
+
+**Preconditions**
+
+1. **Neutrino synced** far enough that **`mweb_getBalance`** reflects your coins; **`-mweb-scan-secret`** and **`-mweb-spend-secret`** (hex **32-byte** keys) match the wallet that owns the MWEB UTXO.
+2. **`-a`** / **`COINSWAPD_FEE_MWEB`:** valid mainnet MWEB stealth fee address (**`ltcmweb1…`**).
+3. **Exact UTXO value:** [`pickCoinExactAmount`](research/coinswapd/mln_wallet.go) requires a spendable coin whose **`Value`** **equals** the route **`amount`** (satoshis). **`sum(feeMinSat) ≤ amount`** (pathfind / sidecar rules).
+4. **Three hop pubkeys:** every hop must carry **`swapX25519PubHex`** (64 lowercase hex digits). Local E2E: [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) now writes **`MLND_SWAP_X25519_PUB_HEX`** into each **`e2e.maker*.env`** so **`mln-cli pathfind -json`** includes keys for **`mln-cli forger`**.
+
+**Happy-path RPC sequence (normative)**
+
+| Step | JSON-RPC | Notes |
+| ---- | -------- | ----- |
+| 1 | **`mweb_getBalance`** | Confirm **`spendableSat`**; optional via sidecar **`GET /v1/balance`**. |
+| 2 | **`mweb_submitRoute`** | Single object: **`route`**, **`destination`**, **`amount`** (same shape as **`POST /v1/swap`** / [`COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md) §2.3). |
+| 3 | **`mweb_runBatch`** | Same synchronous entry as midnight batch; **`swap_forward`** may still run async. |
+| 4 | **`mweb_getRouteStatus`** | Poll until **`pendingOnions == 0`** (or timeout). |
+
+**Production-shaped completion:** **`pendingOnions`** returns to **0** only after **`finalize`** + **`SendTransaction`** removes spent onions ([`swap.go`](research/coinswapd/swap.go)), which requires a full **backward** pass and live maker RPCs for **`swap_forward` / `swap_backward`**.
+
+**Controlled-host smoke without live makers (DEV ONLY):** start the fork with **`-mweb-dev-clear-pending-after-batch`** (see [COINSWAPD_MLN_FORK_SPEC.md](research/COINSWAPD_MLN_FORK_SPEC.md) §2.7a). After **`mweb_runBatch`**, the fork **deletes persisted onions** without broadcasting — use only to verify HTTP/RPC + DB status wiring.
+
+**One-shot script (host runs `coinswapd-research`; Docker runs Anvil + relay + rpc sidecar + makers)**
+
+```bash
+MWEB_RPC_BACKEND=coinswapd \
+  COINSWAPD_FEE_MWEB='ltcmweb1…' \
+  MWEB_SCAN_SECRET='<64-hex scan>' MWEB_SPEND_SECRET='<64-hex spend>' \
+  E2E_MWEB_DEST='ltcmweb1…' E2E_MWEB_AMOUNT=1000000 \
+  E2E_MWEB_FUNDED=1 E2E_MWEB_FUNDED_DEV_CLEAR=1 \
+  ./scripts/e2e-mweb-handoff-stub.sh
+```
+
+**Flags / env**
+
+| Variable | Meaning |
+| -------- | ------- |
+| **`E2E_MWEB_FUNDED`** | Run bootstrap (unless **`E2E_MWEB_SKIP_BOOTSTRAP=1`**), makers, **`pathfind -json`**, **`forger -trigger-batch -wait-batch`** against **`coinswapd`** on the host. |
+| **`E2E_MWEB_FUNDED_DEV_CLEAR`** | Pass **`-mweb-dev-clear-pending-after-batch`** to **`coinswapd-research`** (DEV ONLY). |
+| **`E2E_MWEB_BATCH_POLL`**, **`E2E_MWEB_BATCH_TIMEOUT`** | Override forger wait polling (defaults **500ms**, **5m**). |
+| **`jq`** | Required for funded mode (validates pathfind output has three **64-char** swap keys). |
+
+**`mln-cli` equivalent (after you have a route JSON file):**
+
+```bash
+mln-cli forger -route-json deploy/e2e.mweb-funded.route.json -dry-run=false \
+  -dest "$E2E_MWEB_DEST" -amount "$E2E_MWEB_AMOUNT" \
+  -coinswapd-url http://127.0.0.1:8080/v1/swap \
+  -trigger-batch -wait-batch -batch-poll 500ms -batch-timeout 5m
+```
 
 ## Documented gaps vs full round + L2
 
