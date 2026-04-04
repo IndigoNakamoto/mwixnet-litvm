@@ -120,6 +120,10 @@ func (s *swapService) peelOnions() (
 }
 
 func (s *swapService) forward() error {
+	if len(s.peers()) == 0 {
+		return nil
+	}
+
 	onions, outputs := s.peelOnions()
 
 	if s.nodeIndex == len(s.peers())-1 {

@@ -48,7 +48,7 @@ func usage() {
 
 Commands:
   scout     Discover kind-31250 maker ads, verify LitVM registry state
-  pathfind  Pick an ordered 3-hop route from verified makers (min fee hint, stake tie-break; -self-included for N2=self)
+  pathfind  Pick an ordered 3-hop route from verified makers with Tor endpoints (min fee hint, stake tie-break; -self-included for N2=self)
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
   maker onboard  Plan or execute MwixnetRegistry deposit + registerMaker (LitVM maker onboarding)
 

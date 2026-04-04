@@ -5,8 +5,10 @@ Lightweight MLN HTTP shim between the taker wallet / `mln-cli` forger and the MW
 ## Modes
 
 - **`-mode`** — default `mock`. Use `mock` for Phase 12 E2E (fixed balance, simulated onion log) or `rpc` to forward swap/balance to `-rpc-url`.
-- **`-rpc-url`** — default `http://127.0.0.1:8546`. JSON-RPC base URL for a **coinswapd fork** when `-mode=rpc`; ignored in `mock`.
+- **`-rpc-url`** — default `http://127.0.0.1:8546`. JSON-RPC base URL for a **coinswapd fork** when `-mode=rpc`; ignored in `mock`. If this URL is only reachable via Tor, set **`HTTP_PROXY` / `ALL_PROXY`** (e.g. **`socks5h://127.0.0.1:9050`**) on the sidecar process; go-ethereum’s RPC client uses the default transport’s proxy-from-environment behavior.
 - **`-port`** — default `8080`. HTTP listen port for `GET /v1/balance` and `POST /v1/swap`.
+
+**Hop `tor` strings:** `POST /v1/swap` normalizes each hop’s `tor` field by trimming whitespace and adding **`http://`** when no `scheme://` is present so payloads match **`rpc.Dial`** expectations (common for Nostr ads that publish `host.onion:port` only). Operators should still prefer explicit `http://` or `https://` in ads.
 
 ## Fork JSON-RPC contract (`-mode=rpc`)
 

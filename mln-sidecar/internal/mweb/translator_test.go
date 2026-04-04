@@ -1,6 +1,42 @@
 package mweb
 
-import "testing"
+import (
+	"testing"
+)
+
+func TestNormalizeMixEndpoint(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		in, want string
+	}{
+		{"", ""},
+		{"http://x.onion:8080", "http://x.onion:8080"},
+		{"x.onion:8080", "http://x.onion:8080"},
+		{"  https://y  ", "https://y"},
+	}
+	for _, tc := range tests {
+		if got := NormalizeMixEndpoint(tc.in); got != tc.want {
+			t.Fatalf("NormalizeMixEndpoint(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestNormalizeSwapRequestHops(t *testing.T) {
+	t.Parallel()
+	req := &SwapRequest{
+		Route: []HopInput{
+			{Tor: "n1.onion:80", FeeMinSat: 1},
+			{Tor: "http://n2", FeeMinSat: 1},
+			{Tor: "n3", FeeMinSat: 1},
+		},
+		Destination: "mweb1qq",
+		Amount:      10,
+	}
+	NormalizeSwapRequestHops(req)
+	if req.Route[0].Tor != "http://n1.onion:80" || req.Route[1].Tor != "http://n2" || req.Route[2].Tor != "http://n3" {
+		t.Fatalf("route tors: %+v", req.Route)
+	}
+}
 
 func TestValidateSwapRequest_ok(t *testing.T) {
 	t.Parallel()

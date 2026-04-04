@@ -30,6 +30,7 @@ func NewMockBridge() *MockBridge {
 
 // HandleSwap validates the request and simulates onion construction.
 func (b *MockBridge) HandleSwap(_ context.Context, req *SwapRequest) (string, error) {
+	NormalizeSwapRequestHops(req)
 	if err := ValidateSwapRequest(req); err != nil {
 		return "", &InvalidSwapRequest{Err: err}
 	}

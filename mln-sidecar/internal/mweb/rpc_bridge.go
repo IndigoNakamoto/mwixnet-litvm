@@ -39,6 +39,7 @@ func NewRPCBridge(rawURL string) *RPCBridge {
 
 // HandleSwap validates locally, then forwards the MLN payload to mweb_submitRoute.
 func (b *RPCBridge) HandleSwap(ctx context.Context, req *SwapRequest) (string, error) {
+	NormalizeSwapRequestHops(req)
 	if err := ValidateSwapRequest(req); err != nil {
 		return "", &InvalidSwapRequest{Err: err}
 	}

@@ -2,7 +2,7 @@
 
 This is a **sub-milestone** toward README **Phase 3** (full end-to-end integration). It does **not** check the Phase 3 box: it proves the **taker → `mln-sidecar` HTTP → JSON-RPC `mweb_*`** bridge that [`mln-sidecar`](mln-sidecar/README.md) uses in **`-mode=rpc`**, while keeping **local Anvil** as the registry/court stand-in (same as [Phase 12](PHASE_12_E2E_CRUCIBLE.md)).
 
-**Out of scope for this slice:** official [LitVM testnet](https://docs.litvm.com/) RPC, real Tor hops, Neutrino-backed [`research/coinswapd/`](research/coinswapd/) in CI, and on-chain slash resolution on a public chain.
+**Still out of scope for closing README Phase 3:** official [LitVM testnet](https://docs.litvm.com/) RPC as the live registry, **automated CI** running Neutrino-backed [`research/coinswapd/`](research/coinswapd/), a **completed** MWixnet round to chain with **LitVM slash/defense** on a public deployment, and **live** `.onion` connectivity in the default stub script.
 
 ## Completion (stub + full CLI path)
 
@@ -10,11 +10,37 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Verification:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` — `mw-rpc-stub` on **:8546**, Docker Compose (**Anvil + Nostr + `mln-sidecar -mode=rpc` + three `mlnd` makers**), [`scripts/e2e-bootstrap.sh`](scripts/e2e-bootstrap.sh) (contracts deploy + three makers registered), then **`mln-cli pathfind -json`** and **`mln-cli forger`** posting to **`http://127.0.0.1:8080/v1/swap`**; stub logged **`mweb_submitRoute ok`** and forger reported route accepted. **Regression anchor:** script exits **`0`** after printing **`Phase 3a stub handoff checks passed.`** Quick **`curl`**-only path: `./scripts/e2e-mweb-handoff-stub.sh` (no `E2E_MWEB_FULL`).
 
-This **does not** close README **Phase 3** (full Nostr → Tor → MWixnet round → L2 path). **Promote path** to real MWEB JSON-RPC remains [`research/coinswapd/`](research/coinswapd/) on a separate port — see [Promote path](#promote-path-researchcoinswapd) below.
+## Integration slice (research fork + Tor-shaped URLs) — 2026-04-03
+
+**Shipped in this repo (not a full Phase 3 close):**
+
+- **`make build-research-coinswapd`** → **`bin/coinswapd-research`** (Go **1.23** toolchain; Neutrino mainnet on start — see [`research/coinswapd/main.go`](research/coinswapd/main.go)).
+- **Optional E2E backend:** `MWEB_RPC_BACKEND=coinswapd` in [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh) starts the fork on **`STUB_ADDR`** (default **`:8546`**) when **`COINSWAPD_FEE_MWEB`** is set (mainnet MWEB fee address for **`-a`**), passing **`-mln-local-taker`** so startup skips **`getNodes()`** / **`config.AliveNodes`** (which otherwise requires **`-k`**’s public key to match a [hardcoded public mesh entry](research/coinswapd/config/nodes.go)). The script waits for **`mweb_getBalance`** on the host, brings up Compose, asserts **`GET /v1/balance`** via the sidecar, and accepts **502** on **`POST /v1/swap`** when the fork rejects the stub-shaped body (missing **`swapX25519PubHex`** / no UTXO). **`E2E_MWEB_FULL=1`** is **rejected** in this mode (forger needs a funded wallet and keys on the route).
+- **Tor / mix URL normalization:** [`mln-sidecar/internal/mweb/translator.go`](mln-sidecar/internal/mweb/translator.go) and [`mln-cli/internal/forger/torurl.go`](mln-cli/internal/forger/torurl.go) prefix **`http://`** when a hop **`tor`** string has no URI scheme (typical for ads that publish `something.onion:port` only). **`mln-cli pathfind`** only considers makers with **non-empty** **`tor`** in the verified set so routes are viable for real transport.
+- **Where real Tor applies:** [`research/coinswapd/swap.go`](research/coinswapd/swap.go) uses **`rpc.Dial(node.Url)`** for inter-node **`swap_forward` / `swap_backward`**. Go’s default HTTP transport honors **`HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`** (e.g. **`socks5h://127.0.0.1:9050`**) so **`http://…onion…`** hop URLs can resolve once Tor is running on the host running **coinswapd**. The **sidecar** only forwards route JSON; it does not dial maker `.onion` hosts. Set the same proxy env vars on the **coinswapd** process (and on **mln-sidecar** only if **`-rpc-url`** itself points through Tor).
+
+### Research backend smoke (operator-verified)
+
+**Status:** **passed** (**2026-04-03**) with **`MWEB_RPC_BACKEND=coinswapd`**, valid mainnet **`COINSWAPD_FEE_MWEB`** (**`ltcmweb1…`** per ltcmweb/ltcd), script-supplied **`-mln-local-taker`**, and **`make build-research-coinswapd`**.
+
+**Observed:** **`mln-local-taker: skipping getNodes`** at fork startup; Neutrino header sync on the host; **`GET /v1/balance`** via **`mln-sidecar -mode=rpc`** → **200** / **`ok: true`** (**`mweb_getBalance`** live); **`POST /v1/swap`** with the **stub-shaped** body → sidecar **502** (**expected**: missing **`swapX25519PubHex`** / no UTXO); exit **0** and **`Phase 3a stub handoff checks passed.`**
+
+This **does not** close README **Phase 3** (full Nostr → Tor → MWixnet round → L2 path). **Promote path** details: [Promote path](#promote-path-researchcoinswapd) below.
+
+## Documented gaps vs full round + L2
+
+| Gap | Notes |
+| --- | ----- |
+| **Research smoke scope** | Proves **HTTP → JSON-RPC** to **`bin/coinswapd-research`** only; does **not** assert **`mweb_submitRoute`** persist, **`swap_forward`**, or broadcast. |
+| **No live Tor in CI** | Stub and cleartext **`http://127.0.0.1`** hops only; `.onion` + SOCKS are operator bring-up. |
+| **coinswapd Neutrino + UTXO** | Successful **`mweb_submitRoute`** needs keys, optional **`-mweb-pubkey-map`**, funded MWEB coin; smoke uses a body the fork correctly rejects (**502**). |
+| **`swap_forward` / epoch** | Multi-node forward/backward and midnight batching are **coinswapd** internals, not covered by this handoff script. |
+| **LitVM L2** | Grievance / slash path is **not** wired here; see [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) and Phase 12/15 docs. |
+| **Mesh vs MLN taker** | **`-mln-local-taker`** skips **`-k`** / **`getNodes`** mesh match; public mesh nodes omit it and use **`-k`** consistent with [config/nodes.go](research/coinswapd/config/nodes.go). |
 
 ## Status (regression / hardening)
 
-- **`mln-sidecar -mode=rpc`:** [`internal/mweb/rpc_bridge.go`](mln-sidecar/internal/mweb/rpc_bridge.go) normalizes `-rpc-url` (trim space, trailing slash) and calls **`mweb_submitRoute`** / **`mweb_getBalance`** via go-ethereum `rpc.Client` (same method names as [`research/coinswapd/mweb_service.go`](research/coinswapd/mweb_service.go)).
+- **`mln-sidecar -mode=rpc`:** [`internal/mweb/rpc_bridge.go`](mln-sidecar/internal/mweb/rpc_bridge.go) normalizes `-rpc-url` (trim space, trailing slash), normalizes hop **`tor`** strings before validation, and calls **`mweb_submitRoute`** / **`mweb_getBalance`** via go-ethereum `rpc.Client` (same method names as [`research/coinswapd/mweb_service.go`](research/coinswapd/mweb_service.go)).
 - **Tests:** [`mln-sidecar/internal/mweb/rpc_bridge_test.go`](mln-sidecar/internal/mweb/rpc_bridge_test.go) asserts JSON-RPC **params** for `mweb_submitRoute` decode to the fork’s route object (including optional per-hop **`swapX25519PubHex`**). [`mln-sidecar/internal/api/server_rpc_test.go`](mln-sidecar/internal/api/server_rpc_test.go) covers HTTP 502 on upstream RPC errors for swap and balance. [`research/coinswapd/mlnroute/sidecar_wire_test.go`](research/coinswapd/mlnroute/sidecar_wire_test.go) golden-unmarshals the same JSON as [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh).
 - **`mw-rpc-stub`:** validates **`mweb_submitRoute`** payload shape (3 hops, destination, amount) so Compose/curl exercises fail loudly if the sidecar wire drifts.
 
@@ -42,17 +68,21 @@ Upstream **`coinswapd`** defaults to **`-l 8080`** ([research/COINSWAPD_TEARDOWN
    **`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`**  
    - Runs [scripts/e2e-bootstrap.sh](scripts/e2e-bootstrap.sh), starts the **makers** profile, exports **`MLN_*`** from generated `deploy/e2e.generated.env`, then **`mln-cli pathfind -json`** and **`mln-cli forger`** against `http://127.0.0.1:8080/v1/swap`.
 
-Build the stub: **`make build-mw-rpc-stub`** (output **`bin/mw-rpc-stub`**).
+3. Optional **research fork** smoke (host JSON-RPC only; no full **`E2E_MWEB_FULL`**):  
+   **`ADDR='<paste full mainnet MWEB stealth from wallet>' MWEB_RPC_BACKEND=coinswapd COINSWAPD_FEE_MWEB="$ADDR" ./scripts/e2e-mweb-handoff-stub.sh`** — the string must be complete Bech32 (usually **60+** characters). On **mainnet**, [`github.com/ltcmweb/ltcd`](https://github.com/ltcmweb/ltcd) uses **`Bech32HRPMweb: "ltcmweb"`**, so valid addresses begin with **`ltcmweb1`** (what compatible wallets show), not **`mweb1`**. Do **not** use Unicode `…`, ASCII `...`, or truncated examples; **`coinswapd`** then prints `decoded address is of unknown format` and never listens. The script rejects obvious shorthand before starting the binary.  
+   - Builds **`bin/coinswapd-research`**, waits for **`mweb_getBalance`**, then same Compose + sidecar checks as above.
+
+Build targets: **`make build-mw-rpc-stub`** → **`bin/mw-rpc-stub`**; **`make build-research-coinswapd`** → **`bin/coinswapd-research`**.
 
 ## Acceptance criteria
 
-- **`POST /v1/swap`** with a valid **three-hop** MLN route returns **200** and `"ok":true` from the sidecar while it is in **`-mode=rpc`**.
+- **`POST /v1/swap`** with a valid **three-hop** MLN route returns **200** and `"ok":true` from the sidecar while it is in **`-mode=rpc`** against the **stub** (default script).
 - **`GET /v1/balance`** returns **200** and balances forwarded from **`mweb_getBalance`**.
-- Stub logs (or fork logs) show **`mweb_submitRoute`** was invoked (integration parity with [mln-sidecar/internal/api/server_rpc_test.go](mln-sidecar/internal/api/server_rpc_test.go)).
+- Stub logs (or fork logs) show **`mweb_submitRoute`** was invoked when the stub accepts the body (integration parity with [mln-sidecar/internal/api/server_rpc_test.go](mln-sidecar/internal/api/server_rpc_test.go)).
 
 ## Promote path: `research/coinswapd`
 
-Replace the stub with a built binary from [`research/coinswapd/`](research/coinswapd/) listening on **8546**, with flags such as **`-l 8546`**, **`-mweb-scan-secret`**, **`-mweb-spend-secret`**, **`-a`** (MWEB fee address), **`-k`** (server ECDH key), and optionally **`-mweb-pubkey-map`** per [COINSWAPD_MLN_FORK_SPEC.md](research/COINSWAPD_MLN_FORK_SPEC.md).
+Run a built binary from [`research/coinswapd/`](research/coinswapd/) listening on **8546**, with flags such as **`-l 8546`**, **`-mweb-scan-secret`**, **`-mweb-spend-secret`**, **`-a`** (MWEB fee address), **`-k`** (server ECDH key), and optionally **`-mweb-pubkey-map`** per [COINSWAPD_MLN_FORK_SPEC.md](research/COINSWAPD_MLN_FORK_SPEC.md). For **MLN `mweb_*` / local sidecar** without joining the public swap mesh, add **`-mln-local-taker`** (random **`-k`** is fine; peers come from **`mweb_submitRoute`**). Omit it when operating as a listed mesh node (your **`-k`** must match your row in the probed topology).
 
 **Expectation:** that process starts **Neutrino** against **mainnet** in the current fork ([research/coinswapd/main.go](research/coinswapd/main.go)) — sync time, disk, and keys are **operator** concerns, not part of the default automated stub flow.
 

@@ -9,6 +9,29 @@ import (
 
 const expectedHops = 3
 
+// NormalizeMixEndpoint trims whitespace and, if there is no URI scheme, prefixes "http://"
+// so values match what go-ethereum rpc.Dial and coinswapd use for hop RPC URLs (Tor ads often omit the scheme).
+func NormalizeMixEndpoint(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return s
+	}
+	if strings.Contains(s, "://") {
+		return s
+	}
+	return "http://" + s
+}
+
+// NormalizeSwapRequestHops applies NormalizeMixEndpoint to each hop's Tor field in place.
+func NormalizeSwapRequestHops(req *SwapRequest) {
+	if req == nil {
+		return
+	}
+	for i := range req.Route {
+		req.Route[i].Tor = NormalizeMixEndpoint(req.Route[i].Tor)
+	}
+}
+
 // swapX25519PubHexRE matches a 32-byte Curve25519 public key as 64 lowercase hex digits (see research/COINSWAPD_MLN_FORK_SPEC.md).
 var swapX25519PubHexRE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 

@@ -246,3 +246,4 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | 2026-04 | Doc sync: Slither + invariant tooling reflected as CI-enforced; codebase state bumped post-Phase 15. |
 | 2026-04 | [`RED_TEAM_MLN.md`](RED_TEAM_MLN.md) added; §1.1 / §1.4 / table “GrievanceCourt economics” aligned with Phase 15 slash and exoneration bond (bond no longer refunded to accuser on exonerate). |
 | 2026-04 | Doc sync: **`mln-cli maker onboard`** (operator LitVM txs) and **`mlnd` loopback dashboard** (`MLND_DASHBOARD_ADDR`, optional token) noted as new operator surfaces alongside existing hot-key / sidecar rows. |
+| 2026-04 | Phase 3 integration slice: **`research/coinswapd`** build target + optional host smoke vs **`mln-sidecar -mode=rpc`**; hop **`tor`** URL normalization and pathfind **Tor-required** filtering — operator proxy (`HTTP_PROXY` / Tor SOCKS) still required for live `.onion` RPC dials inside **coinswapd**. |

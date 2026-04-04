@@ -10,10 +10,10 @@ import (
 
 func TestPickRoute_minFee(t *testing.T) {
 	makers := []scout.VerifiedMaker{
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), FeeMinSat: 10, Stake: "100"},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002"), FeeMinSat: 1, Stake: "100"},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003"), FeeMinSat: 1, Stake: "100"},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000004"), FeeMinSat: 99, Stake: "900"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), FeeMinSat: 10, Stake: "100", Tor: "http://n1"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002"), FeeMinSat: 1, Stake: "100", Tor: "http://n2"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003"), FeeMinSat: 1, Stake: "100", Tor: "http://n3"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000004"), FeeMinSat: 99, Stake: "900", Tor: "http://n4"},
 	}
 	rng := rand.New(rand.NewSource(42))
 	route, err := PickRoute(makers, rng)
@@ -34,11 +34,22 @@ func TestPickRoute_minFee(t *testing.T) {
 
 func TestPickRoute_tooFew(t *testing.T) {
 	_, err := PickRoute([]scout.VerifiedMaker{
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001")},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002")},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), Tor: "http://a"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002"), Tor: "http://b"},
 	}, nil)
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestPickRoute_tooFewTor(t *testing.T) {
+	_, err := PickRoute([]scout.VerifiedMaker{
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), FeeMinSat: 1, Stake: "1"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002"), FeeMinSat: 1, Stake: "1"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003"), FeeMinSat: 1, Stake: "1"},
+	}, nil)
+	if err == nil {
+		t.Fatal("expected error: no Tor on makers")
 	}
 }
 
@@ -46,10 +57,10 @@ func TestPickRouteSelfMiddle_fixesN2(t *testing.T) {
 	t.Parallel()
 	self := common.HexToAddress("0x00000000000000000000000000000000000000b2")
 	makers := []scout.VerifiedMaker{
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), FeeMinSat: 5, Stake: "100"},
-		{Operator: self, FeeMinSat: 1, Stake: "100"},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003"), FeeMinSat: 1, Stake: "100"},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000004"), FeeMinSat: 99, Stake: "900"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), FeeMinSat: 5, Stake: "100", Tor: "http://n1"},
+		{Operator: self, FeeMinSat: 1, Stake: "100", Tor: "http://self"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003"), FeeMinSat: 1, Stake: "100", Tor: "http://n3"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000004"), FeeMinSat: 99, Stake: "900", Tor: "http://n4"},
 	}
 	rng := rand.New(rand.NewSource(1))
 	route, err := PickRouteSelfMiddle(makers, self, rng)
@@ -72,9 +83,9 @@ func TestPickRouteSelfMiddle_selfMissing(t *testing.T) {
 	t.Parallel()
 	self := common.HexToAddress("0x00000000000000000000000000000000000000aa")
 	makers := []scout.VerifiedMaker{
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001")},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002")},
-		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003")},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000001"), Tor: "http://a"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000002"), Tor: "http://b"},
+		{Operator: common.HexToAddress("0x0000000000000000000000000000000000000003"), Tor: "http://c"},
 	}
 	_, err := PickRouteSelfMiddle(makers, self, rand.New(rand.NewSource(1)))
 	if err == nil {

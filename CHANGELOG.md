@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- **Phase 3 integration slice:** `make build-research-coinswapd`, optional `MWEB_RPC_BACKEND=coinswapd` in `scripts/e2e-mweb-handoff-stub.sh`, Tor-shaped hop URL normalization (`mln-sidecar`, `mln-cli` forger) and pathfind requires non-empty maker Tor — see `PHASE_3_MWEB_HANDOFF_SLICE.md`.
+- **`coinswapd-research` backend smoke:** operator-verified `MWEB_RPC_BACKEND=coinswapd` handoff (`mweb_getBalance` OK via sidecar; stub `POST /v1/swap` → expected 502); documented in `PHASE_3_MWEB_HANDOFF_SLICE.md`.
+- **`research/coinswapd`:** `-mln-local-taker` skips `getNodes` / mesh pubkey match for MLN RPC + E2E; `scripts/e2e-mweb-handoff-stub.sh` passes it in `MWEB_RPC_BACKEND=coinswapd` mode.
 - **Pre-positioned LitVM testnet broadcast path (Phase 16):** `make broadcast-litvm`, `make record-litvm-deploy`, [`scripts/broadcast-litvm-testnet.sh`](scripts/broadcast-litvm-testnet.sh), [`scripts/record-litvm-deploy.py`](scripts/record-litvm-deploy.py); runbook section 0 in [`PHASE_16_PUBLIC_TESTNET.md`](PHASE_16_PUBLIC_TESTNET.md).
 - **Phase 2 Nostr wire v1 closed loop:** [`PHASE_2_NOSTR.md`](PHASE_2_NOSTR.md), minimal maker-ad fixture, [`nostr/check_wire_helpers.py`](nostr/check_wire_helpers.py) + CI; [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md) marked normative v1.
 - **Phase 3a E2E MWEB handoff GREEN:** `E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh` → `Phase 3a stub handoff checks passed.` ([`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)).

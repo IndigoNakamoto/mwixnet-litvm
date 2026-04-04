@@ -6,13 +6,24 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// Route is an ordered N1 → N2 → N3 list of verified makers.
+func filterMakersWithTor(makers []scout.VerifiedMaker) []scout.VerifiedMaker {
+	var out []scout.VerifiedMaker
+	for _, m := range makers {
+		if strings.TrimSpace(m.Tor) != "" {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// Route is an ordered N1 → N2 → N3 list of verified makers (each hop should carry a Tor / mix API URL).
 type Route struct {
 	Hops [3]scout.VerifiedMaker `json:"hops"`
 	// FeeSumSat is the sum of per-hop fee hints (min sat_per_hop); 0 if a hop omitted fees.
@@ -20,10 +31,11 @@ type Route struct {
 }
 
 // PickRoute chooses distinct makers minimizing total fee hint (FeeMinSat), with random tie-break.
-// Makers must have at least three entries; Tor is not required here (forger checks Tor).
+// Only makers with a non-empty Tor endpoint are considered so routes are viable for coinswapd / real transport.
 func PickRoute(makers []scout.VerifiedMaker, rng *rand.Rand) (*Route, error) {
+	makers = filterMakersWithTor(makers)
 	if len(makers) < 3 {
-		return nil, fmt.Errorf("pathfind: need at least 3 verified makers, got %d", len(makers))
+		return nil, fmt.Errorf("pathfind: need at least 3 verified makers with Tor endpoints, got %d", len(makers))
 	}
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -90,8 +102,9 @@ func PickRoute(makers []scout.VerifiedMaker, rng *rand.Rand) (*Route, error) {
 
 // PickRouteSelfMiddle builds N1 → N2(self) → N3 with the same fee/stake tie-break as PickRoute over valid triples.
 func PickRouteSelfMiddle(makers []scout.VerifiedMaker, self common.Address, rng *rand.Rand) (*Route, error) {
+	makers = filterMakersWithTor(makers)
 	if len(makers) < 3 {
-		return nil, fmt.Errorf("pathfind: need at least 3 verified makers for self-route, got %d", len(makers))
+		return nil, fmt.Errorf("pathfind: need at least 3 verified makers with Tor endpoints for self-route, got %d", len(makers))
 	}
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -104,7 +117,7 @@ func PickRouteSelfMiddle(makers []scout.VerifiedMaker, self common.Address, rng 
 		}
 	}
 	if selfIdx < 0 {
-		return nil, fmt.Errorf("pathfind: self operator %s not in verified maker set", self.Hex())
+		return nil, fmt.Errorf("pathfind: self operator %s not in verified maker set (or missing Tor endpoint)", self.Hex())
 	}
 	var ext []int
 	for i := range makers {

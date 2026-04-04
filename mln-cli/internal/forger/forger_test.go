@@ -136,6 +136,16 @@ func TestExecute_RequiresDestAndAmount(t *testing.T) {
 	}
 }
 
+func TestNormalizeMixEndpoint(t *testing.T) {
+	t.Parallel()
+	if got, want := NormalizeMixEndpoint("abc123.onion:8080"), "http://abc123.onion:8080"; got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+	if got, want := NormalizeMixEndpoint("http://x"), "http://x"; got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
 func TestDryRun_Result(t *testing.T) {
 	t.Parallel()
 
@@ -148,6 +158,25 @@ func TestDryRun_Result(t *testing.T) {
 	}
 	if res.Hops[0].Index != 1 || res.Hops[0].Tor != "http://n1.onion" {
 		t.Fatalf("hop0 = %+v", res.Hops[0])
+	}
+}
+
+func TestDryRun_prefixesBareOnionHost(t *testing.T) {
+	t.Parallel()
+	r := &pathfind.Route{
+		Hops: [3]scout.VerifiedMaker{
+			{Tor: "n1.onion:8080", FeeMinSat: 1},
+			{Tor: "n2.onion:8080", FeeMinSat: 1},
+			{Tor: "n3.onion:8080", FeeMinSat: 1},
+		},
+		FeeSumSat: 3,
+	}
+	res, err := DryRun(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Hops[0].Tor != "http://n1.onion:8080" {
+		t.Fatalf("got %q", res.Hops[0].Tor)
 	}
 }
 

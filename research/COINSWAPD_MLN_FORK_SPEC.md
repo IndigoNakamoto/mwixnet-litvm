@@ -51,14 +51,14 @@ Semantics align with [PHASE_10_TAKER_CLI.md](../PHASE_10_TAKER_CLI.md) and sidec
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
 | `route` | array of hop objects | yes | Length **3** (current MLN PoC); see below. |
-| `destination` | string | yes | MWEB destination encoding for the taker output (fork parses to `wire.MwebOutput` for last hop). |
+| `destination` | string | yes | MWEB destination encoding for the taker output (fork parses to `wire.MwebOutput` for last hop). On **Litecoin mainnet**, ltcmweb/ltcd uses Bech32 HRP **`ltcmweb`** (addresses start with **`ltcmweb1`**), not `mweb1`. |
 | `amount` | number (uint64) | yes | Route value budget in satoshis; **sum of hop `feeMinSat` must not exceed `amount`** (matches sidecar validation). |
 
 **Hop object**
 
 | Field | Type | Required | Description |
 | ----- | ---- | -------- | ----------- |
-| `tor` | string | yes | Tor or mix API URL for the hop (operator advertising). |
+| `tor` | string | yes | Tor or mix API URL for the hop (operator advertising). Consumers (`mln-sidecar`, `mln-cli` forger) may prepend **`http://`** when the string has no URI scheme so **`rpc.Dial`** accepts it; ads should still send a full URL when possible. |
 | `feeMinSat` | number (uint64) | yes | Per-hop fee hint; maps to `Hop.Fee` in `onion` layers. |
 | `swapX25519PubHex` | string | no | **Approach A:** 64 lowercase hex digits = 32-byte Curve25519 public key for this maker’s swap/onion layer. See §3. |
 
@@ -83,10 +83,12 @@ Semantics align with [PHASE_10_TAKER_CLI.md](../PHASE_10_TAKER_CLI.md) and sidec
       "swapX25519PubHex": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
   ],
-  "destination": "mweb1qq...",
+  "destination": "ltcmweb1qq...",
   "amount": 5000000
 }
 ```
+
+*(The `destination` line abbreviates with `...`; real payloads use the full Bech32 string from the wallet, starting with `ltcmweb1` on Litecoin mainnet per ltcmweb/ltcd.)*
 
 ### 2.4 Validation parity with `mln-sidecar`
 
@@ -168,6 +170,10 @@ Expose wallet/MWEB coin state consistent with what `validateOnion` uses, returni
 ### 5.3 Cryptography boundary
 
 Pedersen commitments, Bulletproofs, `wire.MwebOutput` / kernel assembly live under **`ltcmweb/ltcd`** (`ltcutil/mweb`, etc.), not a separate `mwebd` import in `coinswapd` (see teardown).
+
+### 5.4 MLN local taker (`-mln-local-taker`)
+
+Default startup calls **`getNodes()`** / **`config.AliveNodes`**: the process’s **`-k`** X25519 public key must match one of the [hardcoded mesh rows](coinswapd/config/nodes.go) (or the probe fails). That is wrong for **MLN `mweb_*`** smoke, where **`-k`** is usually random and **peers** come only from **`mweb_submitRoute`**. The fork flag **`-mln-local-taker`** skips that probe, sets **node index 0**, and skips the hourly **`getNodes()`** refresh — use for local E2E and taker-only JSON-RPC; **omit** when running as a registered public mesh operator.
 
 ---
 

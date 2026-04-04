@@ -42,6 +42,9 @@ var (
 	mwebScanSecret  = flag.String("mweb-scan-secret", "", "hex 32-byte MWEB scan secret (mweb_getBalance / mweb_submitRoute)")
 	mwebSpendSecret = flag.String("mweb-spend-secret", "", "hex 32-byte MWEB spend secret (mweb_submitRoute)")
 	mwebPubkeyMap   = flag.String("mweb-pubkey-map", "", "JSON file: {\"https://maker...\":\"64hex\",...} for swap keys (Approach C)")
+
+	// MLN / local E2E: skip config.AliveNodes identity match (random -k is never in the public mesh list).
+	mlnLocalTaker = flag.Bool("mln-local-taker", false, "skip swap-mesh node probe; force node 0 (peers come from mweb_submitRoute only)")
 )
 
 func main() {
@@ -102,8 +105,14 @@ func main() {
 	}
 
 	ss := &swapService{}
-	if err = ss.getNodes(); err != nil {
-		return
+	if *mlnLocalTaker {
+		ss.nodeIndex = 0
+		ss.nodes = nil
+		fmt.Println("mln-local-taker: skipping getNodes (use for MLN mweb_* / scripts; peers from mweb_submitRoute)")
+	} else {
+		if err = ss.getNodes(); err != nil {
+			return
+		}
 	}
 
 	pubmap, err := loadPubkeyMapJSON(*mwebPubkeyMap)
@@ -165,7 +174,9 @@ func main() {
 		case tPrev.Hour() == 23 && t.Hour() == 0:
 			err = ss.performSwap()
 		case tPrev.Hour() == 0 && t.Hour() == 1:
-			err = ss.getNodes()
+			if !*mlnLocalTaker {
+				err = ss.getNodes()
+			}
 		}
 		if err != nil {
 			return

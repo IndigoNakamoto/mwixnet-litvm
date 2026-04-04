@@ -15,6 +15,7 @@ func validateTorHops(route *pathfind.Route) error {
 	if route == nil {
 		return fmt.Errorf("forger: nil route")
 	}
+	NormalizeRouteTor(route)
 	var missing []int
 	for i, h := range route.Hops {
 		if strings.TrimSpace(h.Tor) == "" {
