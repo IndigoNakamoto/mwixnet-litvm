@@ -152,7 +152,7 @@ func (s *swapService) forward() error {
 
 	client, err := rpc.Dial(node.Url)
 	if err != nil {
-		return err
+		return fmt.Errorf("swap_forward: rpc.Dial next hop (peer index %d): %w", s.nodeIndex+1, err)
 	}
 
 	go func() {
@@ -270,7 +270,7 @@ func (s *swapService) backward(
 
 	client, err := rpc.Dial(node.Url)
 	if err != nil {
-		return err
+		return fmt.Errorf("swap_backward: rpc.Dial previous hop (peer index %d): %w", s.nodeIndex-1, err)
 	}
 
 	go func() {

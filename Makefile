@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local broadcast-litvm record-litvm-deploy test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-research-coinswapd build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local broadcast-litvm record-litvm-deploy test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-research-coinswapd tor-preflight build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -69,6 +69,10 @@ build-mw-rpc-stub:
 build-research-coinswapd:
 	@mkdir -p "$(MK_ROOT)/bin"
 	cd "$(MK_ROOT)/research/coinswapd" && go build -o "$(MK_ROOT)/bin/coinswapd-research" .
+
+# Tor SOCKS preflight before live .onion labs (see research/PHASE_3_TOR_OPERATOR_LAB.md)
+tor-preflight:
+	"$(MK_ROOT)/scripts/tor-preflight.sh"
 
 # Vite bundle for Wails embed (Node 18+). Run from repo root.
 build-mln-wallet-frontend:

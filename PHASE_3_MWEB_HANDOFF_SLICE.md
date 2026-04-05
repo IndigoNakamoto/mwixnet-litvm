@@ -4,6 +4,12 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 **Still out of scope for closing README Phase 3:** official [LitVM testnet](https://docs.litvm.com/) RPC as the live registry, **automated CI** running Neutrino-backed [`research/coinswapd/`](research/coinswapd/), a **completed** MWixnet round to chain with **LitVM slash/defense** on a public deployment, and **live** `.onion` connectivity in the default stub script.
 
+## Live Tor operator lab (toward full Phase 3)
+
+Runbook, **`HTTP_PROXY` / `socks5h://`** details (Go `net/http` vs `ALL_PROXY`), 1-hop then 3-hop checklist, and README Phase 3 **gate** wording: **[`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md)**.
+
+**Preflight:** [`scripts/tor-preflight.sh`](scripts/tor-preflight.sh) or **`make tor-preflight`**.
+
 ## Completion (stub + full CLI path)
 
 **Status: complete** for the **documented stub stack** as of **2026-04-03**.
@@ -74,7 +80,7 @@ Same commands as **Permanent regression anchor** above; release candidates must 
 - **`make build-research-coinswapd`** → **`bin/coinswapd-research`** (Go **1.23** toolchain; Neutrino mainnet on start — see [`research/coinswapd/main.go`](research/coinswapd/main.go)).
 - **Optional E2E backend:** `MWEB_RPC_BACKEND=coinswapd` in [`scripts/e2e-mweb-handoff-stub.sh`](scripts/e2e-mweb-handoff-stub.sh) starts the fork on **`STUB_ADDR`** (default **`:8546`**) when **`COINSWAPD_FEE_MWEB`** is set (mainnet MWEB fee address for **`-a`**), passing **`-mln-local-taker`** so startup skips **`getNodes()`** / **`config.AliveNodes`**. Default script path still uses a **stub-shaped** **`POST /v1/swap`** body and expects **502** (missing keys / UTXO). For **`E2E_MWEB_FUNDED=1`**, see [Real funded operator path](#real-funded-operator-path-coinswapd-research) below ( **`E2E_MWEB_FULL=1`** alone with **`coinswapd`** remains invalid unless **`E2E_MWEB_FUNDED=1`** ).
 - **Tor / mix URL normalization:** [`mln-sidecar/internal/mweb/translator.go`](mln-sidecar/internal/mweb/translator.go) and [`mln-cli/internal/forger/torurl.go`](mln-cli/internal/forger/torurl.go) prefix **`http://`** when a hop **`tor`** string has no URI scheme (typical for ads that publish `something.onion:port` only). **`mln-cli pathfind`** only considers makers with **non-empty** **`tor`** in the verified set so routes are viable for real transport.
-- **Where real Tor applies:** [`research/coinswapd/swap.go`](research/coinswapd/swap.go) uses **`rpc.Dial(node.Url)`** for inter-node **`swap_forward` / `swap_backward`**. Go’s default HTTP transport honors **`HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`** (e.g. **`socks5h://127.0.0.1:9050`**) so **`http://…onion…`** hop URLs can resolve once Tor is running on the host running **coinswapd**. The **sidecar** only forwards route JSON; it does not dial maker `.onion` hosts. Set the same proxy env vars on the **coinswapd** process (and on **mln-sidecar** only if **`-rpc-url`** itself points through Tor).
+- **Where real Tor applies:** [`research/coinswapd/swap.go`](research/coinswapd/swap.go) uses **`rpc.Dial(node.Url)`** (go-ethereum over **`http://`**) for inter-node **`swap_forward` / `swap_backward`**. Go’s **`net/http`** default transport uses **`ProxyFromEnvironment`**, which reads **`HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY`** (not **`ALL_PROXY`**). Use **`socks5h://127.0.0.1:9050`** so **`.onion`** hostnames resolve at the Tor proxy. Set those vars on the **`coinswapd`** process; see [`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md). The **sidecar** only forwards route JSON; it does not dial maker `.onion` hosts (set proxy on **mln-sidecar** only if **`-rpc-url`** itself points through Tor).
 
 ### Research backend smoke (operator-verified)
 
@@ -198,6 +204,7 @@ Run a built binary from [`research/coinswapd/`](research/coinswapd/) listening o
 
 ## Related
 
+- Live Tor operator lab + README Phase 3 gate: [research/PHASE_3_TOR_OPERATOR_LAB.md](research/PHASE_3_TOR_OPERATOR_LAB.md)  
 - Phase 12 closed loop (mock sidecar): [PHASE_12_E2E_CRUCIBLE.md](PHASE_12_E2E_CRUCIBLE.md)  
 - Threat model note on mock vs rpc: [research/THREAT_MODEL_MLN.md](research/THREAT_MODEL_MLN.md)  
 - Sidecar modes: [mln-sidecar/README.md](mln-sidecar/README.md)
