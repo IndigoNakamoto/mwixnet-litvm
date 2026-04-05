@@ -111,7 +111,8 @@ func addFee(sum, add uint64) (uint64, error) {
 	return sum + add, nil
 }
 
-// BuildMockOnion maps a validated route into a mock onion and logs the simulated handoff.
+// BuildMockOnion maps a validated route into a mock onion. Logs omit hop endpoints (Tor URLs)
+// so operator logs do not record maker infrastructure or route shape beyond hop count.
 func BuildMockOnion(req *SwapRequest) MockOnion {
 	tors := make([]string, len(req.Route))
 	for i := range req.Route {
@@ -129,6 +130,6 @@ func BuildMockOnion(req *SwapRequest) MockOnion {
 		AmountSat: req.Amount,
 		FeeSumSat: feeSum,
 	}
-	log.Printf("[Sidecar] Translated %d-hop route into MWEB Onion. Target N1: %s", o.HopCount, o.EntryTor)
+	log.Printf("[Sidecar] mock: built %d-hop mock onion (entry endpoint not logged)", o.HopCount)
 	return o
 }

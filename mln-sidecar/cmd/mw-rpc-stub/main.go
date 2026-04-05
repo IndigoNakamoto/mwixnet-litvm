@@ -119,7 +119,7 @@ func main() {
 					return
 				}
 			}
-			log.Printf("mweb_submitRoute ok destination=%s amount=%d", sr.Destination, sr.Amount)
+			log.Printf("mweb_submitRoute ok (accepted; destination and amount not logged)")
 			stubMu.Lock()
 			stubPending++
 			stubMu.Unlock()
