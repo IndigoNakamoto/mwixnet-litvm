@@ -1,0 +1,13 @@
+---
+description: >-
+  Mermaid diagrams for MLN layers, flows, and grievance paths. Use when adding or editing architecture
+  diagrams in phase playbooks or research markdown—cite canonical docs only; no new protocol claims.
+alwaysApply: false
+globs:
+  - PHASE_*.md
+  - research/**/*.md
+---
+
+# MLN architecture diagrams (rule)
+
+- Follow **`.cursor/skills/mln-architecture-diagrams/SKILL.md`** — valid Mermaid only; cite **`AGENTS.md`** and **`PRODUCT_SPEC.md`**; do not invent economics or wire behavior.

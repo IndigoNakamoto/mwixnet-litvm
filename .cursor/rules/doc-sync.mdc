@@ -4,12 +4,13 @@ description: >-
   Use when the user asks: 'sync docs', 'update readme', 'run documentation pass', 'align docs with git', or 'check for stale links'.
   Also when editing matched files below, or when the user asks for a documentation synchronization pass, doc review against
   shipped code, README Documentation table parity, or a markdown link audit. Before finishing a doc-sync pass, run git diff
-  and confirm markdown and Do-not constraints; if contract economics in git contradict PRODUCT_SPEC.md, do not rewrite the
-  spec—flag in bold in chat for a human architect.
+  and confirm markdown and **Do not** constraints in `.cursor/skills/doc-sync/SKILL.md` (including spec vs code economics).
 alwaysApply: false
 globs:
   - README.md
   - AGENTS.md
+  - CONTRIBUTING.md
+  - docs/AGENT_HANDOFF.md
   - PHASE_*.md
   - research/THREAT_MODEL_MLN.md
   - research/RED_TEAM_MLN.md
@@ -22,4 +23,4 @@ Follow `.cursor/skills/doc-sync/SKILL.md` when:
 - The user asks to **sync docs**, **update the readme**, **run a documentation pass**, **align docs with git**, or **check for stale links**, or
 - You are editing roadmap, Documentation table, phase playbook cross-links, or CI/RPC claims in the globbed files above.
 
-Do not use this rule to rewrite `PRODUCT_SPEC.md` economics or appendices; the skill limits spec edits to section 9 implementation status unless the user explicitly expands scope. If smart contract economics in git history contradict the spec, do not edit the spec to match—flag the discrepancy in **bold** in chat for the human architect (see `.cursor/skills/doc-sync/SKILL.md` **Do not**).
+Do not use this rule to expand `PRODUCT_SPEC.md` beyond the skill’s scope; **spec vs code (economics)** — same norm as **`.cursor/skills/doc-sync/SKILL.md`** **Do not** (flag discrepancies in **bold** for a human architect; do not silently rewrite the spec).

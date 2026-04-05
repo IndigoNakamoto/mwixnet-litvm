@@ -1,0 +1,14 @@
+---
+description: >-
+  coinswapd fork and teardown-first workflow. Use when editing research/coinswapd or COINSWAPD research
+  docs—confirm RPC names and onion JSON via teardown before asserting ltcmweb behavior.
+alwaysApply: false
+globs:
+  - research/coinswapd/**/*
+  - research/COINSWAPD_*.md
+---
+
+# MLN coinswapd reference (rule)
+
+- Follow **`.cursor/skills/coinswapd-reference/SKILL.md`** and start from **`research/COINSWAPD_TEARDOWN.md`**, then cited paths under **`research/coinswapd/`**.
+- Product economics and LitVM design stay in **`PRODUCT_SPEC.md`** — do not infer from **`coinswapd`** alone.

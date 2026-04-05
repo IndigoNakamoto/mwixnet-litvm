@@ -6,6 +6,8 @@ globs:
   - research/**/*
   - contracts/**/*
   - mln-cli/**/*
+  - mlnd/**/*
+  - mln-sidecar/**/*
 ---
 
 # MLN architecture (project rule)

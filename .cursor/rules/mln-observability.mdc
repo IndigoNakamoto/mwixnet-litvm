@@ -1,0 +1,15 @@
+---
+description: >-
+  Observability and operator diagnostics for MLN Go services (mln-cli, mlnd, mln-sidecar). Use when editing
+  logging, health surfaces, or runbook-style operator visibility—no product analytics by default.
+alwaysApply: false
+globs:
+  - mln-cli/**/*
+  - mlnd/**/*
+  - mln-sidecar/**/*
+---
+
+# MLN observability (rule)
+
+- Follow **`.cursor/skills/mln-observability/SKILL.md`** for structured logging, diagnostics, and privacy-safe operator signals.
+- Do not log secrets, full onion payloads, or raw PII; align with **`PRODUCT_SPEC.md`** and **`research/THREAT_MODEL_MLN.md`**.

@@ -16,6 +16,8 @@ description: >-
 - **PRODUCT_SPEC.md** — section 9 **implementation status** paragraph only (keep P0–P3 product table authoritative; do not rewrite economics or appendices unless the user explicitly expands scope).
 - **Spec vs code (economics):** If git history or contracts show **smart-contract economics** that **contradict** `PRODUCT_SPEC.md` (including sections 5–6 or the P0–P3 table), follow the **Do not** rule below: do not edit the spec to match the code; **flag the discrepancy in chat (or PR text) in bold** for a human architect.
 - **AGENTS.md** — “Current phase” and canonical table rows if capabilities or paths changed.
+- **CONTRIBUTING.md** — workflow and handoff pointers vs **`.cursor/`** and **`docs/AGENT_HANDOFF.md`** when those change.
+- **docs/AGENT_HANDOFF.md** — Cursor rules/skills vs **`AGENTS.md`**; keep links and claims consistent with the canonical table in **`AGENTS.md`**.
 - **research/THREAT_MODEL_MLN.md** — snapshot/changelog row when CI, contracts, or major stack behavior changes.
 - **research/RED_TEAM_MLN.md** — keep aligned with the threat model when attack surface or ops guidance changes; not a second audit trail.
 - **Root `PHASE_*.md`** — cross-links and claims vs `.github/workflows/**`, `Makefile`, and real paths.
@@ -27,7 +29,9 @@ description: >-
 3. **README Documentation table** — **Every** root `PHASE_*.md` file gets a row (numeric order 5–16). There is **no** `PHASE_11_*.md` or `PHASE_13_*.md`: use `mln-cli/desktop/README.md` for Phase 11 and `mln-sidecar/README.md` for Phase 13.
 4. **Production vs PoC** — Roadmap area should keep a **single-sentence** disclaimer: in-tree Phases 1–16 PoC can be feature-complete for documented bring-up while **not production** until **LitVM testnet broadcast** on the official chain, **security audit**, and production **`coinswapd` / MWEB integration**. The **published ltcmweb reference is Go**; the **tracked** MLN fork lives at `research/coinswapd/` — align wording with `PRODUCT_SPEC.md` and `research/COINSWAPD_TEARDOWN.md`.
 5. **Link and reference audit** — For relative markdown targets in touched files, confirm paths exist. Grep for misleading anchors (e.g. link text `contracts/.env` pointing at `.env.example`). Confirm **Slither** language matches `.github/workflows/contracts.yml` (job present, `fail-on`, `filter-paths`). RPC names **`mweb_submitRoute`** / **`mweb_getBalance`** and optional hop field **`swapX25519PubHex`** should stay consistent with `mln-sidecar/README.md`, `research/COINSWAPD_TEARDOWN.md`, and `research/COINSWAPD_MLN_FORK_SPEC.md`.
-6. **Self-Verification** — Before finishing, run `git diff` to review your own changes. Ensure no markdown formatting was broken (e.g., unclosed links or tables) and that you strictly adhered to the **Do not** constraints.
+6. **Threat-model pairing** — Substantive edits to **`research/THREAT_MODEL_MLN.md`** should include a quick pass over **`research/RED_TEAM_MLN.md`** so narratives and ops guidance stay aligned (red team extends the threat model, not a separate audit).
+7. **Go / dependency claims** — When touching **version claims** in skills, **`README.md`**, or phase docs, spot-check root **`mln-cli/go.mod`**, **`mlnd/go.mod`**, and **`mln-sidecar/go.mod`** against **`.cursor/skills/mln-go-engineer/SKILL.md`** (Go and **`go-ethereum`** pins per module).
+8. **Self-Verification** — Before finishing, run `git diff` to review your own changes. Ensure no markdown formatting was broken (e.g., unclosed links or tables) and that you strictly adhered to the **Do not** constraints.
 
 ## Do not
 

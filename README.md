@@ -101,6 +101,7 @@ This repository holds the **product specification**, research notes, and Cursor 
 | -------- | ------- |
 | [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) | Full architecture, economics, roadmap, evidence preimage (appendix 13), MWEB appendix (14), open questions |
 | [`AGENTS.md`](AGENTS.md) | Contributor / agent orientation (layer boundaries, canonical sources) |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contributing workflow, layer boundaries, Cursor / external model handoff |
 | [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md) | Cursor rules/skills vs `AGENTS.md`; pairing Cursor with external models (Grok, Gemini, Claude) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Keep a Changelog–style notes for tagged releases and unreleased work |
 | [`contracts/README.md`](contracts/README.md) | Solidity layout, local Anvil deploy, `make contracts-test` |

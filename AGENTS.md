@@ -8,6 +8,7 @@
 
 | Topic | Canonical source |
 |--------|------------------|
+| Contributing workflow | `CONTRIBUTING.md` |
 | Product, layers, roadmap, open questions | `PRODUCT_SPEC.md` |
 | Grievance `evidenceHash` preimage (LitVM correlators) | `PRODUCT_SPEC.md` §13 |
 | LitVM Foundry contracts and testnet notes | `contracts/`, `research/LITVM.md` |

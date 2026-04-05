@@ -10,6 +10,6 @@ globs:
 # MLN contracts (rule)
 
 - Follow **`.cursor/skills/mln-contracts/SKILL.md`** for tests, scripts, Foundry config, and CI alignment.
-- **Economics and dispute design** in **`PRODUCT_SPEC.md`** are **canonical**. If **code and spec diverge**, **do not silently edit the spec to match code** — **flag in bold** for a human architect (same norm as **`.cursor/skills/doc-sync/SKILL.md`**).
+- **Economics and dispute design:** **`PRODUCT_SPEC.md`** is canonical; **spec vs code** — same **Do not** norm as **`.cursor/skills/doc-sync/SKILL.md`** (do not silently rewrite the spec; **flag in bold** for a human architect).
 - LitVM contracts cover **registry, bonds, slashing, grievances** — not full happy-path mix verification on-chain (**`AGENTS.md`**).
 - For cross-layer protocol claims, also respect **`.cursor/rules/mln-architecture.mdc`**.

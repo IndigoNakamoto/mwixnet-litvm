@@ -1,0 +1,17 @@
+---
+description: >-
+  MLN Nostr wire profile and fixtures. Use when editing nostr/ fixtures, validate_fixtures.py, or normative
+  Nostr docs—kinds, tags, and content JSON must match research/NOSTR_MLN.md and CI.
+alwaysApply: false
+globs:
+  - nostr/**/*
+  - research/NOSTR_MLN.md
+  - research/NOSTR_EVENTS.md
+  - PHASE_2_NOSTR.md
+---
+
+# MLN Nostr wire (rule)
+
+- **Normative wire:** **`research/NOSTR_MLN.md`** — kinds **31250–31251**, tags, `content` JSON, `nostrKeyHash` binding.
+- **CI:** **`.github/workflows/nostr-fixtures.yml`**; validate with **`nostr/validate_fixtures.py`** when changing fixtures.
+- For **test commands and workflow expectations**, coordinate with **`.cursor/skills/mln-qa/SKILL.md`**.

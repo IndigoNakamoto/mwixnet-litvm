@@ -27,6 +27,8 @@ For **documentation parity and link/CI wording fixes**, follow **`.cursor/skills
 
 For **UX, trust UI, wallet flows**, follow **`.cursor/skills/mln-web3-product-design/SKILL.md`**.
 
+For **cross-tool pairing** (Cursor + external models) and how rules/skills relate to **`AGENTS.md`**, see **`docs/AGENT_HANDOFF.md`**.
+
 ## Priority tiers (labels for the answer—not formal process)
 
 Use these **only as inference from the docs**, and say so explicitly (e.g. "Inferred from README + spec").
