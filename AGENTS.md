@@ -9,6 +9,7 @@
 | Topic | Canonical source |
 |--------|------------------|
 | Contributing workflow | `CONTRIBUTING.md` |
+| Agent execution plans (optional; checked in when used) | `.cursor/plans/README.md` |
 | Product, layers, roadmap, open questions | `PRODUCT_SPEC.md` |
 | Grievance `evidenceHash` preimage (LitVM correlators) | `PRODUCT_SPEC.md` §13 |
 | LitVM Foundry contracts and testnet notes | `contracts/`, `research/LITVM.md` |
@@ -28,7 +29,7 @@
 | Local E2E stack (Anvil + Nostr relay + `mln-sidecar` + 3× `mlnd`, bootstrap) | `PHASE_12_E2E_CRUCIBLE.md`, `deploy/docker-compose.e2e.yml`, `scripts/e2e-bootstrap.sh`, `mln-sidecar/` |
 | Phase 3a MWEB handoff (`mln-sidecar -mode=rpc`, stub or fork; no official LitVM testnet) | `PHASE_3_MWEB_HANDOFF_SLICE.md` (**PR + `v*` regression anchors**: `E2E_MWEB_FULL=1`, optional `MWEB_RPC_BACKEND=coinswapd`), `scripts/e2e-mweb-handoff-stub.sh`, `deploy/docker-compose.e2e.sidecar-rpc.yml`, `make build-mw-rpc-stub`, `make build-research-coinswapd`; rpc wire regression: `mln-sidecar/internal/mweb/rpc_bridge_test.go`, `research/coinswapd/mlnroute/sidecar_wire_test.go` |
 | Phase 3 live Tor + multi-hop `coinswapd` (operator lab; README Phase 3 gate with public LitVM) | `research/PHASE_3_TOR_OPERATOR_LAB.md`, `scripts/tor-preflight.sh`, `make tor-preflight` |
-| MWEB tx / onion baseline vs Grin (normative for `coinswapd` path) | `PRODUCT_SPEC.md` §14 |
+| MWEB tx / onion baseline vs Grin (normative for `coinswapd` path); PSBTv2 MWEB interchange note | `PRODUCT_SPEC.md` §14 (incl. §14.0) |
 | How `coinswapd` is structured (RPC, onion JSON, code paths) | `research/COINSWAPD_TEARDOWN.md`; fork + `mweb_*` implementation in `research/coinswapd/` |
 | `mweb_submitRoute` / `mweb_getBalance` / `mweb_getRouteStatus` / `mweb_runBatch` fork contract and MLN → `onion.Onion` mapping | `research/COINSWAPD_MLN_FORK_SPEC.md` |
 | Taker CLI (`mln-cli`); maker onboard (`mln-cli maker onboard`); Wails taker wallet (`mln-cli/desktop/`, build tag `wails`); shared maker-ad structs for `mlnd` + client; Forger → MLN HTTP sidecar (`GET /v1/balance`, `POST` route JSON, not vanilla `swap_Swap`); mock sidecar for local E2E (`mln-sidecar`); optional self-as-N2 routing (Phase 14); optional `mlnd` loopback Maker dashboard (`MLND_DASHBOARD_ADDR`) | `PHASE_10_TAKER_CLI.md`, `PHASE_14_SELF_INCLUSION.md`, `mln-cli/desktop/README.md`, `mlnd/MAKER_DASHBOARD_SETUP.md`, `research/COINSWAPD_TEARDOWN.md` (sidecar + `swap_forward`), `research/COINSWAPD_MLN_FORK_SPEC.md`, `mln-cli/internal/forger/`, `mln-cli/internal/takerflow/`, `mln-cli/internal/pathfind/`, `mlnd/pkg/makerad`, `mln-sidecar/` |

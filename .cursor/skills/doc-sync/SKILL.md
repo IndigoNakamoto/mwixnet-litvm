@@ -17,7 +17,8 @@ description: >-
 - **Spec vs code (economics):** If git history or contracts show **smart-contract economics** that **contradict** `PRODUCT_SPEC.md` (including sections 5–6 or the P0–P3 table), follow the **Do not** rule below: do not edit the spec to match the code; **flag the discrepancy in chat (or PR text) in bold** for a human architect.
 - **AGENTS.md** — “Current phase” and canonical table rows if capabilities or paths changed.
 - **CONTRIBUTING.md** — workflow and handoff pointers vs **`.cursor/`** and **`docs/AGENT_HANDOFF.md`** when those change.
-- **docs/AGENT_HANDOFF.md** — Cursor rules/skills vs **`AGENTS.md`**; keep links and claims consistent with the canonical table in **`AGENTS.md`**.
+- **`.cursor/plans/README.md`** — optional agent plans directory: purpose, naming, lifecycle; keep aligned with **`CONTRIBUTING.md`** when workflow changes.
+- **docs/AGENT_HANDOFF.md** — Cursor rules/skills/plans vs **`AGENTS.md`**; keep links and claims consistent with the canonical table in **`AGENTS.md`**.
 - **research/THREAT_MODEL_MLN.md** — snapshot/changelog row when CI, contracts, or major stack behavior changes.
 - **research/RED_TEAM_MLN.md** — keep aligned with the threat model when attack surface or ops guidance changes; not a second audit trail.
 - **Root `PHASE_*.md`** — cross-links and claims vs `.github/workflows/**`, `Makefile`, and real paths.
