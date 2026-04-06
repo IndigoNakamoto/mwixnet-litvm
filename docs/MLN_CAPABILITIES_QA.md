@@ -39,6 +39,9 @@
 **Q: What ships for takers?**  
 **A:** **`mln-cli`**: Scout, pathfind (including optional self-included routing), forger posting route JSON to **`mln-sidecar`** (not vanilla upstream `swap_Swap` alone). **`mln-cli maker onboard`**: LitVM `deposit` / `registerMaker` plan or execute (dry-run by default). Optional **Wails** desktop wallet (`make build-mln-wallet`). See [`PHASE_10_TAKER_CLI.md`](../PHASE_10_TAKER_CLI.md).
 
+**Q: Where does PSBTv2 MWEB fit in?**  
+**A:** **PSBTv2** adds **MWEB extensions** for **interoperable partial signing** across wallets (reference definitions in **ltcd**; desktop implementations include **[Sparrow-LTC](https://github.com/sparrow-ltc/sparrow)**). That is **separate** from this repo’s default mix handoff, which uses **`mweb_*` JSON-RPC** and **route / onion JSON** via **`mln-sidecar`** and **`coinswapd`**. PSBT matters for **funding, change, and co-signing** workflows that use PSBT carriers, not for the documented **`E2E_MWEB_*`** stub path unless you explicitly integrate it. See [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) appendix **14.0** and Tier B.
+
 **Q: What ships for makers / operators?**  
 **A:** **`mlnd`** daemon, Docker/Compose paths, optional loopback **Maker dashboard** when `MLND_DASHBOARD_ADDR` is set, NDJSON receipt bridge scaffolds per phase playbooks, release workflow for `mlnd` binaries. Operator notes: [`PHASE_9_ENABLEMENT.md`](../PHASE_9_ENABLEMENT.md), [`mlnd/MAKER_DASHBOARD_SETUP.md`](../mlnd/MAKER_DASHBOARD_SETUP.md), [`research/PHASE_3_TOR_OPERATOR_LAB.md`](../research/PHASE_3_TOR_OPERATOR_LAB.md).
 

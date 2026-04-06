@@ -325,7 +325,7 @@ The org currently exposes **21** public repositories (per GitHub API). Below is 
 | **[coinswapd](https://github.com/ltcmweb/coinswapd)** | Described as a **CoinSwap server for MWEB** — closest native analogue to Grin’s mwixnet for Litecoin; first place to compare protocol messages, batching, and server behavior vs your spec.                                    |
 | **[mwebd](https://github.com/ltcmweb/mwebd)**         | **“Module for adding MWEB capabilities to any application”** (Go). Likely home for **commitments, kernels, ownership proofs, and tx construction** primitives your **makers** would reuse instead of reimplementing MW crypto. |
 | **[neutrino](https://github.com/ltcmweb/neutrino)**   | **Privacy-preserving Litecoin light client** — starting point for **SPV-style header/merkle proofs**, filters, and “what would an oracle or verifier need?” for §10 (L1/MWEB inclusion).                                       |
-| **[ltcd](https://github.com/ltcmweb/ltcd)**           | **Full Litecoin node in Go** — consensus and chain data ground truth; use when neutrino-level detail is insufficient or you need full-block validation semantics.                                                              |
+| **[ltcd](https://github.com/ltcmweb/ltcd)**           | **Full Litecoin node in Go** — consensus and chain data ground truth; **PSBTv2 MWEB** field definitions used as the **reference** for cross-wallet partial signing (shared with offline signers and desktop wallets).        |
 
 
 ### Tier B — Taker / wallet UX and signing models
@@ -337,6 +337,7 @@ The org currently exposes **21** public repositories (per GitHub API). Below is 
 | **[app-ltcmweb](https://github.com/ltcmweb/app-ltcmweb)**           | **Ledger Nano** MWEB app — hardware signing and constrained UX; different constraints than hot wallets.                                                        |
 | **[electrum-ltc](https://github.com/ltcmweb/electrum-ltc)**         | README states the repo **moved** to [ltc-electrum/electrum-ltc](https://github.com/ltc-electrum/electrum-ltc) — follow that for **current** Electrum-LTC work. |
 | **[electrum-ltc-old](https://github.com/ltcmweb/electrum-ltc-old)** | Archived; still useful for **historical** Python/Electrum integration patterns.                                                                                |
+| **[sparrow-ltc/sparrow](https://github.com/sparrow-ltc/sparrow)**   | **Sparrow-LTC** desktop wallet; **PSBTv2 MWEB** implementation **aligned with ltcd** (cold / air-gap / QR-friendly signing, interoperability with other PSBT MWEB signers). Releases: [sparrow-ltc.github.io](https://sparrow-ltc.github.io). |
 
 
 ### Tier C — Supporting / niche
@@ -446,6 +447,12 @@ Off-chain or verifier modules check that `defenseData` matches the same **`epoch
 This appendix gives **normative, MWEB-specific** structure for the **happy-path mixing layer** aligned with the **[ltcmweb/coinswapd](https://github.com/ltcmweb/coinswapd)** reference and **`ltcmweb/ltcd`** wire types. It satisfies the §10.1 need for a **MWEB transaction appendix** for implementers building against that stack.
 
 **Not normative here:** full Litecoin consensus rules, reorg handling, or LitVM — use **ltcd** / node docs and §5–6 of this spec respectively.
+
+### 14.0 PSBTv2 MWEB (cross-wallet signing)
+
+**PSBTv2** carries **MWEB-specific fields** so wallets can **partially sign** Litecoin transactions that touch the extension block **without** each wallet inventing a private interchange format. The **field layout** was finalized in the **MWEB / ltcd** lineage (reported **July 2025**, **David Burkett**); the **first implementation** was in Go **ltcd**, with the **same fields** in **Sparrow-LTC** and several **offline signing** tools. Treat **ltcd** sources and upstream PSBT MWEB documentation from that lineage as **normative for PSBT**, not this document’s §14.2–14.5 tables.
+
+**Separation from CoinSwap / MLN handoff:** The **in-repo taker path** (`mln-cli` → `mln-sidecar` → **`coinswapd`** **`mweb_*` JSON-RPC** and **onion / route JSON**) is **not** a PSBT round-trip. PSBTv2 MWEB still matters for **operators and users** who **fund**, **receive change**, or **co-sign** via **desktop / hardware / air-gapped** flows that speak PSBT — and for **future** integrations that might **bridge** PSBT packages to or from the **`mweb_*`** pipeline.
 
 ### 14.1 Grin vs MWEB (what not to assume)
 

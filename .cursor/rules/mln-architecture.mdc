@@ -12,7 +12,7 @@ globs:
 
 # MLN architecture (project rule)
 
-- **Canonical spec:** `PRODUCT_SPEC.md` — product intent, layered architecture, roadmap, open questions; **§13** = `evidenceHash` preimage + wire bytes; **§14** = MWEB transaction / onion baseline vs Grin for the `coinswapd` path.
+- **Canonical spec:** `PRODUCT_SPEC.md` — product intent, layered architecture, roadmap, open questions; **§13** = `evidenceHash` preimage + wire bytes; **§14** = MWEB transaction / onion baseline vs Grin for the `coinswapd` path; **§14.0** = PSBTv2 MWEB cross-wallet signing vs `mweb_*` handoff.
 - **LitVM:** `contracts/` (Foundry) + `research/LITVM.md` — registry, `GrievanceCourt`, `EvidenceLib` (appendix 13); not audited.
 - **Reference implementation map:** `research/COINSWAPD_TEARDOWN.md` — actual `coinswapd` RPC names, onion JSON shape, and file-level entry points; use before asserting how the ltcmweb reference behaves.
 - **Taker CLI vs coinswapd:** `mln-cli` Forger POSTs **MLN route JSON** to a configurable URL (default `/v1/swap`); that is **not** upstream `swap_Swap`. Vanilla taker entry is still `onion.Onion` over JSON-RPC `/`. See teardown subsection on the sidecar extension and `PHASE_10_TAKER_CLI.md`.
