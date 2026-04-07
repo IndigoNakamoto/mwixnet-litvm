@@ -1,0 +1,23 @@
+---
+description: >-
+  After completing all todos from a Cursor Plan (or equivalent plan with a todo list), persist the plan markdown into this
+  repository under .cursor/plans/ using the naming convention in .cursor/plans/README.md. Use when wrapping up multi-step
+  plan-driven work, when the user says the plan is done, or when finishing the last plan item in an agent session.
+alwaysApply: true
+---
+
+# Plan persistence (in-repo)
+
+When **all todos** from a Cursor **Plan** (or the same plan tracked in-session) are **completed**, or when implementation driven by that plan finishes successfully:
+
+1. **Write** the plan to **[`.cursor/plans/`](.cursor/plans/README.md)** in this workspace (not only under `~/.cursor/plans/`).
+2. **Filename** — ASCII, per README: `YYYY-MM-DD-short-slug.md`  
+   - Use the **completion date** (or the session date if you finish in one shot) for `YYYY-MM-DD`.  
+   - `short-slug` is lowercase, hyphens, descriptive (optionally include branch or PR id in the slug).
+3. **Contents** — Preserve the human-useful body (goal, scope, file pointers, verification). You may **strip** Cursor-only frontmatter blocks (e.g. YAML todo metadata) if they are redundant; do **not** put secrets in the file (same safety rules as the README).
+4. **Do not** overwrite unrelated plans; if a file name collides, append `-2` or a more specific slug.
+5. **Lifecycle** — If the plan drove merges/commits, **commit** the new `.cursor/plans/*.md` file with the work (or immediately after), per README lifecycle guidance.
+
+If the plan text only exists outside the workspace (e.g. global Cursor path), **read it from there** or reconstruct from the session, then save the in-repo copy as above.
+
+Canonical naming and sections: **[`.cursor/plans/README.md`](.cursor/plans/README.md)**.
