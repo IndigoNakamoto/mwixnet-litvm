@@ -64,14 +64,18 @@ func OnboardFromEnv() (OnboardEnv, error) {
 // ScoutFromEnv loads scout-related settings (see PHASE_10_TAKER_CLI.md).
 func ScoutFromEnv() (relays []string, chainID, rpcURL, registry string, court string, timeout time.Duration, err error) {
 	raw := strings.TrimSpace(os.Getenv("MLN_NOSTR_RELAYS"))
-	if raw == "" {
-		return nil, "", "", "", "", 0, fmt.Errorf("MLN_NOSTR_RELAYS is required")
-	}
-	for _, p := range strings.Split(raw, ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			relays = append(relays, p)
+	if raw != "" {
+		for _, p := range strings.Split(raw, ",") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				relays = append(relays, p)
+			}
 		}
+	} else if u := strings.TrimSpace(os.Getenv("MLN_NOSTR_RELAY_URL")); u != "" {
+		relays = []string{u}
+	}
+	if len(relays) == 0 {
+		return nil, "", "", "", "", 0, fmt.Errorf("MLN_NOSTR_RELAYS or MLN_NOSTR_RELAY_URL is required")
 	}
 	chainID = strings.TrimSpace(os.Getenv("MLN_LITVM_CHAIN_ID"))
 	if chainID == "" {

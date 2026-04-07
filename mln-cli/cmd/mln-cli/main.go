@@ -32,6 +32,19 @@ func main() {
 		runScout(os.Args[2:])
 	case "pathfind":
 		runPathfind(os.Args[2:])
+	case "route":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "route: need subcommand (e.g. build)")
+			usage()
+			os.Exit(2)
+		}
+		switch os.Args[2] {
+		case "build":
+			runRouteBuild(os.Args[3:])
+		default:
+			fmt.Fprintf(os.Stderr, "route: unknown subcommand %q\n", os.Args[2])
+			os.Exit(2)
+		}
 	case "forger":
 		runForger(os.Args[2:])
 	case "maker":
@@ -53,12 +66,14 @@ func usage() {
 Commands:
   scout     Discover kind-31250 maker ads, verify LitVM registry state
   pathfind  Pick an ordered 3-hop route from verified makers with Tor endpoints (min fee hint, stake tie-break; -self-included for N2=self)
+  route build  Run scout + pathfind and write route JSON (default route.json) for forger -route-json
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
   maker onboard  Plan or execute MwixnetRegistry deposit + registerMaker (LitVM maker onboarding)
   grievance file Open a grievance on LitVM (openGrievance + bond; receipt from JSON or vault swap id)
 
 Environment (scout & pathfind):
   MLN_NOSTR_RELAYS          comma-separated wss:// relays
+  MLN_NOSTR_RELAY_URL       optional single relay if MLN_NOSTR_RELAYS is unset
   MLN_LITVM_CHAIN_ID        decimal chain id string (filter ads)
   MLN_LITVM_HTTP_URL        LitVM HTTP JSON-RPC for eth_call
   MLN_REGISTRY_ADDR         MwixnetRegistry address
@@ -299,60 +314,65 @@ func runScout(args []string) {
 	}
 }
 
-func runPathfind(args []string) {
-	fs := flag.NewFlagSet("pathfind", flag.ExitOnError)
-	jsonOut := fs.Bool("json", false, "print route JSON")
-	selfIncluded := fs.Bool("self-included", false, "fix middle hop to maker from MLN_OPERATOR_ETH_KEY")
-	_ = fs.Parse(args)
-
+func loadScoutConfig() (scout.Config, error) {
 	relays, chainID, rpcURL, regStr, court, timeout, err := config.ScoutFromEnv()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "config: %v\n", err)
-		os.Exit(2)
+		return scout.Config{}, err
 	}
 	regAddr, err := config.ParseRegistryAddr(regStr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "registry: %v\n", err)
-		os.Exit(2)
+		return scout.Config{}, err
 	}
-
-	cfg := scout.Config{
+	return scout.Config{
 		Relays:         relays,
 		RPCHTTP:        rpcURL,
 		ChainID:        chainID,
 		RegistryAddr:   regAddr,
 		GrievanceCourt: court,
 		Timeout:        timeout,
-	}
+	}, nil
+}
 
-	ctx := context.Background()
+func runPathfindPick(ctx context.Context, cfg scout.Config, selfIncluded bool, rng *rand.Rand) (*pathfind.Route, error) {
 	res, err := scout.Run(ctx, cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "scout: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("scout: %w", err)
 	}
-
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	var route *pathfind.Route
-	var perr error
-	if *selfIncluded {
+	if selfIncluded {
 		key := strings.TrimSpace(os.Getenv("MLN_OPERATOR_ETH_KEY"))
 		if key == "" {
-			fmt.Fprintln(os.Stderr, "pathfind: -self-included requires MLN_OPERATOR_ETH_KEY")
-			os.Exit(2)
+			return nil, fmt.Errorf("pathfind: -self-included requires MLN_OPERATOR_ETH_KEY")
 		}
 		addr, err := identity.AddressFromHexPrivateKey(key)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "pathfind: MLN_OPERATOR_ETH_KEY: %v\n", err)
+			return nil, fmt.Errorf("pathfind: MLN_OPERATOR_ETH_KEY: %w", err)
+		}
+		return pathfind.PickRouteSelfMiddle(res.Verified, addr, rng)
+	}
+	return pathfind.PickRoute(res.Verified, rng)
+}
+
+func runPathfind(args []string) {
+	fs := flag.NewFlagSet("pathfind", flag.ExitOnError)
+	jsonOut := fs.Bool("json", false, "print route JSON")
+	selfIncluded := fs.Bool("self-included", false, "fix middle hop to maker from MLN_OPERATOR_ETH_KEY")
+	_ = fs.Parse(args)
+
+	cfg, err := loadScoutConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "config: %v\n", err)
+		os.Exit(2)
+	}
+
+	ctx := context.Background()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	route, err := runPathfindPick(ctx, cfg, *selfIncluded, rng)
+	if err != nil {
+		msg := err.Error()
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		if strings.HasPrefix(msg, "pathfind:") && (strings.Contains(msg, "self-included requires") || strings.Contains(msg, "MLN_OPERATOR_ETH_KEY:")) {
 			os.Exit(2)
 		}
-		route, perr = pathfind.PickRouteSelfMiddle(res.Verified, addr, rng)
-	} else {
-		route, perr = pathfind.PickRoute(res.Verified, rng)
-	}
-	err = perr
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "pathfind: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -372,9 +392,46 @@ func runPathfind(args []string) {
 	}
 }
 
+func runRouteBuild(args []string) {
+	fs := flag.NewFlagSet("route build", flag.ExitOnError)
+	outPath := fs.String("out", "route.json", "path to write pathfind.Route JSON (for forger -route-json)")
+	selfIncluded := fs.Bool("self-included", false, "fix middle hop to maker from MLN_OPERATOR_ETH_KEY")
+	_ = fs.Parse(args)
+
+	cfg, err := loadScoutConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "config: %v\n", err)
+		os.Exit(2)
+	}
+
+	ctx := context.Background()
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	route, err := runPathfindPick(ctx, cfg, *selfIncluded, rng)
+	if err != nil {
+		msg := err.Error()
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		if strings.HasPrefix(msg, "pathfind:") && (strings.Contains(msg, "self-included requires") || strings.Contains(msg, "MLN_OPERATOR_ETH_KEY:")) {
+			os.Exit(2)
+		}
+		os.Exit(1)
+	}
+
+	raw, err := json.MarshalIndent(route, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "route build: json: %v\n", err)
+		os.Exit(1)
+	}
+	raw = append(raw, '\n')
+	if err := os.WriteFile(*outPath, raw, 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "route build: write %s: %v\n", *outPath, err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "route build: wrote %s\n", *outPath)
+}
+
 func runForger(args []string) {
 	fs := flag.NewFlagSet("forger", flag.ExitOnError)
-	routePath := fs.String("route-json", "", "path to JSON route from `mln-cli pathfind -json`")
+	routePath := fs.String("route-json", "", "path to JSON route from `mln-cli pathfind -json` or `mln-cli route build`")
 	dryRun := fs.Bool("dry-run", true, "validate route only (default); set false to POST to sidecar")
 	dest := fs.String("dest", "", "destination MWEB address (required with -dry-run=false)")
 	amount := fs.Uint64("amount", 0, "amount to swap in satoshis (required with -dry-run=false)")

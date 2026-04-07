@@ -6,7 +6,7 @@ Normative maker-ad wire: [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md). Walle
 
 ## Architectural phases
 
-- **Phase 10.1 — Scout:** Nostr kind **31250** ingest, Schnorr check, LitVM `eth_call` to `MwixnetRegistry` (`makerNostrKeyHash`, `stake`, `minStake`, `stakeFrozen`).
+- **Phase 10.1 — Scout:** Nostr kind **31250** ingest, Schnorr check, LitVM `eth_call` to `MwixnetRegistry` (`makerNostrKeyHash`, `stake`, `minStake`, `stakeFrozen`, **`exitUnlockTime` must be zero** so makers in the exit queue are not advertised as routable).
 - **Phase 10.2 — Pathfind:** Ordered **N1 → N2 → N3** selection from verified makers (minimize sum of optional per-hop fee hints, then prefer higher total stake, random tie-break).
 - **Phase 10.3 — Forger:** Validate Tor endpoints on a saved route (`-dry-run`), or **POST JSON** to a local **MLN extension** URL (`-dry-run=false`). Vanilla ltcmweb only exposes `swap_Swap(onion.Onion)` on JSON-RPC `/`; the JSON route body is implemented by a **fork or proxy** (see [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md)).
 - **Phase 10.4 — Maker onboard:** Read `MwixnetRegistry` (`stake`, `minStake`, `makerNostrKeyHash`, `exitUnlockTime`, `stakeFrozen`), derive **`nostrKeyHash`** from **`MLN_NOSTR_PUBKEY_HEX`** or **`MLN_NOSTR_NSEC`**, then by default **print a dry-run plan**; with **`-execute`**, sign **`deposit()`** (if stake &lt; minStake) and **`registerMaker(bytes32)`** using **`MLN_OPERATOR_ETH_KEY`**.
@@ -20,7 +20,7 @@ Shared maker-ad types live in [`mlnd/pkg/makerad`](mlnd/pkg/makerad) so `mlnd` a
 3. **Parse:** Decode `content` JSON, validate `v=1`, and ensure `d`-tag chain id matches `litvm.chainId`.
 4. **Deployment filter:** Keep events whose `litvm.chainId`, `litvm.registry`, and (if you set env) `litvm.grievanceCourt` match your expected deployment.
 5. **Dedup:** For each maker address, keep the ad with the latest `created_at` (replaceable stream).
-6. **LitVM:** For each remaining ad, `eth_call` the registry at `MLN_REGISTRY_ADDR`: `makerNostrKeyHash` must equal `keccak256(P)` for the event pubkey; `stake >= minStake`; `stakeFrozen` must be false.
+6. **LitVM:** For each remaining ad, `eth_call` the registry at `MLN_REGISTRY_ADDR`: `makerNostrKeyHash` must equal `keccak256(P)` for the event pubkey; `stake >= minStake`; `stakeFrozen` must be false; **`exitUnlockTime(maker)` must be zero** (makers who called `requestWithdrawal` are excluded so pathfind does not route new swaps through them).
 7. **Output:** Table to stdout, or `mln-cli scout -json`. Rejections go to stderr with a short reason (unless `-quiet`).
 
 ### Quick start (Scout)
@@ -29,6 +29,7 @@ Copy **HTTP JSON-RPC URL** and **chain id** from [LitVM documentation](https://d
 
 ```bash
 export MLN_NOSTR_RELAYS=wss://relay.damus.io
+# Or a single relay: export MLN_NOSTR_RELAY_URL=wss://relay.example (if MLN_NOSTR_RELAYS is unset)
 export MLN_LITVM_HTTP_URL=<HTTP_JSON_RPC_FROM_LITVM_DOCS>
 export MLN_LITVM_CHAIN_ID=<DECIMAL_CHAIN_ID_STRING>
 export MLN_REGISTRY_ADDR=0xYourRegistryAddress
@@ -54,9 +55,17 @@ Uses the **same environment variables** as Scout, runs discovery, then prints an
 ./bin/mln-cli pathfind -json > route.json
 ```
 
+**One-shot route file (same JSON as `pathfind -json`):**
+
+```bash
+./bin/mln-cli route build              # writes route.json in cwd
+./bin/mln-cli route build -out /tmp/route.json
+./bin/mln-cli route build -self-included -out route.json
+```
+
 You need **at least three** verified makers.
 
-**Self-included middle hop (Phase 14):** `pathfind -self-included` fixes **N2** to the maker derived from **`MLN_OPERATOR_ETH_KEY`** (64-hex LitVM operator ECDSA key). See [`PHASE_14_SELF_INCLUSION.md`](PHASE_14_SELF_INCLUSION.md).
+**Self-included middle hop (Phase 14):** `pathfind -self-included` or `route build -self-included` fixes **N2** to the maker derived from **`MLN_OPERATOR_ETH_KEY`** (64-hex LitVM operator ECDSA key). See [`PHASE_14_SELF_INCLUSION.md`](PHASE_14_SELF_INCLUSION.md).
 
 ## Phase 10.3: Forger
 
@@ -64,6 +73,7 @@ You need **at least three** verified makers.
 
 ```bash
 ./bin/mln-cli forger -route-json route.json -dry-run
+# route.json from pathfind -json or mln-cli route build
 ```
 
 **Submit to sidecar:** with `-dry-run=false`, `mln-cli` POSTs a JSON payload to the URL from `-coinswapd-url` (default `http://127.0.0.1:8080/v1/swap`). You must pass **`-dest`** (MWEB destination address) and **`-amount`** (satoshis). The request uses a **10s** HTTP timeout.

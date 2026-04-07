@@ -101,6 +101,20 @@ func VerifyMaker(ctx context.Context, rpcURL string, registryAddr common.Address
 	}
 	frozen := vals[0].(bool)
 
+	data, err = parsedABI.Pack("exitUnlockTime", maker)
+	if err != nil {
+		return nil, err
+	}
+	out, err = client.CallContract(ctx, ethereum.CallMsg{To: &registryAddr, Data: data}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("exitUnlockTime: %w", err)
+	}
+	vals, err = parsedABI.Unpack("exitUnlockTime", out)
+	if err != nil || len(vals) != 1 {
+		return nil, fmt.Errorf("unpack exitUnlockTime")
+	}
+	exitUnlock := vals[0].(*big.Int)
+
 	v := &Verification{
 		NostrKeyHashMatch: match,
 		Stake:             new(big.Int).Set(stake),
@@ -108,16 +122,24 @@ func VerifyMaker(ctx context.Context, rpcURL string, registryAddr common.Address
 		Frozen:            frozen,
 	}
 
+	ok, reason := decideMakerVerified(match, frozen, stake, minStake, exitUnlock)
+	v.OK = ok
+	v.Reason = reason
+	return v, nil
+}
+
+// decideMakerVerified encodes scout routing policy after on-chain reads (also unit-tested).
+func decideMakerVerified(match, frozen bool, stake, minStake, exitUnlock *big.Int) (ok bool, reason string) {
 	switch {
 	case !match:
-		v.Reason = "nostrKeyHash mismatch"
+		return false, "nostrKeyHash mismatch"
+	case exitUnlock != nil && exitUnlock.Sign() != 0:
+		return false, "in exit queue"
 	case frozen:
-		v.Reason = "stake frozen"
+		return false, "stake frozen"
 	case stake.Cmp(minStake) < 0:
-		v.Reason = "below minStake"
+		return false, "below minStake"
 	default:
-		v.OK = true
-		v.Reason = "ok"
+		return true, "ok"
 	}
-	return v, nil
 }
