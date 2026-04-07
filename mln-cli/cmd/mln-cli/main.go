@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/config"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/grievance"
@@ -79,6 +80,10 @@ Environment (grievance file):
   MLN_ACCUSER_ETH_KEY       64-hex key for msg.sender (must match receipt accuser); else MLN_OPERATOR_ETH_KEY
   MLN_GRIEVANCE_BOND_WEI    optional wei amount (decimal string); default 0.1 ether
   MLN_RECEIPT_VAULT_PATH    optional SQLite path (hop_receipts); use with positional swap_id
+
+Environment (forger -vault / MLN_RECEIPT_VAULT_PATH):
+  MLN_RECEIPT_EPOCH_ID      decimal LitVM epoch for threaded receipts (required with vault)
+  MLN_ACCUSER_ETH_KEY       same as grievance (must match receipt accuser)
 
 `)
 }
@@ -378,6 +383,7 @@ func runForger(args []string) {
 	waitBatch := fs.Bool("wait-batch", false, "poll GET /v1/route/status until pendingOnions==0 or -batch-timeout")
 	batchPoll := fs.Duration("batch-poll", 2*time.Second, "poll interval for -wait-batch")
 	batchTimeout := fs.Duration("batch-timeout", 2*time.Minute, "max wait for pendingOnions==0 with -wait-batch")
+	vaultPath := fs.String("vault", "", "SQLite receipt vault path (default MLN_RECEIPT_EPOCH_ID + MLN_ACCUSER_ETH_KEY required)")
 	_ = fs.Parse(args)
 
 	if *routePath == "" {
@@ -432,7 +438,31 @@ func runForger(args []string) {
 		}
 	}
 
-	if err := forger.ExecuteCLIWithBatch(ctx, &route, *sidecarURL, *dest, *amount, batch, os.Stderr); err != nil {
+	db := strings.TrimSpace(*vaultPath)
+	if db == "" {
+		db = strings.TrimSpace(os.Getenv("MLN_RECEIPT_VAULT_PATH"))
+	}
+	var vault *forger.VaultOptions
+	if db != "" {
+		epoch := strings.TrimSpace(os.Getenv("MLN_RECEIPT_EPOCH_ID"))
+		if epoch == "" {
+			fmt.Fprintln(os.Stderr, "forger: -vault requires MLN_RECEIPT_EPOCH_ID")
+			os.Exit(2)
+		}
+		key, err := grievance.AccuserKeyFromEnv()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "forger: vault accuser key: %v\n", err)
+			os.Exit(2)
+		}
+		addr := crypto.PubkeyToAddress(key.PublicKey)
+		vault = &forger.VaultOptions{
+			DBPath:  db,
+			EpochID: epoch,
+			Accuser: addr.Hex(),
+		}
+	}
+
+	if err := forger.ExecuteCLIWithBatch(ctx, &route, *sidecarURL, *dest, *amount, batch, vault, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}

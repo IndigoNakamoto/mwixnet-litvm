@@ -120,6 +120,42 @@ func TestValidateSwapRequest_swapKeysPartialRejected(t *testing.T) {
 	}
 }
 
+func TestValidateSwapRequest_litVMMetadataPartialRejected(t *testing.T) {
+	t.Parallel()
+	req := &SwapRequest{
+		Route: []HopInput{
+			{Tor: "http://a", FeeMinSat: 1},
+			{Tor: "http://b", FeeMinSat: 2},
+			{Tor: "http://c", FeeMinSat: 3},
+		},
+		Destination: "mweb1qq",
+		Amount:      100,
+		EpochID:     "1",
+	}
+	if err := ValidateSwapRequest(req); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestValidateSwapRequest_litVMMetadata_ok(t *testing.T) {
+	t.Parallel()
+	req := &SwapRequest{
+		Route: []HopInput{
+			{Tor: "http://a", FeeMinSat: 1},
+			{Tor: "http://b", FeeMinSat: 2},
+			{Tor: "http://c", FeeMinSat: 3},
+		},
+		Destination: "mweb1qq",
+		Amount:      100,
+		EpochID:     "42",
+		Accuser:     "0x2222222222222222222222222222222222222222",
+		SwapID:      "meta-ok",
+	}
+	if err := ValidateSwapRequest(req); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestValidateSwapRequest_swapKeyInvalidHex(t *testing.T) {
 	t.Parallel()
 	req := &SwapRequest{

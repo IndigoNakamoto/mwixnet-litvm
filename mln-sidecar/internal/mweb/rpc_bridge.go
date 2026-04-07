@@ -2,6 +2,7 @@ package mweb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -40,22 +41,51 @@ func NewRPCBridge(rawURL string) *RPCBridge {
 }
 
 // HandleSwap validates locally, then forwards the MLN payload to mweb_submitRoute.
-func (b *RPCBridge) HandleSwap(ctx context.Context, req *SwapRequest) (string, error) {
+func (b *RPCBridge) HandleSwap(ctx context.Context, req *SwapRequest) (*SwapOutcome, error) {
 	NormalizeSwapRequestHops(req)
 	if err := ValidateSwapRequest(req); err != nil {
-		return "", &InvalidSwapRequest{Err: err}
+		return nil, &InvalidSwapRequest{Err: err}
 	}
 	c, err := rpc.DialContext(ctx, b.URL)
 	if err != nil {
-		return "", fmt.Errorf("mweb rpc dial: %w", err)
+		return nil, fmt.Errorf("mweb rpc dial: %w", err)
 	}
 	defer c.Close()
 
-	var result interface{}
-	if err := c.CallContext(ctx, &result, rpcMethodSubmitRoute, req); err != nil {
-		return "", fmt.Errorf("mweb_submitRoute: %w", err)
+	var rpcResult interface{}
+	if err := c.CallContext(ctx, &rpcResult, rpcMethodSubmitRoute, req); err != nil {
+		return nil, fmt.Errorf("mweb_submitRoute: %w", err)
 	}
-	return "Route submitted to MWEB RPC (mweb_submitRoute)", nil
+	return decodeSubmitRouteRPCResult(rpcResult), nil
+}
+
+func decodeSubmitRouteRPCResult(raw interface{}) *SwapOutcome {
+	if raw == nil {
+		return &SwapOutcome{Detail: "Route submitted to MWEB RPC (mweb_submitRoute)"}
+	}
+	rb, err := json.Marshal(raw)
+	if err != nil {
+		return &SwapOutcome{Detail: "Route submitted to MWEB RPC (mweb_submitRoute)"}
+	}
+	var aux struct {
+		Accepted bool            `json:"accepted"`
+		SwapID   string          `json:"swapId"`
+		Receipt  json.RawMessage `json:"receipt"`
+		Detail   string          `json:"detail"`
+	}
+	if err := json.Unmarshal(rb, &aux); err != nil {
+		return &SwapOutcome{Detail: "Route submitted to MWEB RPC (mweb_submitRoute)"}
+	}
+	out := &SwapOutcome{
+		Detail:  strings.TrimSpace(aux.Detail),
+		SwapID:  strings.TrimSpace(aux.SwapID),
+		Receipt: aux.Receipt,
+	}
+	if out.Detail == "" {
+		out.Detail = "Route submitted to MWEB RPC (mweb_submitRoute)"
+	}
+	_ = aux.Accepted // legacy payloads only set accepted:true
+	return out
 }
 
 // HandleBalance calls mweb_getBalance (no parameters).
@@ -89,19 +119,40 @@ func (b *RPCBridge) HandleRouteStatus(ctx context.Context) (*RouteStatus, error)
 }
 
 // HandleRunBatch calls mweb_runBatch (no params).
-func (b *RPCBridge) HandleRunBatch(ctx context.Context) (string, error) {
+func (b *RPCBridge) HandleRunBatch(ctx context.Context) (*BatchOutcome, error) {
 	c, err := rpc.DialContext(ctx, b.URL)
 	if err != nil {
-		return "", fmt.Errorf("mweb rpc dial: %w", err)
+		return nil, fmt.Errorf("mweb rpc dial: %w", err)
 	}
 	defer c.Close()
 
 	var result map[string]interface{}
 	if err := c.CallContext(ctx, &result, rpcMethodRunBatch); err != nil {
-		return "", fmt.Errorf("mweb_runBatch: %w", err)
+		return nil, fmt.Errorf("mweb_runBatch: %w", err)
 	}
-	if d, _ := result["detail"].(string); d != "" {
-		return d, nil
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return &BatchOutcome{Detail: "mweb_runBatch ok"}, nil
 	}
-	return "mweb_runBatch ok", nil
+	var aux struct {
+		Detail  string          `json:"detail"`
+		SwapID  string          `json:"swapId"`
+		Receipt json.RawMessage `json:"receipt"`
+	}
+	if err := json.Unmarshal(raw, &aux); err != nil {
+		return &BatchOutcome{Detail: "mweb_runBatch ok"}, nil
+	}
+	bo := &BatchOutcome{
+		Detail:  strings.TrimSpace(aux.Detail),
+		SwapID:  strings.TrimSpace(aux.SwapID),
+		Receipt: aux.Receipt,
+	}
+	if bo.Detail == "" {
+		if d, _ := result["detail"].(string); strings.TrimSpace(d) != "" {
+			bo.Detail = strings.TrimSpace(d)
+		} else {
+			bo.Detail = "mweb_runBatch ok"
+		}
+	}
+	return bo, nil
 }

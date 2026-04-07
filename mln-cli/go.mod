@@ -5,6 +5,7 @@ go 1.22
 require (
 	github.com/IndigoNakamoto/mwixnet-litvm/mlnd v0.0.0
 	github.com/ethereum/go-ethereum v1.14.12
+	github.com/google/uuid v1.6.0
 	github.com/nbd-wtf/go-nostr v0.35.0
 	github.com/wailsapp/wails/v2 v2.9.0
 )
@@ -32,7 +33,6 @@ require (
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.2.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect

@@ -3,8 +3,11 @@ package mweb
 import (
 	"fmt"
 	"log"
+	"math/big"
 	"regexp"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const expectedHops = 3
@@ -47,6 +50,9 @@ type SwapRequest struct {
 	Route       []HopInput `json:"route"`
 	Destination string     `json:"destination"`
 	Amount      uint64     `json:"amount"`
+	EpochID     string     `json:"epochId,omitempty"`
+	Accuser     string     `json:"accuser,omitempty"`
+	SwapID      string     `json:"swapId,omitempty"`
 }
 
 // MockOnion is a stand-in for coinswapd's onion.Onion until the real engine is wired.
@@ -100,6 +106,33 @@ func ValidateSwapRequest(req *SwapRequest) error {
 	}
 	if withKey != 0 && withKey != len(req.Route) {
 		return fmt.Errorf("swapX25519PubHex must be set on all hops or omitted on all")
+	}
+	return validateSwapLitVMMetadata(req)
+}
+
+func validateSwapLitVMMetadata(req *SwapRequest) error {
+	e := strings.TrimSpace(req.EpochID)
+	a := strings.TrimSpace(req.Accuser)
+	s := strings.TrimSpace(req.SwapID)
+	if e == "" && a == "" && s == "" {
+		return nil
+	}
+	if e == "" || a == "" || s == "" {
+		return fmt.Errorf("epochId, accuser, and swapId must all be set together when providing LitVM route metadata")
+	}
+	epoch, ok := new(big.Int).SetString(e, 10)
+	if !ok || epoch.Sign() < 0 {
+		return fmt.Errorf("invalid epochId %q", req.EpochID)
+	}
+	h := strings.TrimSpace(a)
+	if !strings.HasPrefix(h, "0x") && !strings.HasPrefix(h, "0X") {
+		h = "0x" + h
+	}
+	if !common.IsHexAddress(h) {
+		return fmt.Errorf("invalid accuser address %q", req.Accuser)
+	}
+	if strings.TrimSpace(s) == "" {
+		return fmt.Errorf("swapId must be non-empty when providing LitVM route metadata")
 	}
 	return nil
 }

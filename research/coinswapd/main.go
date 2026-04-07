@@ -196,6 +196,10 @@ type swapService struct {
 	onions    map[mw.Commitment]*onionEtc
 	// mlnPeers, when length is 3, overrides nodes for swap_forward / swap_backward routing (MLN dynamic route).
 	mlnPeers []config.Node
+	// LitVM route metadata from MLN HTTP / mweb_submitRoute (for future hop-failure receipt emission; see PHASE_6).
+	mlnEpochID string
+	mlnAccuser string
+	mlnSwapID  string
 }
 
 func (s *swapService) getNodes() error {
@@ -234,7 +238,18 @@ func (s *swapService) Swap(onion onion.Onion) error {
 	defer s.mu.Unlock()
 	// Vanilla swap_Swap uses config topology, not a prior MLN route.
 	s.mlnPeers = nil
+	s.mlnEpochID = ""
+	s.mlnAccuser = ""
+	s.mlnSwapID = ""
 	return s.acceptOnionLocked(&onion)
+}
+
+func (s *swapService) setMLNRouteMeta(epochID, accuser, swapID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mlnEpochID = epochID
+	s.mlnAccuser = accuser
+	s.mlnSwapID = swapID
 }
 
 func inputFromOnion(onion *onion.Onion) (input *wire.MwebInput, err error) {

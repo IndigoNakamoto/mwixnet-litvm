@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -29,6 +30,9 @@ type submitRouteBody struct {
 	} `json:"route"`
 	Destination string `json:"destination"`
 	Amount      uint64 `json:"amount"`
+	EpochID     string `json:"epochId,omitempty"`
+	Accuser     string `json:"accuser,omitempty"`
+	SwapID      string `json:"swapId,omitempty"`
 }
 
 func writeRPC(w http.ResponseWriter, id json.RawMessage, result interface{}, rpcErr *struct {
@@ -123,6 +127,34 @@ func main() {
 			stubMu.Lock()
 			stubPending++
 			stubMu.Unlock()
+
+			ep := strings.TrimSpace(sr.EpochID)
+			ac := strings.TrimSpace(sr.Accuser)
+			sw := strings.TrimSpace(sr.SwapID)
+			if ep != "" && ac != "" && sw != "" {
+				acc := ac
+				if !strings.HasPrefix(acc, "0x") && !strings.HasPrefix(acc, "0X") {
+					acc = "0x" + acc
+				}
+				receipt := map[string]interface{}{
+					"epochId":               ep,
+					"accuser":               acc,
+					"accusedMaker":          "0x0000000000000000000000000000000000000001",
+					"hopIndex":              0,
+					"peeledCommitment":      "0x1111111111111111111111111111111111111111111111111111111111111111",
+					"forwardCiphertextHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+					"nextHopPubkey":         "mw-rpc-stub-next-hop",
+					"signature":             "mw-rpc-stub-signature",
+					"swapId":                sw,
+				}
+				writeRPC(w, req.ID, map[string]interface{}{
+					"accepted": true,
+					"swapId":   sw,
+					"detail":   "mw-rpc-stub: golden receipt (LitVM metadata present)",
+					"receipt":  receipt,
+				}, nil)
+				return
+			}
 			writeRPC(w, req.ID, map[string]interface{}{"accepted": true}, nil)
 		case "mweb_getBalance":
 			writeRPC(w, req.ID, map[string]interface{}{

@@ -79,6 +79,10 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 		return nil, mlnroute.InvalidParams(err.Error())
 	}
 
+	// Thread LitVM coordination into swap state. Fork follow-up: emit hop-failure receipts (PRODUCT_SPEC appendix 13)
+	// from peel/forward paths using these correlators plus crypto fields — not at queue injection only.
+	m.ss.setMLNRouteMeta(strings.TrimSpace(req.EpochID), strings.TrimSpace(req.Accuser), strings.TrimSpace(req.SwapID))
+
 	rawKeys, err := mlnroute.ResolveX25519PubKeys(&req, m.pubkeyMap)
 	if err != nil {
 		return nil, mlnroute.InvalidParams("swap keys required: " + err.Error())

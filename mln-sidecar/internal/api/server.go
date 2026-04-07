@@ -20,9 +20,11 @@ type BalanceResponse struct {
 
 // SwapResponse matches mln-cli ResponsePayload for success paths.
 type SwapResponse struct {
-	Ok     bool   `json:"ok"`
-	Detail string `json:"detail,omitempty"`
-	Error  string `json:"error,omitempty"`
+	Ok      bool            `json:"ok"`
+	Detail  string          `json:"detail,omitempty"`
+	Error   string          `json:"error,omitempty"`
+	SwapID  string          `json:"swapId,omitempty"`
+	Receipt json.RawMessage `json:"receipt,omitempty"`
 }
 
 // RouteStatusResponse is GET /v1/route/status (forger wait / operators).
@@ -38,9 +40,11 @@ type RouteStatusResponse struct {
 
 // BatchResponse is POST /v1/route/batch.
 type BatchResponse struct {
-	Ok     bool   `json:"ok"`
-	Detail string `json:"detail,omitempty"`
-	Error  string `json:"error,omitempty"`
+	Ok      bool            `json:"ok"`
+	Detail  string          `json:"detail,omitempty"`
+	Error   string          `json:"error,omitempty"`
+	SwapID  string          `json:"swapId,omitempty"`
+	Receipt json.RawMessage `json:"receipt,omitempty"`
 }
 
 // NewMux registers the MLN HTTP contract (GET /v1/balance, POST /v1/swap, route batch helpers).
@@ -101,7 +105,7 @@ func handleSwap(bridge mweb.Bridge) http.HandlerFunc {
 			})
 			return
 		}
-		detail, err := bridge.HandleSwap(r.Context(), &req)
+		outcome, err := bridge.HandleSwap(r.Context(), &req)
 		if err != nil {
 			if mweb.IsInvalidSwapRequest(err) {
 				writeJSON(w, http.StatusBadRequest, SwapResponse{
@@ -119,8 +123,10 @@ func handleSwap(bridge mweb.Bridge) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, SwapResponse{
-			Ok:     true,
-			Detail: detail,
+			Ok:      true,
+			Detail:  outcome.Detail,
+			SwapID:  outcome.SwapID,
+			Receipt: outcome.Receipt,
 		})
 	}
 }
@@ -148,7 +154,7 @@ func handleRouteStatus(bridge mweb.Bridge) http.HandlerFunc {
 
 func handleRunBatch(bridge mweb.Bridge) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		detail, err := bridge.HandleRunBatch(r.Context())
+		batchOut, err := bridge.HandleRunBatch(r.Context())
 		if err != nil {
 			writeJSON(w, http.StatusBadGateway, BatchResponse{
 				Ok:     false,
@@ -158,8 +164,10 @@ func handleRunBatch(bridge mweb.Bridge) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, BatchResponse{
-			Ok:     true,
-			Detail: detail,
+			Ok:      true,
+			Detail:  batchOut.Detail,
+			SwapID:  batchOut.SwapID,
+			Receipt: batchOut.Receipt,
 		})
 	}
 }

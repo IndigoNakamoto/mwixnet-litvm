@@ -100,6 +100,42 @@ func TestValidate_swapKeyInvalidHex(t *testing.T) {
 	}
 }
 
+func TestValidate_litVMMetadata_allOrNothing(t *testing.T) {
+	t.Parallel()
+	req := &Request{
+		Route: []Hop{
+			{Tor: "http://a", FeeMinSat: 1},
+			{Tor: "http://b", FeeMinSat: 2},
+			{Tor: "http://c", FeeMinSat: 3},
+		},
+		Destination: "mweb1qq",
+		Amount:      100,
+		EpochID:     "7",
+	}
+	if err := Validate(req); err == nil {
+		t.Fatal("expected error when only epochId set")
+	}
+}
+
+func TestValidate_litVMMetadata_ok(t *testing.T) {
+	t.Parallel()
+	req := &Request{
+		Route: []Hop{
+			{Tor: "http://a", FeeMinSat: 1},
+			{Tor: "http://b", FeeMinSat: 2},
+			{Tor: "http://c", FeeMinSat: 3},
+		},
+		Destination: "mweb1qq",
+		Amount:      100,
+		EpochID:     "99",
+		Accuser:     "0x1111111111111111111111111111111111111111",
+		SwapID:      "swap-test-meta",
+	}
+	if err := Validate(req); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestResolveKeys_withMap(t *testing.T) {
 	req := &Request{
 		Route: []Hop{

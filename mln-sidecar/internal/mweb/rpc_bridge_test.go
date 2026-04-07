@@ -66,7 +66,7 @@ func newMwebStubServer(t *testing.T, swapErr string, balanceResult interface{}) 
 				}{Code: -32603, Message: swapErr})
 				return
 			}
-			write(nil, nil)
+			write(map[string]interface{}{"accepted": true}, nil)
 		case rpcMethodGetBalance:
 			write(balanceResult, nil)
 		case rpcMethodGetRouteStatus:
@@ -87,6 +87,52 @@ func newMwebStubServer(t *testing.T, swapErr string, balanceResult interface{}) 
 	}))
 }
 
+func TestRPCBridge_HandleSwap_extendedReceipt(t *testing.T) {
+	t.Parallel()
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var env jsonRPCReq
+		if err := json.Unmarshal(body, &env); err != nil {
+			http.Error(w, "json", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		result := map[string]interface{}{
+			"accepted": true,
+			"swapId":   "ext-1",
+			"detail":   "stub extended",
+			"receipt": map[string]interface{}{
+				"epochId": "1", "accuser": "0x1111111111111111111111111111111111111111",
+				"accusedMaker": "0x0000000000000000000000000000000000000001", "hopIndex": 0,
+				"peeledCommitment": "0x1111111111111111111111111111111111111111111111111111111111111111",
+				"forwardCiphertextHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+				"nextHopPubkey": "x", "signature": "y", "swapId": "ext-1",
+			},
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"jsonrpc": "2.0", "id": json.RawMessage(env.ID), "result": result,
+		})
+	}))
+	t.Cleanup(stub.Close)
+	b := NewRPCBridge(stub.URL)
+	req := &SwapRequest{
+		Route: []HopInput{
+			{Tor: "http://a", FeeMinSat: 1},
+			{Tor: "http://b", FeeMinSat: 2},
+			{Tor: "http://c", FeeMinSat: 3},
+		},
+		Destination: "mweb1qq",
+		Amount:      100,
+	}
+	out, err := b.HandleSwap(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.SwapID != "ext-1" || !strings.Contains(out.Detail, "stub extended") || len(out.Receipt) == 0 {
+		t.Fatalf("got %+v", out)
+	}
+}
+
 func TestRPCBridge_HandleSwap_success(t *testing.T) {
 	t.Parallel()
 	stub := newMwebStubServer(t, "", nil)
@@ -102,12 +148,12 @@ func TestRPCBridge_HandleSwap_success(t *testing.T) {
 		Destination: "mweb1qq",
 		Amount:      100,
 	}
-	detail, err := b.HandleSwap(context.Background(), req)
+	out, err := b.HandleSwap(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(detail, "mweb_submitRoute") {
-		t.Fatalf("detail: %q", detail)
+	if !strings.Contains(out.Detail, "mweb_submitRoute") {
+		t.Fatalf("detail: %q", out.Detail)
 	}
 }
 
@@ -148,9 +194,9 @@ func TestRPCBridge_HandleRouteStatus_and_RunBatch(t *testing.T) {
 	if st.PendingOnions != 0 {
 		t.Fatalf("pending %d", st.PendingOnions)
 	}
-	d, err := b.HandleRunBatch(context.Background())
-	if err != nil || !strings.Contains(d, "stub") {
-		t.Fatalf("batch: %q %v", d, err)
+	bo, err := b.HandleRunBatch(context.Background())
+	if err != nil || !strings.Contains(bo.Detail, "stub") {
+		t.Fatalf("batch: %q %v", bo.Detail, err)
 	}
 }
 
@@ -200,6 +246,9 @@ type forkWireRoute struct {
 	} `json:"route"`
 	Destination string `json:"destination"`
 	Amount      uint64 `json:"amount"`
+	EpochID     string `json:"epochId,omitempty"`
+	Accuser     string `json:"accuser,omitempty"`
+	SwapID      string `json:"swapId,omitempty"`
 }
 
 // TestRPCBridge_HandleSwap_JSONRPCParamsMatchForkWire asserts go-ethereum encodes mweb_submitRoute as one object param
@@ -270,6 +319,9 @@ func TestRPCBridge_HandleSwap_JSONRPCParamsMatchForkWire(t *testing.T) {
 		},
 		Destination: "mweb1qq",
 		Amount:      100,
+		EpochID:     "42",
+		Accuser:     "0x1111111111111111111111111111111111111111",
+		SwapID:      "stub-swap-wire",
 	}
 	_, err := b.HandleSwap(context.Background(), req)
 	if err != nil {
@@ -304,6 +356,9 @@ func TestRPCBridge_HandleSwap_JSONRPCParamsMatchForkWire(t *testing.T) {
 	}
 	if got.Destination != "mweb1qq" || got.Amount != 100 {
 		t.Fatalf("dest/amount: %+v", got)
+	}
+	if got.EpochID != "42" || got.Accuser != "0x1111111111111111111111111111111111111111" || got.SwapID != "stub-swap-wire" {
+		t.Fatalf("litvm metadata: %+v", got)
 	}
 }
 

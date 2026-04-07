@@ -1,18 +1,25 @@
 package forger
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/grievance"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func testRoute() *pathfind.Route {
@@ -48,7 +55,7 @@ func TestSubmitRoute_SuccessAndBody(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := NewSidecarClient(srv.URL)
-	resp, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1qqdest", 99_000_000)
+	resp, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1qqdest", 99_000_000, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +94,7 @@ func TestSubmitRoute_HTTPError(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := NewSidecarClient(srv.URL)
-	_, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1x", 1)
+	_, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1x", 1, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -103,7 +110,7 @@ func TestSubmitRoute_OkFalse(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := NewSidecarClient(srv.URL)
-	resp, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1x", 1)
+	resp, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1x", 1, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,9 +128,34 @@ func TestSubmitRoute_EmptyBody(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := NewSidecarClient(srv.URL)
-	_, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1x", 1)
+	_, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1x", 1, nil)
 	if err == nil {
 		t.Fatal("expected error for empty body")
+	}
+}
+
+func TestSubmitRoute_threadsLitVMMeta(t *testing.T) {
+	t.Parallel()
+	var got json.RawMessage
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got = b
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := NewSidecarClient(srv.URL)
+	meta := &RouteMeta{EpochID: "3", Accuser: "0x1111111111111111111111111111111111111111", SwapID: "s1"}
+	_, err := c.SubmitRoute(context.Background(), testRoute(), "mweb1qqdest", 99_000_000, meta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p RequestPayload
+	if err := json.Unmarshal(got, &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.EpochID != "3" || p.Accuser != "0x1111111111111111111111111111111111111111" || p.SwapID != "s1" {
+		t.Fatalf("payload %+v", p)
 	}
 }
 
@@ -224,12 +256,82 @@ func TestExecuteWithBatchOptions_triggerAndWait(t *testing.T) {
 		WaitPendingZero: true,
 		PollInterval:    50 * time.Millisecond,
 		Timeout:         2 * time.Second,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !res.PendingCleared {
 		t.Fatal("expected pending cleared")
+	}
+}
+
+func TestExecute_vaultGoldenReceipt_grievanceDryRun(t *testing.T) {
+	t.Parallel()
+	key, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := crypto.PubkeyToAddress(key.PublicKey)
+	swapID := "vault-golden-1"
+	epoch := "42"
+	receiptObj := map[string]interface{}{
+		"epochId":               epoch,
+		"accuser":               addr.Hex(),
+		"accusedMaker":          "0x0000000000000000000000000000000000000001",
+		"hopIndex":              0,
+		"peeledCommitment":      "0x1111111111111111111111111111111111111111111111111111111111111111",
+		"forwardCiphertextHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+		"nextHopPubkey":         "test-hop",
+		"signature":             "test-sig",
+		"swapId":                swapID,
+	}
+	receiptBytes, err := json.Marshal(receiptObj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		resp := map[string]interface{}{
+			"ok":      true,
+			"detail":  "stub",
+			"swapId":  swapID,
+			"receipt": json.RawMessage(receiptBytes),
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	t.Cleanup(srv.Close)
+
+	dbPath := filepath.Join(t.TempDir(), "vault.db")
+	ctx := context.Background()
+	res, err := ExecuteWithBatchOptions(ctx, testRoute(), srv.URL, "mweb1qq", 1_000_000, nil, &VaultOptions{
+		DBPath:  dbPath,
+		EpochID: epoch,
+		Accuser: addr.Hex(),
+		SwapID:  swapID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.VaultSwapID != swapID || res.VaultEvidenceHash == "" {
+		t.Fatalf("vault result: %+v", res)
+	}
+	var buf bytes.Buffer
+	err = grievance.RunFile(ctx, grievance.FileOpts{
+		RPCURL:     "http://unused",
+		Court:      common.HexToAddress("0x0000000000000000000000000000000000000001"),
+		PrivateKey: key,
+		BondWei:    big.NewInt(1e17),
+		DryRun:     true,
+		Out:        &buf,
+	}, grievance.VaultSwapLookup{DBPath: dbPath, SwapID: swapID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, sub := range []string{"evidenceHash=", "grievanceId=", "dry-run"} {
+		if !strings.Contains(out, sub) {
+			t.Fatalf("grievance output missing %q: %s", sub, out)
+		}
 	}
 }
 

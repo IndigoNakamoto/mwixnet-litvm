@@ -19,6 +19,16 @@ type RequestPayload struct {
 	Route       []HopRequest `json:"route"`
 	Destination string       `json:"destination"`
 	Amount      uint64       `json:"amount"`
+	EpochID     string       `json:"epochId,omitempty"`
+	Accuser     string       `json:"accuser,omitempty"`
+	SwapID      string       `json:"swapId,omitempty"`
+}
+
+// RouteMeta is LitVM coordination threaded with the route (epoch + taker + attempt id).
+type RouteMeta struct {
+	EpochID string
+	Accuser string
+	SwapID  string
 }
 
 // HopRequest is one hop in the sidecar route (Tor mix API + fee hint from the maker ad).
@@ -30,9 +40,11 @@ type HopRequest struct {
 
 // ResponsePayload is the generic JSON response from the sidecar.
 type ResponsePayload struct {
-	Ok     bool   `json:"ok"`
-	Detail string `json:"detail,omitempty"`
-	Error  string `json:"error,omitempty"`
+	Ok      bool            `json:"ok"`
+	Detail  string          `json:"detail,omitempty"`
+	Error   string          `json:"error,omitempty"`
+	SwapID  string          `json:"swapId,omitempty"`
+	Receipt json.RawMessage `json:"receipt,omitempty"`
 }
 
 // SidecarClient POSTs route JSON to a local coinswapd MLN extension endpoint.
@@ -85,9 +97,11 @@ type RouteStatusPayload struct {
 
 // BatchPayload is POST /v1/route/batch from mln-sidecar.
 type BatchPayload struct {
-	Ok     bool   `json:"ok"`
-	Detail string `json:"detail,omitempty"`
-	Error  string `json:"error,omitempty"`
+	Ok      bool            `json:"ok"`
+	Detail  string          `json:"detail,omitempty"`
+	Error   string          `json:"error,omitempty"`
+	SwapID  string          `json:"swapId,omitempty"`
+	Receipt json.RawMessage `json:"receipt,omitempty"`
 }
 
 // GetRouteStatus calls GET /v1/route/status on the sidecar hosting swapURL.
@@ -145,17 +159,28 @@ func (c *SidecarClient) RunBatch(ctx context.Context, swapURL string) (*BatchPay
 	if err != nil {
 		return nil, fmt.Errorf("forger: read batch: %w", err)
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("forger: batch HTTP %d: %s", resp.StatusCode, string(body))
-	}
 	var out BatchPayload
-	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, fmt.Errorf("forger: batch JSON: %w", err)
+	if len(bytes.TrimSpace(body)) > 0 {
+		if err := json.Unmarshal(body, &out); err != nil {
+			if resp.StatusCode >= 300 {
+				return nil, fmt.Errorf("forger: batch HTTP %d: %s", resp.StatusCode, string(body))
+			}
+			return nil, fmt.Errorf("forger: batch JSON: %w", err)
+		}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if len(out.Receipt) > 0 {
+			return &out, fmt.Errorf("forger: batch HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(out.Error))
+		}
+		return nil, fmt.Errorf("forger: batch HTTP %d: %s", resp.StatusCode, string(body))
 	}
 	if !out.Ok {
 		msg := strings.TrimSpace(out.Error)
 		if msg == "" {
 			msg = "batch ok=false"
+		}
+		if len(out.Receipt) > 0 {
+			return &out, fmt.Errorf("forger: %s (%s)", msg, strings.TrimSpace(out.Detail))
 		}
 		return nil, fmt.Errorf("forger: %s (%s)", msg, strings.TrimSpace(out.Detail))
 	}
@@ -163,7 +188,8 @@ func (c *SidecarClient) RunBatch(ctx context.Context, swapURL string) (*BatchPay
 }
 
 // SubmitRoute marshals the route and POSTs it to the sidecar URL.
-func (c *SidecarClient) SubmitRoute(ctx context.Context, route *pathfind.Route, dest string, amount uint64) (*ResponsePayload, error) {
+// meta may be nil; when set, epochId/accuser/swapId are included for LitVM receipt threading.
+func (c *SidecarClient) SubmitRoute(ctx context.Context, route *pathfind.Route, dest string, amount uint64, meta *RouteMeta) (*ResponsePayload, error) {
 	if route == nil {
 		return nil, fmt.Errorf("forger: nil route")
 	}
@@ -171,6 +197,11 @@ func (c *SidecarClient) SubmitRoute(ctx context.Context, route *pathfind.Route, 
 		Route:       make([]HopRequest, 0, len(route.Hops)),
 		Destination: dest,
 		Amount:      amount,
+	}
+	if meta != nil {
+		payload.EpochID = strings.TrimSpace(meta.EpochID)
+		payload.Accuser = strings.TrimSpace(meta.Accuser)
+		payload.SwapID = strings.TrimSpace(meta.SwapID)
 	}
 	for _, hop := range route.Hops {
 		payload.Route = append(payload.Route, HopRequest{
@@ -202,17 +233,25 @@ func (c *SidecarClient) SubmitRoute(ctx context.Context, route *pathfind.Route, 
 		return nil, fmt.Errorf("forger: read response: %w", err)
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("forger: sidecar HTTP %d: %s", resp.StatusCode, string(respBytes))
-	}
-
 	if len(bytes.TrimSpace(respBytes)) == 0 {
+		if resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("forger: sidecar HTTP %d: empty body", resp.StatusCode)
+		}
 		return nil, fmt.Errorf("forger: sidecar returned empty body")
 	}
 
 	var parsed ResponsePayload
 	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		if resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("forger: sidecar HTTP %d: %s", resp.StatusCode, string(respBytes))
+		}
 		return nil, fmt.Errorf("forger: parse sidecar JSON: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if len(parsed.Receipt) > 0 {
+			return &parsed, fmt.Errorf("forger: sidecar HTTP %d (%s)", resp.StatusCode, strings.TrimSpace(parsed.Error))
+		}
+		return nil, fmt.Errorf("forger: sidecar HTTP %d: %s", resp.StatusCode, string(respBytes))
 	}
 	return &parsed, nil
 }

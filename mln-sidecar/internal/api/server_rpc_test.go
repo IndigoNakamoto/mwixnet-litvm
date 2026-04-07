@@ -35,7 +35,7 @@ func newJSONRPCStub(t *testing.T) *httptest.Server {
 			resp = map[string]interface{}{
 				"jsonrpc": "2.0",
 				"id":      json.RawMessage(req.ID),
-				"result":  nil,
+				"result":  map[string]interface{}{"accepted": true},
 			}
 		case "mweb_getBalance":
 			resp = map[string]interface{}{

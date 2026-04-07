@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
+	"github.com/google/uuid"
 )
 
 func validateTorHops(route *pathfind.Route) error {
@@ -58,11 +59,12 @@ func DryRunCLI(route *pathfind.Route, w io.Writer) error {
 
 // Execute validates the route and POSTs it to the sidecar URL (destination MWEB address and amount in satoshis).
 func Execute(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64) (*ExecuteResult, error) {
-	return ExecuteWithBatchOptions(ctx, route, sidecarURL, dest, amount, nil)
+	return ExecuteWithBatchOptions(ctx, route, sidecarURL, dest, amount, nil, nil)
 }
 
 // ExecuteWithBatchOptions POSTs the route, then optionally triggers mweb_runBatch and/or waits for pendingOnions==0.
-func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, batch *BatchOptions) (*ExecuteResult, error) {
+// vault, when non-nil with non-empty DBPath, supplies LitVM metadata on the wire and persists returned receipts to SQLite.
+func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, batch *BatchOptions, vault *VaultOptions) (*ExecuteResult, error) {
 	if strings.TrimSpace(dest) == "" {
 		return nil, fmt.Errorf("forger: destination MWEB address is required (-dest)")
 	}
@@ -72,9 +74,40 @@ func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecar
 	if err := validateTorHops(route); err != nil {
 		return nil, err
 	}
+	if vault != nil && strings.TrimSpace(vault.DBPath) != "" {
+		if strings.TrimSpace(vault.EpochID) == "" || strings.TrimSpace(vault.Accuser) == "" {
+			return nil, fmt.Errorf("forger: -vault requires MLN_RECEIPT_EPOCH_ID and accuser key (MLN_ACCUSER_ETH_KEY or MLN_OPERATOR_ETH_KEY)")
+		}
+	}
 
 	client := NewSidecarClient(sidecarURL)
-	resp, err := client.SubmitRoute(ctx, route, dest, amount)
+	var routeMeta *RouteMeta
+	if vault != nil && strings.TrimSpace(vault.DBPath) != "" {
+		swapID := strings.TrimSpace(vault.SwapID)
+		if swapID == "" {
+			swapID = uuid.New().String()
+		}
+		routeMeta = &RouteMeta{
+			EpochID: strings.TrimSpace(vault.EpochID),
+			Accuser: strings.TrimSpace(vault.Accuser),
+			SwapID:  swapID,
+		}
+	}
+
+	resp, err := client.SubmitRoute(ctx, route, dest, amount, routeMeta)
+	out := &ExecuteResult{}
+	if vault != nil && strings.TrimSpace(vault.DBPath) != "" && resp != nil {
+		evHex, _, perr := PersistReceiptFromResponse(vault.DBPath, resp)
+		if perr != nil {
+			return nil, perr
+		}
+		if routeMeta != nil {
+			out.VaultSwapID = routeMeta.SwapID
+		}
+		if evHex != "" {
+			out.VaultEvidenceHash = evHex
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -90,15 +123,24 @@ func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecar
 		return nil, fmt.Errorf("forger: %s", msg)
 	}
 
-	out := &ExecuteResult{Detail: strings.TrimSpace(resp.Detail)}
+	out.Detail = strings.TrimSpace(resp.Detail)
 	if batch == nil {
 		return out, nil
 	}
 
 	if batch.TriggerBatch {
-		bresp, err := client.RunBatch(ctx, sidecarURL)
-		if err != nil {
-			return nil, err
+		bresp, berr := client.RunBatch(ctx, sidecarURL)
+		if vault != nil && strings.TrimSpace(vault.DBPath) != "" && bresp != nil {
+			ev2, _, perr := PersistBatchReceiptFromResponse(vault.DBPath, bresp)
+			if perr != nil {
+				return nil, perr
+			}
+			if ev2 != "" {
+				out.VaultEvidenceHash = ev2
+			}
+		}
+		if berr != nil {
+			return nil, berr
 		}
 		if bresp != nil && strings.TrimSpace(bresp.Detail) != "" {
 			if out.Detail != "" {
@@ -144,19 +186,25 @@ func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecar
 
 // ExecuteCLI runs Execute and prints progress and outcome to w (typically os.Stderr).
 func ExecuteCLI(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, w io.Writer) error {
-	return ExecuteCLIWithBatch(ctx, route, sidecarURL, dest, amount, nil, w)
+	return ExecuteCLIWithBatch(ctx, route, sidecarURL, dest, amount, nil, nil, w)
 }
 
 // ExecuteCLIWithBatch runs ExecuteWithBatchOptions with optional batch / wait flags.
-func ExecuteCLIWithBatch(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, batch *BatchOptions, w io.Writer) error {
+func ExecuteCLIWithBatch(ctx context.Context, route *pathfind.Route, sidecarURL, dest string, amount uint64, batch *BatchOptions, vault *VaultOptions, w io.Writer) error {
 	fmt.Fprintf(w, "Submitting route to coinswapd sidecar at %s...\n", sidecarURL)
-	res, err := ExecuteWithBatchOptions(ctx, route, sidecarURL, dest, amount, batch)
+	res, err := ExecuteWithBatchOptions(ctx, route, sidecarURL, dest, amount, batch, vault)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(w, "[SUCCESS] Route accepted by local sidecar.")
 	if res != nil && res.Detail != "" {
 		fmt.Fprintf(w, "Detail: %s\n", res.Detail)
+	}
+	if res != nil && res.VaultSwapID != "" {
+		fmt.Fprintf(w, "Receipt vault: swap_id=%s (mln-cli grievance file)\n", res.VaultSwapID)
+	}
+	if res != nil && res.VaultEvidenceHash != "" {
+		fmt.Fprintf(w, "Receipt vault: evidenceHash=%s\n", res.VaultEvidenceHash)
 	}
 	if batch != nil && batch.TriggerBatch {
 		fmt.Fprintln(w, "Batch trigger sent (POST /v1/route/batch → mweb_runBatch).")
