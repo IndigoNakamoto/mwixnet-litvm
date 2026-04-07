@@ -2,6 +2,8 @@
 /bin/
 # Local SQLite vault / default cwd when running mlnd from repo root
 /mlnd.db
+# Default output of `mln-cli route build` when run from repo root
+/route.json
 .DS_Store
 # Local Foundry install (foundryup)
 .foundry/

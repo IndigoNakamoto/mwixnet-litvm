@@ -33,14 +33,16 @@ Cooldown and exit queue exist to mitigate hit-and-run relative to the grievance 
 ## Operator notes (bring-up)
 
 - **Binary:** project builds **`bin/mln-cli`** via `make build-mln-cli` (not on `PATH` unless you `export PATH=.../bin:...` or `go install`). Run `./bin/mln-cli route build` from repo root after build.
-- **Env:** [PHASE_10_TAKER_CLI.md](../../PHASE_10_TAKER_CLI.md) — need real **`MLN_REGISTRY_ADDR`** (40 hex chars), not placeholders; **`MLN_LITVM_HTTP_URL`**, **`MLN_LITVM_CHAIN_ID`**, and **`MLN_NOSTR_RELAYS`** or **`MLN_NOSTR_RELAY_URL`**.
-- **`scout` / `registry address mismatch`:** each ad’s **`content.litvm.registry`** must equal **`MLN_REGISTRY_ADDR`**. Public relay ads target their deployed registry; local Anvil addresses will not match unless you publish matching ads (E2E / local `mlnd`).
+- **Env + discovery:** [PHASE_10_TAKER_CLI.md](../../PHASE_10_TAKER_CLI.md) section **“Aligning discovery with LitVM (production vs local)”** — match **`MLN_*`** to **`content.litvm`** on kind **31250**; Phase **12** + local relay for Anvil; raw note inspection via event id from **`rejected <id>:`** lines.
 - **`pathfind: need at least 3 verified makers with Tor endpoints, got 0`:** expected if no ads pass chain + registry + LitVM + Tor-endpoint filters for your env.
+- **Phase 12 env:** after `./scripts/e2e-bootstrap.sh`, map variables from [deploy/e2e.generated.env](../../deploy/e2e.generated.env) into **`MLN_*`** (see that file’s `E2E_*` names); playbook is **[PHASE_12_E2E_CRUCIBLE.md](../../PHASE_12_E2E_CRUCIBLE.md)**. Use the **local** relay URL (`ws://127.0.0.1:7080/`), not only a public relay.
+- **E2E troubleshooting:** host **8545** must be free for Compose Anvil. If **`mlnd`** exits with **`no such column: swap_id`** (or similar), wipe maker volumes **`deploy_mln_e2e_maker{1,2,3}`**, bring the stack up, **re-run bootstrap**, then **`--profile makers`**. Doc placeholders like **`/path/to/mwixnet-litvm`** mean **your clone path** or “already `cd`’d into the repo”.
 
 ## Verification
 
 - `cd mln-cli && go test ./...`
-- `make build-mln-cli && ./bin/mln-cli route build` (with env set) then **`forger -route-json ... -dry-run=true`** as needed
+- **Unit / manual (env only):** `make build-mln-cli`, set **`MLN_*`**, then **`route build`** and **`forger -route-json … -dry-run=true`**
+- **Closed-loop local (Phase 12):** [PHASE_12_E2E_CRUCIBLE.md](../../PHASE_12_E2E_CRUCIBLE.md) — Compose + bootstrap + makers → **`scout`** (3 verified) → **`route build`** → **`forger`** **`dry-run`** and optional **`dry-run=false`** against **`mln-sidecar`** mock on **`http://127.0.0.1:8080`**
 
 ## Layer boundary
 

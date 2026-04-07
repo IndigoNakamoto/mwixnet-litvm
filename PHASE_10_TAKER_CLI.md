@@ -46,6 +46,25 @@ Build from repo root: `make build-mln-cli` (output `bin/mln-cli`). Requires **Go
 ./bin/mln-cli scout -json
 ```
 
+### Aligning discovery with LitVM (production vs local)
+
+**Production / public testnet:** Point taker env at the **same deployment** maker ads reference. Each kind **31250** event carries `content.litvm.chainId`, `content.litvm.registry`, and `content.litvm.grievanceCourt` (see [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md)). Your exports must match:
+
+| Env | Must equal ad field |
+|-----|---------------------|
+| `MLN_LITVM_CHAIN_ID` | `content.litvm.chainId` (and the decimal segment in the `d` tag) |
+| `MLN_REGISTRY_ADDR` | `content.litvm.registry` |
+| `MLN_GRIEVANCE_COURT_ADDR` (optional filter) | `content.litvm.grievanceCourt` when set |
+
+Use the **published** LitVM RPC URL, chain id, and contract addresses from project docs or deployment artifacts — **not** Anvil defaults unless ads on your relay were published for that Anvil deploy. If they differ, Scout rejects the event (`chainId mismatch`, `registry address mismatch`, or `grievance court mismatch`) before any stake check.
+
+**Local dev (Anvil):** Public relays (e.g. `wss://relay.damus.io`) carry ads for unknown registries on **their** networks. You will see rejections like `registry address mismatch` when `MLN_REGISTRY_ADDR` is your local `MwixnetRegistry` but the ad’s `litvm.registry` is not. To exercise Scout / pathfind / `route build` end-to-end:
+
+- Run the **Phase 12** stack so **`mlnd`** publishes kind **31250** with **`litvm.registry` (and court)** matching the bootstrap deploy, and aim **`MLN_NOSTR_RELAYS`** at the **compose local relay**, not only a global relay. See [`PHASE_12_E2E_CRUCIBLE.md`](PHASE_12_E2E_CRUCIBLE.md) and operator env notes in [`PHASE_2_NOSTR.md`](PHASE_2_NOSTR.md).
+- For **wire validation** without a live relay, use golden fixtures and `python3 nostr/validate_fixtures.py` ([`nostr/fixtures/valid/`](nostr/fixtures/valid/)).
+
+**Inspecting a raw note:** When Scout prints `rejected <event-id>: …` to stderr, open that **event id** in a Nostr viewer (e.g. `https://njump.me/<event-id>`) and read the JSON **`content`**. Compare `litvm.chainId`, `litvm.registry`, and `litvm.grievanceCourt` to your shell exports; mismatches explain empty verified sets when gossip is fine but deployment pointers differ.
+
 ## Phase 10.2: Pathfind
 
 Uses the **same environment variables** as Scout, runs discovery, then prints an ordered route:
