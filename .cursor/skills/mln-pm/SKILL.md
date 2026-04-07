@@ -2,7 +2,7 @@
 name: mln-pm
 description: >-
   MLN program hygiene: derive priorities, blockers, and "on track" status from README, PRODUCT_SPEC section 9,
-  PHASE_* playbooks, AGENTS.md, CHANGELOG, and recent git—without inventing scope or economics. Use when the user asks:
+  PHASE_* playbooks, AGENTS.md, CHANGELOG, recent git, and optional dated completion records under .cursor/plans/—without inventing scope or economics. Use when the user asks:
   priorities, what to do next, milestone status, roadmap sync, release readiness, production blockers, pick up after a break,
   stay on track, or program management for this repo.
 ---
@@ -22,6 +22,7 @@ Give **actionable** status and ordering: what matters now, what is blocked, what
 5. **`CHANGELOG.md`** — unreleased / recent shipped items.
 6. **`git log --oneline -20`** (or a range the user names) — what actually landed recently.
 7. **`research/THREAT_MODEL_MLN.md`** — **gates** and residual risks (e.g. unverified `defenseData`, audit status, ops surfaces).
+8. **`.cursor/plans/*.md`** (optional) — **completed** multi-step work: goal, scope, files touched, verification, results (see [`.cursor/plans/README.md`](../../plans/README.md)). These **archive execution**, not forward roadmap; use **`/plans`** per **`.cursor/skills/plans/SKILL.md`** to persist new records after todos are done.
 
 For **documentation parity and link/CI wording fixes**, follow **`.cursor/skills/doc-sync/SKILL.md`** instead of duplicating that workflow here.
 
@@ -43,7 +44,7 @@ Use these **only as inference from the docs**, and say so explicitly (e.g. "Infe
 
 1. **Snapshot** — From README + `PRODUCT_SPEC` section 9 + AGENTS "Current phase," list: shipped vs pending vs external-blocked (e.g. LitVM RPC).
 2. **Parity glance** — If README, section 9 blurb, and AGENTS disagree on "what is shipped," call it out and recommend a **doc-sync** pass (do not silently pick one narrative unless editing docs is in scope).
-3. **Recent work** — `git log --oneline -20`: bucket into contracts, `mln-cli`, `mlnd`, `mln-sidecar`, deploy, docs.
+3. **Recent work** — `git log --oneline -20`: bucket into contracts, `mln-cli`, `mlnd`, `mln-sidecar`, deploy, docs. If the user is picking up after a big integration push, **optionally skim newest `YYYY-MM-DD-*.md` in `.cursor/plans/`** for narrative + verification commands that git history alone may not surface.
 4. **Threat / release gates** — Pull 1–3 **non-negotiable** items from `THREAT_MODEL_MLN.md` (audit, `defenseData`, sidecar bind, keys) that affect "production readiness."
 5. **Output shape** (keep short):
    - **Now** — one primary focus.
@@ -62,3 +63,4 @@ Use these **only as inference from the docs**, and say so explicitly (e.g. "Infe
 ## Optional follow-up
 
 - If the user wants recurring discipline, suggest a **dated** one-line note in `CHANGELOG.md` or a short milestone note in the relevant `PHASE_*.md` when a gate is cleared—only when they ask for repo edits.
+- When a **Plan** or multi-session task **finishes**, suggest **`/plans`** ( **`.cursor/skills/plans/SKILL.md`** ) so the outcome lives in **`.cursor/plans/`** for the next mln-pm or handoff pass.

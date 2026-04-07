@@ -27,6 +27,7 @@ type submitRouteBody struct {
 		Tor              string `json:"tor"`
 		FeeMinSat        uint64 `json:"feeMinSat"`
 		SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+		Operator         string `json:"operator,omitempty"`
 	} `json:"route"`
 	Destination string `json:"destination"`
 	Amount      uint64 `json:"amount"`
@@ -139,7 +140,7 @@ func main() {
 				receipt := map[string]interface{}{
 					"epochId":               ep,
 					"accuser":               acc,
-					"accusedMaker":          "0x0000000000000000000000000000000000000001",
+					"accusedMaker":          goldenReceiptAccusedMaker(sr),
 					"hopIndex":              0,
 					"peeledCommitment":      "0x1111111111111111111111111111111111111111111111111111111111111111",
 					"forwardCiphertextHash": "0x2222222222222222222222222222222222222222222222222222222222222222",

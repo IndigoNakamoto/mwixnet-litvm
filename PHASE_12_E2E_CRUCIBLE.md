@@ -92,7 +92,7 @@ Then build and run the desktop app (`make build-mln-wallet` and run the binary, 
 
 ### Optional: rpc sidecar + MWEB JSON-RPC stub (Phase 3a)
 
-To exercise **`-mode=rpc`** (forwarding to **`mweb_getBalance`** / **`mweb_submitRoute`**) without official LitVM testnet, use **[`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)**, **[`deploy/docker-compose.e2e.sidecar-rpc.yml`](deploy/docker-compose.e2e.sidecar-rpc.yml)**, and **`./scripts/e2e-mweb-handoff-stub.sh`** (host stub **`bin/mw-rpc-stub`** on **`:8546`** via `host.docker.internal`).
+To exercise **`-mode=rpc`** (forwarding to **`mweb_getBalance`** / **`mweb_submitRoute`**) without official LitVM testnet, use **[`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)**, **[`deploy/docker-compose.e2e.sidecar-rpc.yml`](deploy/docker-compose.e2e.sidecar-rpc.yml)**, and **`./scripts/e2e-mweb-handoff-stub.sh`** (host stub **`bin/mw-rpc-stub`** on **`:8546`** via `host.docker.internal`). For **stub golden receipt `accusedMaker` = first-hop operator** and **maker auto-defend** ordering (start **`mlnd`** before **`grievance file`**, shared vault DB), see Phase 3’s **Correlator-aligned receipts and maker auto-defend** section and **`scripts/grievance-correlated-stub-e2e.sh`**.
 
 ## Security note
 

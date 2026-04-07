@@ -53,7 +53,18 @@ MWEB_RPC_BACKEND=coinswapd \
 6. **`mln-cli` one-liner (sidecar URL):**  
    `mln-cli forger -route-json route.json -dry-run=false -dest <ltcmweb1…> -amount <sat> -coinswapd-url http://127.0.0.1:8080/v1/swap -trigger-batch -wait-batch`
 
-**`mw-rpc-stub`:** simulates **`pendingOnions`** increment on submit and clears it on **`mweb_runBatch`** so **`-wait-batch`** can pass in CI without Neutrino.
+**`mw-rpc-stub`:** simulates **`pendingOnions`** increment on submit and clears it on **`mweb_runBatch`** so **`-wait-batch`** can pass in CI without Neutrino. When **`mweb_submitRoute`** carries LitVM metadata (**`epochId`**, **`accuser`**, **`swapId`**) and each hop includes **`operator`** (as **`mln-cli forger`** sends from **`route.json`**), the stub’s golden receipt sets **`accusedMaker`** to the **lowercased** **`route[0].operator`** (same correlator intent as **`MockBridge`** in **`-mode=mock`**). If hop 0 **`operator`** is missing or not a 20-byte hex address, the receipt keeps the legacy placeholder **`0x000…0001`** so minimal RPC tests stay stable.
+
+### Correlator-aligned receipts and maker auto-defend (local)
+
+To close the loop **taker vault → `openGrievance` → `mlnd` receipt match → `defendGrievance`** without hand-editing receipts:
+
+1. **Shared SQLite:** use the **same file path** for **`mln-cli forger -vault …`** and the accused maker’s **`MLND_DB_PATH`** (both use the receipt store schema; the accused hop is **N1**, first hop in **`route.json`**).
+2. **Before `grievance file`:** start **`mlnd`** for **N1** with **`MLND_OPERATOR_ADDR`** equal to **`jq -r '.hops[0].operator'`** from that route, **`MLND_DEFEND_AUTO=1`**, **`MLND_OPERATOR_PRIVATE_KEY`** for that address, plus usual **`MLND_WS_URL`**, **`MLND_COURT_ADDR`**, **`MLND_REGISTRY_ADDR`**, **`MLND_LITVM_CHAIN_ID`**. The grievance watcher only sees **new** **`GrievanceOpened`** logs after subscribe — if **`mln-cli grievance file`** runs first, the maker will **not** auto-defend that case.
+3. **Accuser key:** set **`MLN_ACCUSER_ETH_KEY`** (or **`MLN_OPERATOR_ETH_KEY`**) and **`MLN_RECEIPT_EPOCH_ID`** consistently for **`forger -vault`** and **`grievance file`** (see **`mln-cli` forger** help). Local Anvil-only dev keys are documented under **`PHASE_12_E2E_CRUCIBLE.md`** / **`scripts/e2e-bootstrap.sh`** — never reuse on a public network.
+4. **Helper script:** **[`scripts/grievance-correlated-stub-e2e.sh`](scripts/grievance-correlated-stub-e2e.sh)** maps **`deploy/e2e.generated.env`** to **`MLN_*`**, runs **`route build`**, optionally **`forger`** with a vault against the Phase 3a sidecar URL, prints **`mlnd`** env for N1 and the **`grievance file`** command line (flags **before** positional **`swap_id`**).
+
+**`mln-judge`:** **`defendGrievance`** calldata must be the **v1 ABI-encoded tuple** from **`litvmevidence.BuildDefenseData`**. Minimal synthetic bytes (e.g. **`0xdeadbeef`**) will fail **`UnpackDefenseV1`** with length errors — that is expected. After **`mlnd`** auto-defend (or any path that submits real defense data), run **`mln-judge`** with **`JUDGE_DRY_RUN=1`** to confirm the daemon logs decoded defense fields without broadcasting **`adjudicateGrievance`** (see **`mln-judge/README.md`**).
 
 **Remaining gaps vs on-chain “mixed” proof:** multi-hop **`swap_forward` / `swap_backward`** still require **live maker `coinswapd` RPC** endpoints; LitVM grievance path and L1 inclusion proofs remain per **`PRODUCT_SPEC.md`** / Phase 15 docs.
 
