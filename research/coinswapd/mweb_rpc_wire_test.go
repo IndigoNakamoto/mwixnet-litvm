@@ -29,6 +29,10 @@ func (*mwebRPCStub) RunBatch(context.Context) (map[string]interface{}, error) {
 	return map[string]interface{}{"triggered": true}, nil
 }
 
+func (*mwebRPCStub) GetLastReceipt(context.Context) (*LastReceiptResponse, error) {
+	return nil, nil
+}
+
 func TestMWEBJSONRPCMethodNames(t *testing.T) {
 	t.Parallel()
 	srv := rpc.NewServer()
@@ -80,5 +84,13 @@ func TestMWEBJSONRPCMethodNames(t *testing.T) {
 	}
 	if batch["triggered"] != true {
 		t.Fatalf("batch: %+v", batch)
+	}
+
+	var lr *LastReceiptResponse
+	if err := c.CallContext(context.Background(), &lr, "mweb_getLastReceipt"); err != nil {
+		t.Fatalf("mweb_getLastReceipt: %v", err)
+	}
+	if lr != nil {
+		t.Fatalf("expected null last receipt, got %+v", lr)
 	}
 }

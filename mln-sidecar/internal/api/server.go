@@ -47,6 +47,16 @@ type BatchResponse struct {
 	Receipt json.RawMessage `json:"receipt,omitempty"`
 }
 
+// ReceiptResponse is GET /v1/route/receipt (appendix 13 async hop-failure receipt poll).
+type ReceiptResponse struct {
+	Ok                  bool            `json:"ok"`
+	Receipt             json.RawMessage `json:"receipt,omitempty"`
+	SwapID              string          `json:"swapId,omitempty"`
+	ForwardFailureClass string          `json:"forwardFailureClass,omitempty"`
+	Detail              string          `json:"detail,omitempty"`
+	Error               string          `json:"error,omitempty"`
+}
+
 // NewMux registers the MLN HTTP contract (GET /v1/balance, POST /v1/swap, route batch helpers).
 func NewMux(bridge mweb.Bridge) http.Handler {
 	mux := http.NewServeMux()
@@ -54,6 +64,7 @@ func NewMux(bridge mweb.Bridge) http.Handler {
 	mux.HandleFunc("/v1/swap", methodOnly(http.MethodPost, handleSwap(bridge)))
 	mux.HandleFunc("/v1/route/status", methodOnly(http.MethodGet, handleRouteStatus(bridge)))
 	mux.HandleFunc("/v1/route/batch", methodOnly(http.MethodPost, handleRunBatch(bridge)))
+	mux.HandleFunc("/v1/route/receipt", methodOnly(http.MethodGet, handleLastReceipt(bridge)))
 	mux.HandleFunc("/healthz", methodOnly(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -168,6 +179,33 @@ func handleRunBatch(bridge mweb.Bridge) http.HandlerFunc {
 			Detail:  batchOut.Detail,
 			SwapID:  batchOut.SwapID,
 			Receipt: batchOut.Receipt,
+		})
+	}
+}
+
+func handleLastReceipt(bridge mweb.Bridge) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		lr, err := bridge.HandleLastReceipt(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, ReceiptResponse{
+				Ok:     false,
+				Error:  "mweb rpc failed",
+				Detail: err.Error(),
+			})
+			return
+		}
+		if lr == nil || len(lr.Receipt) == 0 {
+			writeJSON(w, http.StatusOK, ReceiptResponse{
+				Ok:     true,
+				Detail: "no receipt recorded (swap_forward has not failed with LitVM metadata, or not yet)",
+			})
+			return
+		}
+		writeJSON(w, http.StatusOK, ReceiptResponse{
+			Ok:                  true,
+			Receipt:             lr.Receipt,
+			SwapID:              lr.SwapID,
+			ForwardFailureClass: lr.ForwardFailureClass,
 		})
 	}
 }

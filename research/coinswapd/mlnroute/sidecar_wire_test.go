@@ -41,3 +41,20 @@ func TestValidate_sidecarJSONWithAllSwapKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestValidate_sidecarJSONLitVMWithOperators(t *testing.T) {
+	t.Parallel()
+	op := "0xcafe000000000000000000000000000000000001"
+	raw := `{"route":[` +
+		`{"tor":"http://n1","feeMinSat":1,"operator":"` + op + `"},` +
+		`{"tor":"http://n2","feeMinSat":2,"operator":"` + op + `"},` +
+		`{"tor":"http://n3","feeMinSat":3,"operator":"` + op + `"}],` +
+		`"destination":"mweb1x","amount":1000000,"epochId":"7","accuser":"0x1111111111111111111111111111111111111111","swapId":"sw"}`
+	var req Request
+	if err := json.Unmarshal([]byte(raw), &req); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(&req); err != nil {
+		t.Fatal(err)
+	}
+}

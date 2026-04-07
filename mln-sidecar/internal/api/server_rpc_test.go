@@ -67,6 +67,12 @@ func newJSONRPCStub(t *testing.T) *httptest.Server {
 					"detail":    "stub",
 				},
 			}
+		case "mweb_getLastReceipt":
+			resp = map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      json.RawMessage(req.ID),
+				"result":  nil,
+			}
 		default:
 			resp = map[string]interface{}{
 				"jsonrpc": "2.0",
@@ -149,6 +155,16 @@ func TestHTTP_RPC_swapAndBalance(t *testing.T) {
 	batchBody, _ := io.ReadAll(batchResp.Body)
 	if batchResp.StatusCode != http.StatusOK || !strings.Contains(string(batchBody), `"ok":true`) {
 		t.Fatalf("batch: %d %s", batchResp.StatusCode, batchBody)
+	}
+
+	rcResp, err := srv.Client().Get(srv.URL + "/v1/route/receipt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = rcResp.Body.Close() })
+	rcBody, _ := io.ReadAll(rcResp.Body)
+	if rcResp.StatusCode != http.StatusOK || !strings.Contains(string(rcBody), `"ok":true`) || !strings.Contains(string(rcBody), "no receipt recorded") {
+		t.Fatalf("route receipt: %d %s", rcResp.StatusCode, rcBody)
 	}
 }
 

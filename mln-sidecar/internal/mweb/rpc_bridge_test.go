@@ -78,6 +78,8 @@ func newMwebStubServer(t *testing.T, swapErr string, balanceResult interface{}) 
 			}, nil)
 		case rpcMethodRunBatch:
 			write(map[string]interface{}{"triggered": true, "detail": "stub"}, nil)
+		case rpcMethodGetLastReceipt:
+			write(nil, nil)
 		default:
 			write(nil, &struct {
 				Code    int    `json:"code"`
@@ -198,6 +200,13 @@ func TestRPCBridge_HandleRouteStatus_and_RunBatch(t *testing.T) {
 	if err != nil || !strings.Contains(bo.Detail, "stub") {
 		t.Fatalf("batch: %q %v", bo.Detail, err)
 	}
+	lr, err := b.HandleLastReceipt(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lr != nil {
+		t.Fatalf("want nil last receipt from stub, got %+v", lr)
+	}
 }
 
 func TestRPCBridge_HandleBalance_success(t *testing.T) {
@@ -243,6 +252,7 @@ type forkWireRoute struct {
 		Tor              string `json:"tor"`
 		FeeMinSat        uint64 `json:"feeMinSat"`
 		SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+		Operator         string `json:"operator,omitempty"`
 	} `json:"route"`
 	Destination string `json:"destination"`
 	Amount      uint64 `json:"amount"`
@@ -310,12 +320,13 @@ func TestRPCBridge_HandleSwap_JSONRPCParamsMatchForkWire(t *testing.T) {
 	t.Cleanup(stub.Close)
 
 	key := "0000000000000000000000000000000000000000000000000000000000000001"
+	op := "0x4444444444444444444444444444444444444444"
 	b := NewRPCBridge(stub.URL)
 	req := &SwapRequest{
 		Route: []HopInput{
-			{Tor: "http://a", FeeMinSat: 1, SwapX25519PubHex: key},
-			{Tor: "http://b", FeeMinSat: 2, SwapX25519PubHex: key},
-			{Tor: "http://c", FeeMinSat: 3, SwapX25519PubHex: key},
+			{Tor: "http://a", FeeMinSat: 1, SwapX25519PubHex: key, Operator: op},
+			{Tor: "http://b", FeeMinSat: 2, SwapX25519PubHex: key, Operator: op},
+			{Tor: "http://c", FeeMinSat: 3, SwapX25519PubHex: key, Operator: op},
 		},
 		Destination: "mweb1qq",
 		Amount:      100,
@@ -354,6 +365,9 @@ func TestRPCBridge_HandleSwap_JSONRPCParamsMatchForkWire(t *testing.T) {
 	if got.Route[0].SwapX25519PubHex != key {
 		t.Fatalf("want swap key on hop 0, got %q", got.Route[0].SwapX25519PubHex)
 	}
+	if got.Route[0].Operator != op {
+		t.Fatalf("want operator on hop 0, got %q", got.Route[0].Operator)
+	}
 	if got.Destination != "mweb1qq" || got.Amount != 100 {
 		t.Fatalf("dest/amount: %+v", got)
 	}
@@ -375,5 +389,53 @@ func TestRPCBridge_HandleSwap_validationBeforeRPC(t *testing.T) {
 	}
 	if !IsInvalidSwapRequest(err) {
 		t.Fatalf("want InvalidSwapRequest, got %v", err)
+	}
+}
+
+func TestRPCBridge_HandleLastReceipt_populated(t *testing.T) {
+	t.Parallel()
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "read", http.StatusBadRequest)
+			return
+		}
+		var req jsonRPCReq
+		if err := json.Unmarshal(body, &req); err != nil {
+			http.Error(w, "json", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if req.Method != rpcMethodGetLastReceipt {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      json.RawMessage(req.ID),
+				"error":   map[string]interface{}{"code": -32601, "message": "wrong"},
+			})
+			return
+		}
+		result := map[string]interface{}{
+			"receipt":             json.RawMessage(`{"epochId":"1","accuser":"0x1111111111111111111111111111111111111111","accusedMaker":"0x2222222222222222222222222222222222222222","hopIndex":1,"peeledCommitment":"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","forwardCiphertextHash":"0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","nextHopPubkey":"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f","signature":"unsigned-swap-forward-failure-v1"}`),
+			"swapId":              "sw1",
+			"forwardFailureClass": "rpc_application",
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      json.RawMessage(req.ID),
+			"result":  result,
+		})
+	}))
+	t.Cleanup(stub.Close)
+
+	b := NewRPCBridge(stub.URL)
+	lr, err := b.HandleLastReceipt(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lr == nil || len(lr.Receipt) == 0 {
+		t.Fatalf("receipt: %+v", lr)
+	}
+	if lr.SwapID != "sw1" || lr.ForwardFailureClass != "rpc_application" {
+		t.Fatalf("fields: %+v", lr)
 	}
 }

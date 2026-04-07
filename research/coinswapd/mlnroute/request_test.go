@@ -119,11 +119,12 @@ func TestValidate_litVMMetadata_allOrNothing(t *testing.T) {
 
 func TestValidate_litVMMetadata_ok(t *testing.T) {
 	t.Parallel()
+	op := "0x4444444444444444444444444444444444444444"
 	req := &Request{
 		Route: []Hop{
-			{Tor: "http://a", FeeMinSat: 1},
-			{Tor: "http://b", FeeMinSat: 2},
-			{Tor: "http://c", FeeMinSat: 3},
+			{Tor: "http://a", FeeMinSat: 1, Operator: op},
+			{Tor: "http://b", FeeMinSat: 2, Operator: op},
+			{Tor: "http://c", FeeMinSat: 3, Operator: op},
 		},
 		Destination: "mweb1qq",
 		Amount:      100,

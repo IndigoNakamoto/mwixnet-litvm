@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // RequestPayload is the MLN extension JSON body expected by a coinswapd sidecar (POST /v1/swap).
@@ -36,6 +37,7 @@ type HopRequest struct {
 	Tor              string `json:"tor"`
 	FeeMinSat        uint64 `json:"feeMinSat"`
 	SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+	Operator         string `json:"operator,omitempty"`
 }
 
 // ResponsePayload is the generic JSON response from the sidecar.
@@ -104,6 +106,16 @@ type BatchPayload struct {
 	Receipt json.RawMessage `json:"receipt,omitempty"`
 }
 
+// LastReceiptHTTP is GET /v1/route/receipt from mln-sidecar.
+type LastReceiptHTTP struct {
+	Ok                  bool            `json:"ok"`
+	Receipt             json.RawMessage `json:"receipt,omitempty"`
+	SwapID              string          `json:"swapId,omitempty"`
+	ForwardFailureClass string          `json:"forwardFailureClass,omitempty"`
+	Detail              string          `json:"detail,omitempty"`
+	Error               string          `json:"error,omitempty"`
+}
+
 // GetRouteStatus calls GET /v1/route/status on the sidecar hosting swapURL.
 func (c *SidecarClient) GetRouteStatus(ctx context.Context, swapURL string) (*RouteStatusPayload, error) {
 	base, err := SidecarBaseFromSwapURL(swapURL)
@@ -134,6 +146,44 @@ func (c *SidecarClient) GetRouteStatus(ctx context.Context, swapURL string) (*Ro
 		msg := strings.TrimSpace(out.Error)
 		if msg == "" {
 			msg = "route status ok=false"
+		}
+		return nil, fmt.Errorf("forger: %s (%s)", msg, strings.TrimSpace(out.Detail))
+	}
+	return &out, nil
+}
+
+// GetRouteLastReceipt calls GET /v1/route/receipt on the sidecar hosting swapURL.
+func (c *SidecarClient) GetRouteLastReceipt(ctx context.Context, swapURL string) (*LastReceiptHTTP, error) {
+	base, err := SidecarBaseFromSwapURL(swapURL)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v1/route/receipt", nil)
+	if err != nil {
+		return nil, fmt.Errorf("forger: receipt request: %w", err)
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("forger: route receipt http: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("forger: read receipt: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("forger: route receipt HTTP %d: %s", resp.StatusCode, string(body))
+	}
+	var out LastReceiptHTTP
+	if len(bytes.TrimSpace(body)) > 0 {
+		if err := json.Unmarshal(body, &out); err != nil {
+			return nil, fmt.Errorf("forger: route receipt JSON: %w", err)
+		}
+	}
+	if !out.Ok {
+		msg := strings.TrimSpace(out.Error)
+		if msg == "" {
+			msg = "route receipt ok=false"
 		}
 		return nil, fmt.Errorf("forger: %s (%s)", msg, strings.TrimSpace(out.Detail))
 	}
@@ -204,10 +254,15 @@ func (c *SidecarClient) SubmitRoute(ctx context.Context, route *pathfind.Route, 
 		payload.SwapID = strings.TrimSpace(meta.SwapID)
 	}
 	for _, hop := range route.Hops {
+		op := ""
+		if hop.Operator != (common.Address{}) {
+			op = strings.ToLower(hop.Operator.Hex())
+		}
 		payload.Route = append(payload.Route, HopRequest{
 			Tor:              hop.Tor,
 			FeeMinSat:        hop.FeeMinSat,
 			SwapX25519PubHex: hop.SwapX25519PubHex,
+			Operator:         op,
 		})
 	}
 

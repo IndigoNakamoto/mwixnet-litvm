@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -79,8 +80,12 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 		return nil, mlnroute.InvalidParams(err.Error())
 	}
 
-	// Thread LitVM coordination into swap state. Fork follow-up: emit hop-failure receipts (PRODUCT_SPEC appendix 13)
-	// from peel/forward paths using these correlators plus crypto fields — not at queue injection only.
+	ops, err := mlnroute.PeerOperatorsFromRequest(&req)
+	if err != nil {
+		return nil, mlnroute.InvalidParams(err.Error())
+	}
+	m.ss.setMLNPeerOperators(ops)
+	// Thread LitVM coordination into swap state (appendix 13 receipts on swap_forward failure).
 	m.ss.setMLNRouteMeta(strings.TrimSpace(req.EpochID), strings.TrimSpace(req.Accuser), strings.TrimSpace(req.SwapID))
 
 	rawKeys, err := mlnroute.ResolveX25519PubKeys(&req, m.pubkeyMap)
@@ -183,6 +188,27 @@ func (m *mwebService) RunBatch(ctx context.Context) (map[string]interface{}, err
 	return map[string]interface{}{
 		"triggered": true,
 		"detail":    detail,
+	}, nil
+}
+
+// LastReceiptResponse is returned by mweb_getLastReceipt when a hop failure receipt was recorded.
+type LastReceiptResponse struct {
+	Receipt             json.RawMessage `json:"receipt"`
+	SwapID              string          `json:"swapId,omitempty"`
+	ForwardFailureClass string          `json:"forwardFailureClass,omitempty"`
+}
+
+// GetLastReceipt returns the most recent appendix-13-style receipt from a failed swap_forward, or nil if none.
+func (m *mwebService) GetLastReceipt(ctx context.Context) (*LastReceiptResponse, error) {
+	_ = ctx
+	raw, swapID, cls := m.ss.takeLastReceiptSnapshot()
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	return &LastReceiptResponse{
+		Receipt:             append(json.RawMessage(nil), raw...),
+		SwapID:              swapID,
+		ForwardFailureClass: cls,
 	}, nil
 }
 

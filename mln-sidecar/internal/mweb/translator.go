@@ -43,6 +43,7 @@ type HopInput struct {
 	Tor              string `json:"tor"`
 	FeeMinSat        uint64 `json:"feeMinSat"`
 	SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+	Operator         string `json:"operator,omitempty"`
 }
 
 // SwapRequest is the POST /v1/swap body (matches mln-cli forger.RequestPayload).
@@ -134,7 +135,30 @@ func validateSwapLitVMMetadata(req *SwapRequest) error {
 	if strings.TrimSpace(s) == "" {
 		return fmt.Errorf("swapId must be non-empty when providing LitVM route metadata")
 	}
+	for i, h := range req.Route {
+		addr, err := normalizeSwapOperator(strings.TrimSpace(h.Operator))
+		if err != nil {
+			return fmt.Errorf("hop %d: operator: %w", i, err)
+		}
+		if addr == (common.Address{}) {
+			return fmt.Errorf("hop %d: operator is required when LitVM route metadata is set", i)
+		}
+	}
 	return nil
+}
+
+func normalizeSwapOperator(s string) (common.Address, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return common.Address{}, fmt.Errorf("empty address")
+	}
+	if !strings.HasPrefix(s, "0x") && !strings.HasPrefix(s, "0X") {
+		s = "0x" + s
+	}
+	if !common.IsHexAddress(s) {
+		return common.Address{}, fmt.Errorf("invalid hex address %q", s)
+	}
+	return common.HexToAddress(s), nil
 }
 
 func addFee(sum, add uint64) (uint64, error) {

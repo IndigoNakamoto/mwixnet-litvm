@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	rpcMethodSubmitRoute   = "mweb_submitRoute"
-	rpcMethodGetBalance    = "mweb_getBalance"
+	rpcMethodSubmitRoute    = "mweb_submitRoute"
+	rpcMethodGetBalance     = "mweb_getBalance"
 	rpcMethodGetRouteStatus = "mweb_getRouteStatus"
-	rpcMethodRunBatch      = "mweb_runBatch"
+	rpcMethodRunBatch       = "mweb_runBatch"
+	rpcMethodGetLastReceipt = "mweb_getLastReceipt"
 )
 
 // rpcBalanceResult matches the expected JSON shape from mweb_getBalance (fork contract).
@@ -155,4 +156,22 @@ func (b *RPCBridge) HandleRunBatch(ctx context.Context) (*BatchOutcome, error) {
 		}
 	}
 	return bo, nil
+}
+
+// HandleLastReceipt calls mweb_getLastReceipt (no params).
+func (b *RPCBridge) HandleLastReceipt(ctx context.Context) (*RouteLastReceipt, error) {
+	c, err := rpc.DialContext(ctx, b.URL)
+	if err != nil {
+		return nil, fmt.Errorf("mweb rpc dial: %w", err)
+	}
+	defer c.Close()
+
+	var out *RouteLastReceipt
+	if err := c.CallContext(ctx, &out, rpcMethodGetLastReceipt); err != nil {
+		return nil, fmt.Errorf("mweb_getLastReceipt: %w", err)
+	}
+	if out == nil {
+		return nil, nil
+	}
+	return out, nil
 }

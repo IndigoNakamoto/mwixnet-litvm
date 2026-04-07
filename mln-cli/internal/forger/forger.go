@@ -160,6 +160,7 @@ func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecar
 			timeout = 2 * time.Minute
 		}
 		deadline := time.Now().Add(timeout)
+		cleared := false
 		for time.Now().Before(deadline) {
 			st, err := client.GetRouteStatus(ctx, sidecarURL)
 			if err != nil {
@@ -167,7 +168,8 @@ func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecar
 			}
 			if st.PendingOnions == 0 {
 				out.PendingCleared = true
-				return out, nil
+				cleared = true
+				break
 			}
 			t := time.NewTimer(poll)
 			select {
@@ -178,10 +180,44 @@ func ExecuteWithBatchOptions(ctx context.Context, route *pathfind.Route, sidecar
 			}
 			t.Stop()
 		}
-		return nil, fmt.Errorf("forger: -wait-batch timeout (%s) with pendingOnions still > 0 (try -trigger-batch or wait for coinswapd batch)", timeout)
+		if !cleared {
+			return nil, fmt.Errorf("forger: -wait-batch timeout (%s) with pendingOnions still > 0 (try -trigger-batch or wait for coinswapd batch)", timeout)
+		}
+	}
+
+	if vault != nil && strings.TrimSpace(vault.DBPath) != "" && batch != nil && batch.TriggerBatch {
+		if err := pollAppendixReceipt(ctx, client, sidecarURL, vault.DBPath, out); err != nil {
+			return nil, err
+		}
 	}
 
 	return out, nil
+}
+
+func pollAppendixReceipt(ctx context.Context, c *SidecarClient, sidecarURL, dbPath string, out *ExecuteResult) error {
+	deadline := time.Now().Add(30 * time.Second)
+	tick := 400 * time.Millisecond
+	for time.Now().Before(deadline) {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		lr, err := c.GetRouteLastReceipt(ctx, sidecarURL)
+		if err != nil {
+			return err
+		}
+		if lr != nil && len(lr.Receipt) > 0 {
+			evHex, _, perr := PersistLastReceiptHTTP(dbPath, lr)
+			if perr != nil {
+				return perr
+			}
+			if strings.TrimSpace(evHex) != "" {
+				out.VaultEvidenceHash = evHex
+			}
+			return nil
+		}
+		time.Sleep(tick)
+	}
+	return nil
 }
 
 // ExecuteCLI runs Execute and prints progress and outcome to w (typically os.Stderr).

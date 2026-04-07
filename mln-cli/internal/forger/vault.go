@@ -64,3 +64,36 @@ func PersistBatchReceiptFromResponse(dbPath string, payload *BatchPayload) (evid
 	}
 	return PersistReceiptFromResponse(dbPath, rp)
 }
+
+// PersistLastReceiptHTTP saves a receipt from GET /v1/route/receipt after async swap_forward failure.
+func PersistLastReceiptHTTP(dbPath string, hr *LastReceiptHTTP) (evidenceHashHex string, inserted bool, err error) {
+	if strings.TrimSpace(dbPath) == "" || hr == nil || len(hr.Receipt) == 0 {
+		return "", false, nil
+	}
+	rec, err := receiptstore.ParseReceiptNDJSON(hr.Receipt)
+	if err != nil {
+		return "", false, fmt.Errorf("vault: parse receipt from poll: %w", err)
+	}
+	if sid := strings.TrimSpace(hr.SwapID); sid != "" && strings.TrimSpace(rec.SwapID) == "" {
+		rec.SwapID = sid
+	}
+	st, err := receiptstore.NewStore(dbPath)
+	if err != nil {
+		return "", false, fmt.Errorf("vault: open db: %w", err)
+	}
+	defer st.Close()
+	inserted, err = st.SaveReceipt(rec)
+	if err != nil {
+		return "", false, fmt.Errorf("vault: SaveReceipt: %w", err)
+	}
+	pre := litvmevidence.EvidencePreimage{
+		EpochID:               rec.EpochID,
+		Accuser:               rec.Accuser,
+		AccusedMaker:          rec.AccusedMaker,
+		HopIndex:              rec.HopIndex,
+		PeeledCommitment:      rec.PeeledCommitment,
+		ForwardCiphertextHash: rec.ForwardCiphertextHash,
+	}
+	ev := litvmevidence.ComputeEvidenceHash(pre)
+	return ev.Hex(), inserted, nil
+}

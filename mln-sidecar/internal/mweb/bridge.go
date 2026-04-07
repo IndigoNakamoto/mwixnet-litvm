@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // SwapOutcome is returned by HandleSwap (detail + optional LitVM receipt wiring).
@@ -28,6 +30,8 @@ type Bridge interface {
 	// HandleRouteStatus polls mweb_getRouteStatus (RPC mode); mock returns zeros.
 	HandleRouteStatus(ctx context.Context) (*RouteStatus, error)
 	HandleRunBatch(ctx context.Context) (*BatchOutcome, error)
+	// HandleLastReceipt polls mweb_getLastReceipt (RPC mode); mock returns nil.
+	HandleLastReceipt(ctx context.Context) (*RouteLastReceipt, error)
 }
 
 // RouteStatus mirrors research/coinswapd mweb_getRouteStatus for HTTP JSON.
@@ -36,6 +40,13 @@ type RouteStatus struct {
 	MlnRouteHops           int `json:"mlnRouteHops"`
 	NodeIndex              int `json:"nodeIndex"`
 	NeutrinoConnectedPeers int `json:"neutrinoConnectedPeers"`
+}
+
+// RouteLastReceipt mirrors coinswapd mweb_getLastReceipt (HTTP envelope adds ok / error in api).
+type RouteLastReceipt struct {
+	Receipt             json.RawMessage `json:"receipt,omitempty"`
+	SwapID              string          `json:"swapId,omitempty"`
+	ForwardFailureClass string          `json:"forwardFailureClass,omitempty"`
 }
 
 // InvalidSwapRequest marks validation failures that the HTTP layer should map to 400.
@@ -68,10 +79,14 @@ func (b *MockBridge) HandleSwap(_ context.Context, req *SwapRequest) (*SwapOutco
 		if !strings.HasPrefix(acc, "0x") && !strings.HasPrefix(acc, "0X") {
 			acc = "0x" + acc
 		}
+		accused := "0x0000000000000000000000000000000000000001"
+		if op, err := normalizeSwapOperator(strings.TrimSpace(req.Route[0].Operator)); err == nil && op != (common.Address{}) {
+			accused = strings.ToLower(op.Hex())
+		}
 		rw := map[string]interface{}{
 			"epochId":               strings.TrimSpace(req.EpochID),
 			"accuser":               acc,
-			"accusedMaker":          "0x0000000000000000000000000000000000000001",
+			"accusedMaker":          accused,
 			"hopIndex":              0,
 			"peeledCommitment":      "0x1111111111111111111111111111111111111111111111111111111111111111",
 			"forwardCiphertextHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
@@ -103,6 +118,11 @@ func (b *MockBridge) HandleRouteStatus(_ context.Context) (*RouteStatus, error) 
 // HandleRunBatch is a no-op in mock mode.
 func (b *MockBridge) HandleRunBatch(_ context.Context) (*BatchOutcome, error) {
 	return &BatchOutcome{Detail: "mock: no batch RPC"}, nil
+}
+
+// HandleLastReceipt is unsupported in mock mode (no async swap_forward peer).
+func (b *MockBridge) HandleLastReceipt(_ context.Context) (*RouteLastReceipt, error) {
+	return nil, nil
 }
 
 // IsInvalidSwapRequest reports whether err is (or wraps) *InvalidSwapRequest.

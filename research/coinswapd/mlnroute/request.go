@@ -19,6 +19,8 @@ type Hop struct {
 	Tor              string `json:"tor"`
 	FeeMinSat        uint64 `json:"feeMinSat"`
 	SwapX25519PubHex string `json:"swapX25519PubHex,omitempty"`
+	// Operator is the hop maker's LitVM registry address (0x). Required on every hop when epochId/accuser/swapId are set.
+	Operator string `json:"operator,omitempty"`
 }
 
 // Request is the mweb_submitRoute parameter object.
@@ -101,7 +103,30 @@ func validateLitVMMetadata(req *Request) error {
 	if strings.TrimSpace(s) == "" {
 		return fmt.Errorf("swapId must be non-empty when providing LitVM route metadata")
 	}
+	for i, h := range req.Route {
+		addr, err := normalizeHexAddress(strings.TrimSpace(h.Operator))
+		if err != nil {
+			return fmt.Errorf("hop %d: operator: %w", i, err)
+		}
+		if addr == (common.Address{}) {
+			return fmt.Errorf("hop %d: operator is required when LitVM route metadata is set", i)
+		}
+	}
 	return nil
+}
+
+func normalizeHexAddress(s string) (common.Address, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return common.Address{}, fmt.Errorf("empty address")
+	}
+	if !strings.HasPrefix(s, "0x") && !strings.HasPrefix(s, "0X") {
+		s = "0x" + s
+	}
+	if !common.IsHexAddress(s) {
+		return common.Address{}, fmt.Errorf("invalid hex address %q", s)
+	}
+	return common.HexToAddress(s), nil
 }
 
 func addFee(sum, add uint64) (uint64, error) {
@@ -118,4 +143,20 @@ func FeeSum(req *Request) uint64 {
 		s += h.FeeMinSat
 	}
 	return s
+}
+
+// PeerOperatorsFromRequest returns per-hop LitVM operators when LitVM metadata is present; otherwise zero addresses.
+func PeerOperatorsFromRequest(req *Request) ([3]common.Address, error) {
+	var out [3]common.Address
+	if strings.TrimSpace(req.EpochID) == "" {
+		return out, nil
+	}
+	for i, h := range req.Route {
+		addr, err := normalizeHexAddress(strings.TrimSpace(h.Operator))
+		if err != nil {
+			return out, fmt.Errorf("hop %d: operator: %w", i, err)
+		}
+		out[i] = addr
+	}
+	return out, nil
 }

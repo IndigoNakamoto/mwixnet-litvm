@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/gob"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
 	"math/big"
 	"slices"
+	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ltcmweb/coinswapd/config"
+	"github.com/ltcmweb/coinswapd/litvmreceipt"
 	"github.com/ltcmweb/coinswapd/onion"
 	"github.com/ltcmweb/ltcd/ltcutil/mweb"
 	"github.com/ltcmweb/ltcd/ltcutil/mweb/mw"
@@ -150,19 +154,78 @@ func (s *swapService) forward() error {
 	}
 	cipher.XORKeyStream(data.Bytes(), data.Bytes())
 
+	payload := slices.Clone(data.Bytes())
+	epoch := strings.TrimSpace(s.mlnEpochID)
+	accuser := strings.TrimSpace(s.mlnAccuser)
+	swapID := strings.TrimSpace(s.mlnSwapID)
+	ops := s.mlnPeerOperators
+	nodeIdx := s.nodeIdx()
+	commitsCopy := slices.Clone(commits)
+
 	client, err := rpc.Dial(node.Url)
 	if err != nil {
+		s.recordSwapForwardFailure(epoch, accuser, swapID, ops, nodeIdx, commitsCopy, payload, node, "dial", err)
 		return fmt.Errorf("swap_forward: rpc.Dial next hop (peer index %d): %w", s.nodeIndex+1, err)
 	}
 
-	go func() {
-		err := client.Call(nil, "swap_forward", data.Bytes())
+	go func(peer config.Node, P []byte, comms []mw.Commitment) {
+		err := client.Call(nil, "swap_forward", P)
 		if err != nil {
 			fmt.Println("swap_forward:", err)
+			s.recordSwapForwardFailure(epoch, accuser, swapID, ops, nodeIdx, comms, P, peer, "rpc_application", err)
 		}
-	}()
+	}(node, payload, commitsCopy)
 
 	return nil
+}
+
+// nodeIdx returns the logical forwarding node index (synonym for nodeIndex) for receipt attribution.
+func (s *swapService) nodeIdx() int {
+	return s.nodeIndex
+}
+
+func (s *swapService) recordSwapForwardFailure(
+	epoch, accuser, swapID string,
+	ops [3]common.Address,
+	nodeIdx int,
+	commits []mw.Commitment,
+	payload []byte,
+	nextPeer config.Node,
+	class string,
+	_ error,
+) {
+	if swapID == "" || epoch == "" || accuser == "" {
+		return
+	}
+	hopIdx := nodeIdx + 1
+	if hopIdx < 0 || hopIdx >= len(ops) {
+		return
+	}
+	accused := ops[hopIdx]
+	if accused == (common.Address{}) {
+		return
+	}
+	if len(commits) == 0 || len(payload) == 0 {
+		return
+	}
+	commit2 := commits[0]
+	pk := nextPeer.PubKey()
+	if pk == nil {
+		return
+	}
+	nextHopHex := hex.EncodeToString(pk.Bytes())
+	raw, err := litvmreceipt.MarshalSwapForwardFailureReceipt(
+		epoch, accuser, swapID, accused.Hex(), hopIdx, commit2, payload, nextHopHex, class,
+	)
+	if err != nil {
+		fmt.Println("litvm receipt marshal:", err)
+		return
+	}
+	s.receiptMu.Lock()
+	s.lastReceiptJSON = raw
+	s.lastReceiptSwapID = swapID
+	s.lastReceiptErrorClass = class
+	s.receiptMu.Unlock()
 }
 
 func (s *swapService) Forward(data []byte) error {

@@ -25,9 +25,9 @@ import (
 func testRoute() *pathfind.Route {
 	return &pathfind.Route{
 		Hops: [3]scout.VerifiedMaker{
-			{Tor: "http://n1.onion", FeeMinSat: 100},
-			{Tor: "http://n2.onion", FeeMinSat: 200},
-			{Tor: "http://n3.onion", FeeMinSat: 300},
+			{Tor: "http://n1.onion", FeeMinSat: 100, Operator: common.HexToAddress("0x1111111111111111111111111111111111111111")},
+			{Tor: "http://n2.onion", FeeMinSat: 200, Operator: common.HexToAddress("0x2222222222222222222222222222222222222222")},
+			{Tor: "http://n3.onion", FeeMinSat: 300, Operator: common.HexToAddress("0x3333333333333333333333333333333333333333")},
 		},
 		FeeSumSat: 600,
 	}
@@ -74,9 +74,9 @@ func TestSubmitRoute_SuccessAndBody(t *testing.T) {
 		t.Fatalf("len(route) = %d", len(payload.Route))
 	}
 	want := []HopRequest{
-		{Tor: "http://n1.onion", FeeMinSat: 100},
-		{Tor: "http://n2.onion", FeeMinSat: 200},
-		{Tor: "http://n3.onion", FeeMinSat: 300},
+		{Tor: "http://n1.onion", FeeMinSat: 100, Operator: "0x1111111111111111111111111111111111111111"},
+		{Tor: "http://n2.onion", FeeMinSat: 200, Operator: "0x2222222222222222222222222222222222222222"},
+		{Tor: "http://n3.onion", FeeMinSat: 300, Operator: "0x3333333333333333333333333333333333333333"},
 	}
 	for i := range want {
 		if payload.Route[i] != want[i] {

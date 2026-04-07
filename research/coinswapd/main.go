@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ltcmweb/coinswapd/config"
 	"github.com/ltcmweb/coinswapd/onion"
@@ -200,6 +201,13 @@ type swapService struct {
 	mlnEpochID string
 	mlnAccuser string
 	mlnSwapID  string
+	// mlnPeerOperators align with mlnPeers[0..2] when LitVM receipt mode is active (mweb_submitRoute with epochId trio).
+	mlnPeerOperators [3]common.Address
+
+	receiptMu             sync.Mutex
+	lastReceiptJSON       []byte
+	lastReceiptSwapID     string
+	lastReceiptErrorClass string
 }
 
 func (s *swapService) getNodes() error {
@@ -241,6 +249,7 @@ func (s *swapService) Swap(onion onion.Onion) error {
 	s.mlnEpochID = ""
 	s.mlnAccuser = ""
 	s.mlnSwapID = ""
+	s.mlnPeerOperators = [3]common.Address{}
 	return s.acceptOnionLocked(&onion)
 }
 
@@ -250,6 +259,21 @@ func (s *swapService) setMLNRouteMeta(epochID, accuser, swapID string) {
 	s.mlnEpochID = epochID
 	s.mlnAccuser = accuser
 	s.mlnSwapID = swapID
+}
+
+func (s *swapService) setMLNPeerOperators(ops [3]common.Address) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mlnPeerOperators = ops
+}
+
+func (s *swapService) takeLastReceiptSnapshot() (receipt []byte, swapID, errClass string) {
+	s.receiptMu.Lock()
+	defer s.receiptMu.Unlock()
+	if len(s.lastReceiptJSON) == 0 {
+		return nil, "", ""
+	}
+	return append([]byte(nil), s.lastReceiptJSON...), s.lastReceiptSwapID, s.lastReceiptErrorClass
 }
 
 func inputFromOnion(onion *onion.Onion) (input *wire.MwebInput, err error) {

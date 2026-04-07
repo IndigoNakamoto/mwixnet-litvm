@@ -67,10 +67,11 @@ func TestSwap_mockWithLitVMMetadata_hasReceipt(t *testing.T) {
 	srv := httptest.NewServer(NewMux(mweb.NewMockBridge()))
 	t.Cleanup(srv.Close)
 
+	op := "0x4444444444444444444444444444444444444444"
 	payload := `{"route":[
-		{"tor":"http://n1","feeMinSat":1},
-		{"tor":"http://n2","feeMinSat":2},
-		{"tor":"http://n3","feeMinSat":3}
+		{"tor":"http://n1","feeMinSat":1,"operator":"` + op + `"},
+		{"tor":"http://n2","feeMinSat":2,"operator":"` + op + `"},
+		{"tor":"http://n3","feeMinSat":3,"operator":"` + op + `"}
 	],"destination":"mweb1x","amount":1000000,"epochId":"5","accuser":"0x3333333333333333333333333333333333333333","swapId":"srv-test-swap"}`
 	req, err := http.NewRequest(http.MethodPost, srv.URL+"/v1/swap", strings.NewReader(payload))
 	if err != nil {
