@@ -23,7 +23,8 @@ contract EvidenceGoldenVectorsTest is Test {
             abi.encodePacked(epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt);
         assertEq(preimage.length, 137);
 
-        bytes32 ev = EvidenceLib.evidenceHash(epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt);
+        bytes32 ev =
+            EvidenceLib.evidenceHash(epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt);
         assertEq(ev, EXPECTED_EVIDENCE_HASH);
 
         bytes32 gid = EvidenceLib.grievanceId(accuser, accusedMaker, epochId, ev);

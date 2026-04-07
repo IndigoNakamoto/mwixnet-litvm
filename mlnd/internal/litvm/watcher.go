@@ -191,7 +191,7 @@ func (w *Watcher) handleReceiptFound(ctx context.Context, ev *GrievanceEvent, re
 		return
 	}
 	log.Printf("mlnd: submitted defendGrievance tx=%s grievanceId=%s", tx.Hash().Hex(), ev.GrievanceID.Hex())
-	w.opsAppend(opslog.Info, "defend_submitted", "defendGrievance transaction submitted — awaiting resolution", map[string]string{
+	w.opsAppend(opslog.Info, "defend_submitted", "defendGrievance submitted — case Contested; interim judge must adjudicateGrievance", map[string]string{
 		"grievanceId": ev.GrievanceID.Hex(),
 		"txHash":      tx.Hash().Hex(),
 	})

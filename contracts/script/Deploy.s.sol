@@ -20,11 +20,20 @@ contract Deploy is Script {
         uint256 slashingWindow = vm.envOr("SLASHING_WINDOW", uint256(7 days));
 
         uint256 pk = vm.envUint("PRIVATE_KEY");
+        address interimJudge = vm.envOr("INTERIM_JUDGE", vm.addr(pk));
+
         vm.startBroadcast(pk);
 
         MwixnetRegistry registry = new MwixnetRegistry(minStake, cooldownPeriod);
         GrievanceCourt court = new GrievanceCourt(
-            registry, challengeWindow, grievanceBondMin, slashBps, bountyBps, burnBps, slashingWindow
+            registry,
+            challengeWindow,
+            grievanceBondMin,
+            slashBps,
+            bountyBps,
+            burnBps,
+            slashingWindow,
+            interimJudge
         );
         registry.setGrievanceCourt(address(court));
 
@@ -32,5 +41,6 @@ contract Deploy is Script {
 
         console.log("MwixnetRegistry:", address(registry));
         console.log("GrievanceCourt:", address(court));
+        console.log("INTERIM_JUDGE (adjudicateGrievance):", interimJudge);
     }
 }

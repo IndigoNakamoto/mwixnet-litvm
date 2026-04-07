@@ -84,7 +84,7 @@ If `MLND_DEFEND_AUTO` is unset/false, the daemon only validates receipts and log
 
 **Retries:** up to three attempts with short backoff on likely transport errors; **not** on `execution reverted` / insufficient funds.
 
-On-chain parsing of `defenseData` is still **TBD** (see `PRODUCT_SPEC.md` appendix 13.6); the contract currently accepts opaque calldata.
+On-chain parsing of `defenseData` is still **TBD** (see `PRODUCT_SPEC.md` appendix 13.6); `defendGrievance` only moves the case to **Contested**. Final outcomes require the deployment’s **interim judge** to call **`adjudicateGrievance`** (or permissionless **`resolveGrievance`** after the challenge window if the accused never defended).
 
 ### Defense Data v1 format
 

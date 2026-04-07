@@ -13,6 +13,8 @@ contract GrievanceCourtTest is Test {
     address internal accuser = address(0xA11);
     address internal accused = address(0xB22);
     address internal stranger = address(0xC33);
+    /// @dev Interim judge for adjudicateGrievance (Contested phase).
+    address internal judge = address(0xD00);
 
     uint256 internal constant MIN_STAKE = 1 ether;
     uint256 internal constant COOLDOWN = 48 hours;
@@ -26,7 +28,7 @@ contract GrievanceCourtTest is Test {
     function setUp() public {
         registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         court = new GrievanceCourt(
-            registry, WINDOW, BOND, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW
+            registry, WINDOW, BOND, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW, judge
         );
         registry.setGrievanceCourt(address(court));
 
@@ -83,7 +85,7 @@ contract GrievanceCourtTest is Test {
         assertEq(address(0).balance, (5 ether * BURN_BPS) / 10_000);
     }
 
-    function test_defend_then_exonerate() public {
+    function test_defend_then_judge_exonerate() public {
         bytes32 evidenceHash = keccak256("evidence2");
         uint256 epochId = 8;
 
@@ -95,8 +97,12 @@ contract GrievanceCourtTest is Test {
         vm.prank(accused);
         court.defendGrievance(gid, hex"abcd");
 
-        uint256 accusedBefore = accused.balance;
+        vm.expectRevert(GrievanceCourt.BadPhase.selector);
         court.resolveGrievance(gid);
+
+        uint256 accusedBefore = accused.balance;
+        vm.prank(judge);
+        court.adjudicateGrievance(gid, true);
 
         (
             address accA_,
@@ -118,6 +124,80 @@ contract GrievanceCourtTest is Test {
         assertFalse(registry.stakeFrozen(accused));
         assertEq(court.openGrievanceCountAgainst(accused), 0);
         assertEq(accused.balance, accusedBefore + BOND);
+    }
+
+    function test_contested_permissionless_resolve_reverts_bond_unmoved() public {
+        bytes32 evidenceHash = keccak256("garbage_defense");
+        uint256 epochId = 88;
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, epochId, evidenceHash);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, epochId, evidenceHash);
+
+        vm.prank(accused);
+        court.defendGrievance(gid, hex"deadbeef");
+
+        vm.warp(block.timestamp + WINDOW + 1);
+        vm.expectRevert(GrievanceCourt.BadPhase.selector);
+        court.resolveGrievance(gid);
+
+        assertEq(court.openGrievanceCountAgainst(accused), 1);
+        assertTrue(registry.stakeFrozen(accused));
+        assertEq(address(court).balance, BOND);
+    }
+
+    function test_judge_adjudicate_uphold_slash_matches_timeout() public {
+        bytes32 evidenceHash = keccak256("evidence_uphold");
+        uint256 epochId = 89;
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, epochId, evidenceHash);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, epochId, evidenceHash);
+
+        vm.prank(accused);
+        court.defendGrievance(gid, hex"01");
+
+        uint256 accuserBefore = accuser.balance;
+        vm.prank(judge);
+        court.adjudicateGrievance(gid, false);
+
+        (,,,,,, GrievanceCourt.GrievancePhase ph,) = court.grievances(gid);
+        assertEq(uint256(ph), uint256(GrievanceCourt.GrievancePhase.ResolvedSlash));
+        assertEq(registry.stake(accused), 0);
+        uint256 bounty = (5 ether * BOUNTY_BPS) / 10_000;
+        assertEq(accuser.balance, accuserBefore + BOND + bounty);
+        assertEq(court.openGrievanceCountAgainst(accused), 0);
+        assertFalse(registry.stakeFrozen(accused));
+    }
+
+    function test_adjudicate_revert_not_judge() public {
+        bytes32 h = keccak256("adj");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 300, h);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(300), h);
+        vm.prank(accused);
+        court.defendGrievance(gid, hex"");
+
+        vm.prank(stranger);
+        vm.expectRevert(GrievanceCourt.NotJudge.selector);
+        court.adjudicateGrievance(gid, true);
+    }
+
+    function test_adjudicate_revert_wrong_phase_open() public {
+        bytes32 h = keccak256("open_phase");
+        vm.prank(accuser);
+        court.openGrievance{value: BOND}(accused, 301, h);
+        bytes32 gid = EvidenceLib.grievanceId(accuser, accused, uint256(301), h);
+
+        vm.prank(judge);
+        vm.expectRevert(GrievanceCourt.BadPhase.selector);
+        court.adjudicateGrievance(gid, false);
+    }
+
+    function test_constructor_revert_zero_judge() public {
+        MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
+        vm.expectRevert(GrievanceCourt.ZeroJudge.selector);
+        new GrievanceCourt(
+            r, WINDOW, BOND, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW, address(0)
+        );
     }
 
     function test_resolve_reverts_before_deadline_if_open() public {
@@ -144,7 +224,8 @@ contract GrievanceCourtTest is Test {
     /// @dev Uses partial `slashBps` so stake remains after resolution; full slash would clear `exitUnlockTime` via auto-deregister.
     function test_withdrawStake_blocked_until_grievance_resolved() public {
         MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
-        GrievanceCourt c = new GrievanceCourt(r, WINDOW, BOND, 2500, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW);
+        GrievanceCourt c =
+            new GrievanceCourt(r, WINDOW, BOND, 2500, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW, judge);
         r.setGrievanceCourt(address(c));
 
         vm.deal(accuser, 50 ether);
@@ -276,18 +357,19 @@ contract GrievanceCourtTest is Test {
     function test_constructor_reverts_invalid_bounty_burn_split() public {
         MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         vm.expectRevert(GrievanceCourt.InvalidBountyBurnSplit.selector);
-        new GrievanceCourt(r, WINDOW, BOND, SLASH_BPS, 1000, 8000, SLASHING_WINDOW);
+        new GrievanceCourt(r, WINDOW, BOND, SLASH_BPS, 1000, 8000, SLASHING_WINDOW, judge);
     }
 
     function test_constructor_reverts_slash_bps_too_high() public {
         MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         vm.expectRevert(GrievanceCourt.SlashBpsTooHigh.selector);
-        new GrievanceCourt(r, WINDOW, BOND, 10_001, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW);
+        new GrievanceCourt(r, WINDOW, BOND, 10_001, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW, judge);
     }
 
     function test_partial_slash_keeps_maker_when_stake_stays_above_min() public {
         MwixnetRegistry r = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
-        GrievanceCourt c = new GrievanceCourt(r, WINDOW, BOND, 2000, 5000, 5000, SLASHING_WINDOW);
+        GrievanceCourt c =
+            new GrievanceCourt(r, WINDOW, BOND, 2000, 5000, 5000, SLASHING_WINDOW, judge);
         r.setGrievanceCourt(address(c));
 
         vm.deal(accuser, 50 ether);
@@ -321,7 +403,8 @@ contract GrievanceCourtTest is Test {
         vm.prank(accused);
         court.defendGrievance(gid, hex"01");
 
-        court.resolveGrievance(gid);
+        vm.prank(judge);
+        court.adjudicateGrievance(gid, true);
 
         vm.prank(accused);
         vm.expectRevert(MwixnetRegistry.WithdrawalLocked.selector);

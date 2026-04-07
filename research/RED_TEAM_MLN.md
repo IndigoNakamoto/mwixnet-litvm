@@ -11,9 +11,9 @@
 
 The repository is a **pre-production research and integration scaffold** across four layers: **MWEB** (delegated to `coinswapd` / fork in [`coinswapd/`](coinswapd/)), **LitVM** ([`contracts/`](../contracts/) — registry, grievance court, evidence hashing), **Nostr** (discovery — [`NOSTR_MLN.md`](NOSTR_MLN.md)), and **Tor** (advertised transport; limited runtime validation in reviewed code per [`THREAT_MODEL_MLN.md`](THREAT_MODEL_MLN.md)).
 
-**Red-team bottom line:** The **strongest honest controls** are off-chain consistency checks in **`mlnd`** (receipt / `evidenceHash` / `grievanceId` alignment with chain events before building `defenseData`) and **Scout** (Schnorr + registry `eth_call` for “verified” makers). The **largest trust and abuse gaps** are (1) **on-chain court does not verify `defenseData`** — any accused can reach `Defended` with arbitrary bytes ([`GrievanceCourt.sol`](../contracts/src/GrievanceCourt.sol) still silences `defenseData` as “verifier TBD”), (2) **operator and wallet secrets in plaintext** on disk/env, (3) **`mln-sidecar` binds all interfaces by default** with **no auth**, and (4) **Forger → sidecar HTTP** without TLS pinning (CLI path weaker than desktop loopback warning).
+**Red-team bottom line:** The **strongest honest controls** are off-chain consistency checks in **`mlnd`** (receipt / `evidenceHash` / `grievanceId` alignment with chain events before building `defenseData`) and **Scout** (Schnorr + registry `eth_call` for “verified” makers). The **largest trust and abuse gaps** are (1) **`defenseData` is not semantically verified on-chain** — any accused can reach **`Contested`** with arbitrary bytes; **exoneration** now requires the **`judge`** to **`adjudicateGrievance`** (interim trust), (2) **operator and wallet secrets in plaintext** on disk/env, (3) **`mln-sidecar` binds all interfaces by default** with **no auth**, and (4) **Forger → sidecar HTTP** without TLS pinning (CLI path weaker than desktop loopback warning).
 
-**Phase 15 nuance (economics vs defense):** [`PHASE_15_ECONOMIC_HARDENING.md`](../PHASE_15_ECONOMIC_HARDENING.md) added **real slashing**, **accuser bond forfeit on exoneration**, and **post-resolution exit locks**. That **does not** fix the **bogus-defense** class of attacks: resolution logic can still depend on phases reached without cryptographic proof on-chain. The **Critical** residual for **unverified `defenseData`** in the primary threat table remains accurate.
+**Phase 15 + interim judge:** Permissionless **`resolveGrievance`** no longer pays the accuser bond to the accused after junk **`defendGrievance`**. **Residual:** **judge** compromise, censorship, or mistaken **`adjudicate`** still breaks **integrity** vs receipts until an on-chain verifier exists.
 
 ---
 
@@ -69,7 +69,7 @@ flowchart LR
 
 | Tactic | Scenario | Impact | Notes |
 |--------|----------|--------|--------|
-| **State machine abuse** | Accused calls `defendGrievance` with empty `defenseData`; later resolution paths assume “defended” fairly | Undermines **cryptographic accountability** promised in [`PRODUCT_SPEC.md`](../PRODUCT_SPEC.md) principles; outcomes may not match real receipt validity | **P0** until verifier or explicit non-production scope |
+| **State machine / judge** | Accused reaches **`Contested`** with junk; **`judge`** exonerates without off-chain due diligence | False exoneration + bond to accused | **High** for prod — ops + **judge** policy; mitigated vs prior **bond theft** on permissionless resolve |
 | **Griefing** | Accuser opens grievances with **wrong** `evidenceHash` (on-chain does not verify preimage vs MWEB reality) | Stake **freeze**, operational pain; mitigated by **bond** and Phase 15 **exoneration bond to accused** | Residual **medium** — economic deterrent improved, DoS not eliminated |
 | **Privileged ops** | Compromise **registry `owner`** (if upgradeable params added later) | Policy / governance failure | Currently **immutable** deploy assumptions — still **high** if owner key leaks |
 
@@ -121,7 +121,7 @@ flowchart LR
    Expose sidecar OR MITM HTTP → Forger receives **mock OK** → user believes route submitted → **no on-chain grievance evidence** matches reality if they never hit real `coinswapd`.
 
 2. **“Freeze then defend garbage” (maker vs court)**  
-   Grievance opens (possibly griefing) → accused **`defendGrievance`** with junk → **chain accepts** → resolution proceeds under rules that assumed a real defense payload — **integrity gap** until verifier exists.
+   Grievance opens → accused **`defendGrievance`** with junk → **`Contested`** → **`judge`** must **`adjudicate`** — **integrity** depends on judge; bond no longer stolen via permissionless **`resolve`** alone.
 
 3. **“Host owns everything” (local)**  
    Malware reads wallet key + `mlnd` env → **LitVM** txs + **Nostr** posts + SQLite / bridge — **total operational compromise** (matches compact adversary table in [`THREAT_MODEL_MLN.md`](THREAT_MODEL_MLN.md) §2.2).

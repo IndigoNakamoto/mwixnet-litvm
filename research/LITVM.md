@@ -70,7 +70,7 @@ From **repo root**, the same path is wrapped as **`make broadcast-litvm`** ([`sc
 
 Verification (optional, Etherscan-compatible chains): add `--verify --etherscan-api-key "$ETHERSCAN_API_KEY"` (set in `.env`; see [`PHASE_16_PUBLIC_TESTNET.md`](../PHASE_16_PUBLIC_TESTNET.md)).
 
-Optional env overrides: `MIN_STAKE`, `CHALLENGE_WINDOW`, `GRIEVANCE_BOND_MIN` (see `Deploy.s.sol`).
+Optional env overrides: `MIN_STAKE`, `CHALLENGE_WINDOW`, `GRIEVANCE_BOND_MIN`, `INTERIM_JUDGE` (defaults to deployer address from `PRIVATE_KEY` when unset; see `Deploy.s.sol`, [`contracts/.env.example`](../contracts/.env.example)).
 
 ## Spec alignment
 

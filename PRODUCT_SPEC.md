@@ -170,9 +170,10 @@ Per §5.2, **per-hop routing fees** settle on **MWEB**; successful mixes stay **
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Normal**               | Maker stake is withdrawable per registry rules; no grievance open.                                                                                                                            |
 | **Grievance open**       | An accuser posted a bond and committed to an **evidence** claim; accused stake is **frozen for withdrawal** (not necessarily “slashed” yet — exact freeze scope is an implementation detail). |
-| **Defense window**       | Countdown **T_challenge** (e.g. 24 hours) during which the accused may submit a defense.                                                                                                      |
-| **Resolved — slash**     | Accused failed to defend in time or defense rejected → slash per policy; grievance bond handling per outcome.                                                                                 |
-| **Resolved — exonerate** | Valid defense → accused cleared; false accuser may forfeit bond per policy.                                                                                                                   |
+| **Defense window**       | Countdown **T_challenge** (e.g. 24 hours) during which the accused may submit a defense via **`defendGrievance`**.                                                                             |
+| **Contested (v1 ref.)**  | After a defense calldata submit, the reference **`GrievanceCourt`** enters **Contested**; **exoneration** requires an interim **`judge`** to **`adjudicateGrievance`** (`defenseData` not verified on-chain). |
+| **Resolved — slash**     | Accused silent past **T_challenge**, or **`judge`** upholds accuser after **Contested** → slash per policy; bond handling per implemented split.                                                |
+| **Resolved — exonerate** | **`judge`** rules for accused after **Contested** → accuser bond may forfeit per policy (v1 reference: bond to accused on exonerate).                                                        |
 
 
 **Default if the accused is silent:** treat as **failed defense** (slash or deregister), not as automatic exoneration — the window exists so honest makers can **prove** handoff or broadcast.
@@ -200,13 +201,14 @@ While open, the accused **cannot** rely on “do nothing” if the protocol defi
 
 The contract may accept `**defenseData`** as opaque calldata interpreted by a **thin validation hook** (e.g. verify signatures of fixed format) or defer detailed checks to **Phase 2** oracle modules.
 
-#### 3. Resolution — `resolveGrievance`
+#### 3. Resolution — `resolveGrievance` (timeout) and `adjudicateGrievance` (Contested)
 
 
 | Outcome                                      | Maker behavior                          | Economic result (example policy)                                                                                                                                            |
 | -------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A — No timely defense or invalid defense** | Treated as **liable**                   | Slash stake per policy; **accuser** recovers grievance bond + **bounty** (e.g. 10% of slashed amount); remainder **burn** or **treasury**; optional **deregister** accused. |
-| **B — Valid defense**                        | **Exonerated**; withdrawal rules resume | Accuser’s grievance bond **forfeited** to accused (or split) to cover gas and reputational harm; stake **unlocked**.                                                        |
+| **A — No timely defense**                  | Accused never **`defendGrievance`** before deadline | Permissionless **`resolveGrievance`** may slash per policy; **accuser** recovers bond + **bounty** from slashed stake per split. |
+| **B — Uphold after Contested**               | **`judge`** rejects defense (`adjudicateGrievance(..., false)`) | Same slash economics as **A** (v1 reference contract). |
+| **C — Exonerate after Contested**            | **`judge`** accepts defense (`adjudicateGrievance(..., true)`) | Accuser bond **forfeited** to accused (or split); stake **unlocked** per registry rules. |
 
 
 Exact percentages are **parameters**, not consensus of this draft.
@@ -229,16 +231,18 @@ struct Grievance {
     GrievancePhase phase;
 }
 
-enum GrievancePhase { None, Open, Defended, ResolvedSlash, ResolvedExonerate }
+enum GrievancePhase { None, Open, Contested, ResolvedSlash, ResolvedExonerate }
 
 mapping(bytes32 grievanceId => Grievance) public grievances;
 
 uint256 public constant CHALLENGE_WINDOW = 24 hours; // T_challenge
 // uint256 public grievanceBond; // set per token decimals in constructor
+// address public immutable judge; // v1 interim adjudicator (multisig / ops) — see deployed `GrievanceCourt`
 
 function openGrievance(address accused, uint256 epochId, bytes32 evidenceHash) external;
 function defendGrievance(bytes32 grievanceId, bytes calldata defenseData) external;
-function resolveGrievance(bytes32 grievanceId) external;
+function resolveGrievance(bytes32 grievanceId) external; // Open + past deadline only
+function adjudicateGrievance(bytes32 grievanceId, bool exonerateAccused) external; // Contested → final (judge only)
 ```
 
 `**grievanceId`:** Derive deterministically from `(accuser, accused, epochId, evidenceHash)` (or include a **nonce** if multiple grievances per triple are allowed).

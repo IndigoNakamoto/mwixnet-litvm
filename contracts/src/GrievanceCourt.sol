@@ -9,11 +9,13 @@ import {IGrievanceCourtExit} from "./interfaces/IGrievanceCourtExit.sol";
 /// @notice Judicial layer: bonds, grievance lifecycle, stake freeze signals. Does not verify MWEB or mix execution.
 /// @dev `evidenceHash` is computed off-chain per PRODUCT_SPEC.md appendix 13 (packed preimage then keccak256). This contract
 ///      only stores the bytes32; it does not re-hash preimage fields on-chain.
+/// @dev v1 interim trust: `defenseData` is not verified on-chain. After `defendGrievance`, phase is `Contested` until `judge`
+///      calls `adjudicateGrievance` — permissionless `resolveGrievance` only finalizes silent accused (`Open` past deadline).
 contract GrievanceCourt is IGrievanceCourtExit {
     enum GrievancePhase {
         None,
         Open,
-        Defended,
+        Contested,
         ResolvedSlash,
         ResolvedExonerate
     }
@@ -30,6 +32,8 @@ contract GrievanceCourt is IGrievanceCourtExit {
     }
 
     MwixnetRegistry public immutable registry;
+    /// @notice Interim dispute judge (e.g. team multisig). Only this address may `adjudicateGrievance` when phase is `Contested`.
+    address public immutable judge;
     uint256 public immutable challengeWindow;
     uint256 public immutable grievanceBondMin;
     /// @notice Fraction of accused stake to slash on upheld grievance (10_000 = 100%).
@@ -41,7 +45,7 @@ contract GrievanceCourt is IGrievanceCourtExit {
 
     mapping(bytes32 grievanceId => Grievance) public grievances;
 
-    /// @notice Number of grievances in `Open` or `Defended` phase against this accused maker (resolved cases decrement).
+    /// @notice Number of grievances in `Open` or `Contested` phase against this accused maker (resolved cases decrement).
     mapping(address accused => uint256) public openGrievanceCountAgainst;
 
     mapping(address accused => uint256) public withdrawalLockUntil;
@@ -54,18 +58,23 @@ contract GrievanceCourt is IGrievanceCourtExit {
         bytes32 evidenceHash,
         uint256 deadline
     );
-    event Defended(bytes32 indexed grievanceId, address indexed accused);
+    event Contested(
+        bytes32 indexed grievanceId, address indexed accused, bytes32 defenseDataDigest
+    );
+    event Adjudicated(bytes32 indexed grievanceId, bool exonerateAccused);
     event ResolvedSlash(bytes32 indexed grievanceId);
     event ResolvedExonerate(bytes32 indexed grievanceId);
 
     error InsufficientBond();
     error BadPhase();
     error NotAccused();
+    error NotJudge();
     error TooEarly();
     error AlreadyExists();
     error InvariantOpenCount();
     error SlashBpsTooHigh();
     error InvalidBountyBurnSplit();
+    error ZeroJudge();
 
     constructor(
         MwixnetRegistry registry_,
@@ -74,11 +83,14 @@ contract GrievanceCourt is IGrievanceCourtExit {
         uint256 slashBps_,
         uint256 bountyBps_,
         uint256 burnBps_,
-        uint256 slashingWindow_
+        uint256 slashingWindow_,
+        address judge_
     ) {
+        if (judge_ == address(0)) revert ZeroJudge();
         if (slashBps_ > 10_000) revert SlashBpsTooHigh();
         if (bountyBps_ + burnBps_ != 10_000) revert InvalidBountyBurnSplit();
         registry = registry_;
+        judge = judge_;
         challengeWindow = challengeWindow_;
         grievanceBondMin = grievanceBondMin_;
         slashBps = slashBps_;
@@ -116,52 +128,64 @@ contract GrievanceCourt is IGrievanceCourtExit {
         );
     }
 
-    /// @notice Accused submits opaque defense calldata (receipts, signatures); verification is off-chain or future module.
+    /// @notice Accused submits opaque defense calldata (receipts, signatures); not verified on-chain in v1 — moves to `Contested`.
     function defendGrievance(bytes32 grievanceId, bytes calldata defenseData) external {
         Grievance storage g = grievances[grievanceId];
         if (g.phase != GrievancePhase.Open) revert BadPhase();
         if (msg.sender != g.accused) revert NotAccused();
-        defenseData; // silence unused; real verifier TBD
-        g.phase = GrievancePhase.Defended;
-        emit Defended(grievanceId, msg.sender);
+        bytes32 digest = keccak256(defenseData);
+        g.phase = GrievancePhase.Contested;
+        emit Contested(grievanceId, msg.sender, digest);
     }
 
-    /// @notice Open + no defense by deadline → slash stake (per `slashBps`) and bounty/burn split; defended → exonerate and forfeit accuser bond to accused.
+    /// @notice `Open` and accused silent past `deadline` → slash stake and refund accuser bond. `Contested` must use `adjudicateGrievance`.
     function resolveGrievance(bytes32 grievanceId) external {
         Grievance storage g = grievances[grievanceId];
-        if (g.phase == GrievancePhase.None) revert BadPhase();
+        if (g.phase != GrievancePhase.Open) revert BadPhase();
+        if (block.timestamp < g.deadline) revert TooEarly();
+        _finalizeSlash(g, grievanceId);
+    }
 
-        if (g.phase == GrievancePhase.Open) {
-            if (block.timestamp < g.deadline) revert TooEarly();
-            _bumpWithdrawalLock(g.accused);
-            g.phase = GrievancePhase.ResolvedSlash;
-            _decrementOpenAgainst(g.accused);
+    /// @notice Interim judge rules after accused submitted a defense (`Contested`).
+    /// @param exonerateAccused if true, accuser bond forfeits to accused; if false, same outcome as timeout slash (stake slashed, bond refunded to accuser).
+    function adjudicateGrievance(bytes32 grievanceId, bool exonerateAccused) external {
+        if (msg.sender != judge) revert NotJudge();
+        Grievance storage g = grievances[grievanceId];
+        if (g.phase != GrievancePhase.Contested) revert BadPhase();
 
-            uint256 st = registry.stake(g.accused);
-            uint256 slashAmount = (st * slashBps) / 10_000;
-            registry.slashStake(g.accused, slashAmount, g.accuser, bountyBps, burnBps);
-
-            if (openGrievanceCountAgainst[g.accused] == 0) {
-                registry.unfreezeStake(g.accused);
-            }
-            emit ResolvedSlash(grievanceId);
-            _refundBond(g.accuser, g.bondAmount);
-            return;
+        emit Adjudicated(grievanceId, exonerateAccused);
+        if (exonerateAccused) {
+            _finalizeExonerate(g, grievanceId);
+        } else {
+            _finalizeSlash(g, grievanceId);
         }
+    }
 
-        if (g.phase == GrievancePhase.Defended) {
-            _bumpWithdrawalLock(g.accused);
-            g.phase = GrievancePhase.ResolvedExonerate;
-            _decrementOpenAgainst(g.accused);
-            if (openGrievanceCountAgainst[g.accused] == 0) {
-                registry.unfreezeStake(g.accused);
-            }
-            emit ResolvedExonerate(grievanceId);
-            _forfeitBondToAccused(g.accused, g.bondAmount);
-            return;
+    function _finalizeSlash(Grievance storage g, bytes32 grievanceId) private {
+        _bumpWithdrawalLock(g.accused);
+        g.phase = GrievancePhase.ResolvedSlash;
+        _decrementOpenAgainst(g.accused);
+
+        uint256 st = registry.stake(g.accused);
+        uint256 slashAmount = (st * slashBps) / 10_000;
+        registry.slashStake(g.accused, slashAmount, g.accuser, bountyBps, burnBps);
+
+        if (openGrievanceCountAgainst[g.accused] == 0) {
+            registry.unfreezeStake(g.accused);
         }
+        emit ResolvedSlash(grievanceId);
+        _refundBond(g.accuser, g.bondAmount);
+    }
 
-        revert BadPhase();
+    function _finalizeExonerate(Grievance storage g, bytes32 grievanceId) private {
+        _bumpWithdrawalLock(g.accused);
+        g.phase = GrievancePhase.ResolvedExonerate;
+        _decrementOpenAgainst(g.accused);
+        if (openGrievanceCountAgainst[g.accused] == 0) {
+            registry.unfreezeStake(g.accused);
+        }
+        emit ResolvedExonerate(grievanceId);
+        _forfeitBondToAccused(g.accused, g.bondAmount);
     }
 
     function _bumpWithdrawalLock(address accused) private {

@@ -74,7 +74,7 @@ This phase replaces the **judicial scaffold** (freeze/unfreeze and nominal “sl
 ## Operator and client notes
 
 - **`mlnd` / Scout:** New immutables on `GrievanceCourt` change the **constructor ABI**; redeploy scripts and env must pass seven constructor arguments. Scout continues to use `eth_call` views (`stake`, `makerNostrKeyHash`, `stakeFrozen`, `minStake`); makers with **`makerNostrKeyHash == 0`** after slash must stop advertising until they re-register with sufficient stake.
-- **Defense data:** On-chain verification of `defenseData` remains **out of scope**; economics and exit rules are hardened first (see [`research/THREAT_MODEL_MLN.md`](research/THREAT_MODEL_MLN.md), [`research/RED_TEAM_MLN.md`](research/RED_TEAM_MLN.md)).
+- **Defense data:** On-chain verification of `defenseData` remains **out of scope**; **`defendGrievance`** moves to **Contested**, and an immutable **`judge`** must **`adjudicateGrievance`** to exonerate or uphold (see [`GrievanceCourt.sol`](contracts/src/GrievanceCourt.sol)). Economics and exit rules remain as implemented (see [`research/THREAT_MODEL_MLN.md`](research/THREAT_MODEL_MLN.md), [`research/RED_TEAM_MLN.md`](research/RED_TEAM_MLN.md)).
 
 ## Build and test
 

@@ -29,7 +29,11 @@ contract MwixnetRegistry is ReentrancyGuard {
     event StakeUnfrozen(address indexed maker);
     event GrievanceCourtSet(address indexed court);
     event StakeSlashed(
-        address indexed maker, address indexed accuser, uint256 totalSlashed, uint256 bounty, uint256 burned
+        address indexed maker,
+        address indexed accuser,
+        uint256 totalSlashed,
+        uint256 bounty,
+        uint256 burned
     );
     event MakerDeregisteredLowStake(address indexed maker);
 
@@ -149,11 +153,13 @@ contract MwixnetRegistry is ReentrancyGuard {
 
     /// @notice Called by `GrievanceCourt` on upheld grievance: slash `slashAmount` from `maker`, pay bounty to `accuser`, burn remainder to `address(0)`.
     /// @dev `bountyBps + burnBps` must equal 10_000. Remaining stake below `minStake` clears `makerNostrKeyHash` and `exitUnlockTime` (routing pool drop).
-    function slashStake(address maker, uint256 slashAmount, address accuser, uint256 bountyBps, uint256 burnBps)
-        external
-        onlyGrievanceCourt
-        nonReentrant
-    {
+    function slashStake(
+        address maker,
+        uint256 slashAmount,
+        address accuser,
+        uint256 bountyBps,
+        uint256 burnBps
+    ) external onlyGrievanceCourt nonReentrant {
         if (accuser == address(0)) revert ZeroAddress();
         if (bountyBps + burnBps != 10_000) revert InvalidBountyBurnSplit();
 

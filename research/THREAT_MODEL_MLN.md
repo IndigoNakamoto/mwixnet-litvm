@@ -35,7 +35,7 @@ The repo delivers a **coherent split** across layers: Solidity for registry and 
 
 **Highest-impact gaps (must fix before treating as economic security)**
 
-1. **`GrievanceCourt` does not verify `defenseData`** — accused can call `defendGrievance` with arbitrary bytes. **Phase 15** implements **real slashing** and **exoneration bond to accused**, but outcomes can still diverge from receipt reality until a **verifier** exists. README and phase docs still mark contracts **not audited**; not a safe judicial layer for production **integrity** claims without `defenseData` enforcement.
+1. **`GrievanceCourt` does not verify `defenseData` contents on-chain** — accused can call `defendGrievance` with arbitrary bytes (phase → **Contested**). **Exoneration** (accuser bond to accused) requires the deployment **`judge`** to call **`adjudicateGrievance(..., true)`**; permissionless **`resolveGrievance`** only **slashes** when the accused stayed **Open** past the deadline — closing the prior **bond-theft** vector from bogus defense + `resolve`. **Integrity of rulings** still depends on **interim judge** behavior (or future on-chain verifier); not audited.
 2. **`mln-sidecar` default server binds `0.0.0.0`** with **no authentication** — any process that can reach the port can POST routes, trigger batch, read route status, and read mock balance (local-dev appropriate; dangerous if exposed).
 3. **Operator / taker secrets on disk**: wallet stores **`OperatorEthPrivateKeyHex` in plaintext JSON** under the user config dir (`0o600` file, `0o700` dir) — documented in code comments but still a **high-value target** for malware or backups.
 4. **Forger → sidecar HTTP** uses default `http.Client` with **no TLS pinning** — acceptable for loopback; risky if extended to remote URLs without HTTPS and strong trust model.
@@ -78,19 +78,8 @@ The repo delivers a **coherent split** across layers: Solidity for registry and 
 
 **`GrievanceCourt.sol`**
 
-```solidity
-function defendGrievance(bytes32 grievanceId, bytes calldata defenseData) external {
-    Grievance storage g = grievances[grievanceId];
-    if (g.phase != GrievancePhase.Open) revert BadPhase();
-    if (msg.sender != g.accused) revert NotAccused();
-    defenseData; // silence unused; real verifier TBD
-    g.phase = GrievancePhase.Defended;
-    emit Defended(grievanceId, msg.sender);
-}
-```
-
-- **Finding (critical for production economics):** `defenseData` is **unused**. Any accused can transition to `Defended` without proving receipt validity on-chain.
-- **Finding (critical for production integrity):** `defenseData` in `defendGrievance` is still **unused** on-chain (verifier TBD). **Phase 15** `resolveGrievance`: upheld path calls **`slashStake`** with bounty/burn split; exoneration **transfers the accuser bond to the accused**. **Remaining gap:** “Defended” state does **not** prove valid receipts on-chain — treat judicial **correctness** as unproven until `defenseData` is verified or scope is explicitly non-production (see [`PHASE_15_ECONOMIC_HARDENING.md`](../PHASE_15_ECONOMIC_HARDENING.md)).
+- **Flow:** `defendGrievance` sets **`Contested`** (emits digest of calldata). **`resolveGrievance`** applies **only** to **`Open`** cases after `deadline` (timeout slash). **`adjudicateGrievance`** (**`judge`** only) resolves **`Contested`** → slash (false) or exonerate (true).
+- **Finding:** `defenseData` is still **not semantically verified** on-chain; **correctness** of exoneration vs uphold depends on **`judge`** (v1 interim trust) until a **verifier** or stronger oracle exists. **Judge** key compromise or policy failure is an operational risk — document deployment **`INTERIM_JUDGE`** explicitly for testnet/mainnet (see [`contracts/.env.example`](../contracts/.env.example)).
 
 **`EvidenceLib.sol`**
 
@@ -203,8 +192,8 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 |-----------------|--------|-----------|----------|--------|-------------------|---------------|
 | **LitVM stake (`MwixnetRegistry`)** | Tampering / elevation | Malicious or compromised **registry `owner`** | `owner` misconfigures or upgrades policy off-spec (if upgradeability is added later) | Stake lock-in, unfair freeze, griefing | Single deployer `owner`; immutable params in current design | **High** if owner key compromised; **low** for fixed immutable deploy |
 | **Stake freeze / unfreeze** | Tampering | **Anyone** calling registry directly | N/A — only `GrievanceCourt` may freeze/unfreeze | Unauthorized freeze | `onlyGrievanceCourt` modifier | **Low** if court address correct |
-| **`GrievanceCourt` outcomes** | Tampering / repudiation | **Accused maker** | Calls `defendGrievance` with empty/garbage `defenseData`; contract accepts | Trivial “defended” state; no cryptographic proof on-chain | Only accused can defend; phase checks | **Critical** until `defenseData` is verified or outcomes are disabled |
-| **`GrievanceCourt` economics** | Tampering | **Accuser / accused** | Phase 15 `resolveGrievance`: upheld slashes stake (bounty/burn); exoneration sends accuser bond to accused | Without **`defenseData` verification**, on-chain phases may not match real receipt validity | Slash/bond per [`PHASE_15_ECONOMIC_HARDENING.md`](../PHASE_15_ECONOMIC_HARDENING.md); README not audited | **Critical** for end-to-end judicial **integrity** vs receipts until `defenseData` verified; **Low** for “no slash ever moved stake” as a claim |
+| **`GrievanceCourt` outcomes** | Tampering / repudiation | **Accused maker** | Calls `defendGrievance` with garbage → **`Contested`**; **no** permissionless path to exoneration | Cannot auto-steal accuser bond via `resolve` alone | **`judge`** must **`adjudicate`** to exonerate | **High** for ruling integrity vs receipts until `defenseData` verified on-chain or judge process is audited |
+| **`GrievanceCourt` economics** | Tampering | **Accuser / accused / judge** | Timeout slash vs **`adjudicate`** uphold/exonerate moves stake and bonds | Phases may not match receipt reality if **judge** errs or is compromised | Interim **`judge`** + Phase 15 split; README not audited | **High** for end-to-end **integrity** vs receipts; bond-theft via bogus defend + `resolve` **closed** |
 | **False grievance with wrong preimage** | DoS / griefing | **Any funded accuser** | Opens grievances with incorrect `evidenceHash` vs real mix | Maker stake frozen while open; accuser pays bond | `grievanceBondMin`; per-grievance bond | **Medium** — griefing cost vs freeze harm; court logic does not validate preimage on-chain |
 | **`mlnd` SQLite vault** | Tampering / info disclosure | **Local user / malware** on host | Read or replace `mlnd.db` | Fake or leaked hop receipts | OS file permissions; DB not encrypted in app | **Medium** on shared hosts; backup leakage |
 | **NDJSON bridge directory** | Tampering / elevation | **Any writer** to `MLND_BRIDGE_RECEIPTS_DIR` | Inject line matching a future grievance’s correlators | Bad receipt stored; wrong defense or failed validation | `mlnd` validates receipt vs on-chain event before defend | **Medium** — writer must predict/know correlators; filesystem permissions are the real gate |
@@ -233,7 +222,7 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 
 ### 2.3 How to use this document
 
-- Treat **rows with “Critical” residual** as **product claims blockers**, especially on-chain **`defenseData` verification**. Post–Phase 15, slash and bond behavior is implemented but **not audited** — re-read economics rows against current [`GrievanceCourt`](../contracts/src/GrievanceCourt.sol) / [`MwixnetRegistry`](../contracts/src/MwixnetRegistry.sol) when triaging.
+- Treat **High** rows on **`GrievanceCourt` / judge** as **integrity** blockers for “trustless court” claims until **`defenseData` verification** or stronger policy exists. Re-read [`GrievanceCourt`](../contracts/src/GrievanceCourt.sol) / [`MwixnetRegistry`](../contracts/src/MwixnetRegistry.sol) when triaging.
 - Treat **“High” operational** rows as **deployment checklists**: loopback bind, firewall, key storage, TLS for any non-local sidecar.
 
 ---

@@ -15,12 +15,12 @@ contract PrintEvidenceVectors is Script {
         bytes32 peeled = bytes32(uint256(0x1111));
         bytes32 forwardCt = bytes32(uint256(0x2222));
 
-        bytes memory preimage = abi.encodePacked(
-            epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt
-        );
+        bytes memory preimage =
+            abi.encodePacked(epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt);
         require(preimage.length == 137, "preimage len");
 
-        bytes32 ev = EvidenceLib.evidenceHash(epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt);
+        bytes32 ev =
+            EvidenceLib.evidenceHash(epochId, accuser, accusedMaker, hopIndex, peeled, forwardCt);
         bytes32 gid = EvidenceLib.grievanceId(accuser, accusedMaker, epochId, ev);
 
         console2.log("inputs:");

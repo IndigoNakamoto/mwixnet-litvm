@@ -72,7 +72,7 @@ func grievanceHeadline(code string) string {
 	case "defend_dry_run":
 		return "Dry-run: would submit defense (no transaction broadcast)"
 	case "defend_submitted":
-		return "Defense submitted — awaiting court resolution"
+		return "Defense submitted — case Contested; interim judge must adjudicate on-chain"
 	case "defend_submit_failed":
 		return "Defense transaction failed"
 	default:

@@ -15,13 +15,14 @@ contract FuzzGrievanceCourtTest is Test {
     uint256 internal constant BOUNTY_BPS = 5000;
     uint256 internal constant BURN_BPS = 5000;
     uint256 internal constant SLASHING_WINDOW = 1 days;
+    address internal constant JUDGE = address(uint160(0xBEEF));
 
     function testFuzz_open_reverts_if_bond_below_min(uint72 bondWei) public {
         bondWei = uint72(bound(uint256(bondWei), 0, BOND_MIN - 1));
 
         MwixnetRegistry registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         GrievanceCourt court = new GrievanceCourt(
-            registry, WINDOW, BOND_MIN, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW
+            registry, WINDOW, BOND_MIN, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW, JUDGE
         );
         registry.setGrievanceCourt(address(court));
 
@@ -48,7 +49,7 @@ contract FuzzGrievanceCourtTest is Test {
 
         MwixnetRegistry registry = new MwixnetRegistry(MIN_STAKE, COOLDOWN);
         GrievanceCourt court = new GrievanceCourt(
-            registry, WINDOW, BOND_MIN, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW
+            registry, WINDOW, BOND_MIN, SLASH_BPS, BOUNTY_BPS, BURN_BPS, SLASHING_WINDOW, JUDGE
         );
         registry.setGrievanceCourt(address(court));
 
