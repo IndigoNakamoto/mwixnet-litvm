@@ -1,4 +1,4 @@
-package litvm
+package litvmevidence
 
 import (
 	"math/big"
@@ -34,7 +34,6 @@ func TestComputeEvidenceHash_goldenVectors(t *testing.T) {
 		t.Fatalf("evidenceHash: got %s want %s", got.Hex(), goldenEvidenceHash.Hex())
 	}
 
-	// Preimage length sanity (Solidity test asserts 137)
 	var buf []byte
 	buf = append(buf, common.LeftPadBytes(epochID.Bytes(), 32)...)
 	buf = append(buf, accuser.Bytes()...)
@@ -53,7 +52,6 @@ func TestComputeEvidenceHash_goldenVectors(t *testing.T) {
 }
 
 func TestComputeEvidenceHash_largeEpochID(t *testing.T) {
-	// Full uint256-ish epoch: 2^255 + 1 (fits in big.Int, must left-pad to 32 bytes)
 	epochID, _ := new(big.Int).SetString("57896044618658097711785492504343953926634992332820282019728792003956564819969", 10)
 	p := EvidencePreimage{
 		EpochID:               epochID,
@@ -67,7 +65,6 @@ func TestComputeEvidenceHash_largeEpochID(t *testing.T) {
 	if h == (common.Hash{}) {
 		t.Fatal("expected non-zero hash")
 	}
-	// Recompute with same epoch should match
 	if ComputeEvidenceHash(p) != h {
 		t.Fatal("deterministic hash expected")
 	}

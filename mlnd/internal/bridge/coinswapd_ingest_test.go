@@ -7,15 +7,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestCoinswapd_tailFile_SaveReceipt(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "b.db")
-	s, err := store.NewStore(dbPath)
+	s, err := receiptstore.NewStore(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestCoinswapd_tailFile_SaveReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ev := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
+	ev := litvmevidence.ComputeEvidenceHash(rec.EvidencePreimage)
 	got, err := s.GetByEvidenceHash(ev)
 	if err != nil {
 		t.Fatal(err)

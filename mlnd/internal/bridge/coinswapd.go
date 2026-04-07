@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 )
 
 const defaultPollInterval = 2 * time.Second
@@ -27,7 +27,7 @@ type fileTailState struct {
 type Coinswapd struct {
 	log    *log.Logger
 	ops    *opslog.Log
-	store  *store.Store
+	store  *receiptstore.Store
 	dir    string
 	poll   time.Duration
 	states map[string]*fileTailState
@@ -35,7 +35,7 @@ type Coinswapd struct {
 
 // NewCoinswapd returns a bridge that reads receipt lines from dir into store.
 // poll must be positive; otherwise defaultPollInterval is used. ops may be nil.
-func NewCoinswapd(l *log.Logger, ops *opslog.Log, st *store.Store, dir string, poll time.Duration) *Coinswapd {
+func NewCoinswapd(l *log.Logger, ops *opslog.Log, st *receiptstore.Store, dir string, poll time.Duration) *Coinswapd {
 	if l == nil {
 		l = log.Default()
 	}

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -21,7 +21,7 @@ import (
 func TestOperatorStack_SQLiteEvidenceAndMakerAd(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "op.db")
-	s, err := store.NewStore(dbPath)
+	s, err := receiptstore.NewStore(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,8 +33,8 @@ func TestOperatorStack_SQLiteEvidenceAndMakerAd(t *testing.T) {
 	peeled := common.BytesToHash(common.LeftPadBytes([]byte{0xca, 0xfe}, 32))
 	fwd := common.BytesToHash(common.LeftPadBytes([]byte{0xbe, 0xef}, 32))
 
-	rec := store.ReceiptRecord{
-		EvidencePreimage: litvm.EvidencePreimage{
+	rec := receiptstore.ReceiptRecord{
+		EvidencePreimage: litvmevidence.EvidencePreimage{
 			EpochID:               epochID,
 			Accuser:               accuser,
 			AccusedMaker:          accused,
@@ -45,7 +45,7 @@ func TestOperatorStack_SQLiteEvidenceAndMakerAd(t *testing.T) {
 		NextHopPubkey: "npub1stacktest",
 		Signature:     "sig-stacktest",
 	}
-	evHash := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
+	evHash := litvmevidence.ComputeEvidenceHash(rec.EvidencePreimage)
 	if _, err := s.SaveReceipt(rec); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func uint64Ptr(u uint64) *uint64 {
 func TestOperatorStack_ReceiptValidateAndDefense(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "def.db")
-	s, err := store.NewStore(dbPath)
+	s, err := receiptstore.NewStore(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,8 +118,8 @@ func TestOperatorStack_ReceiptValidateAndDefense(t *testing.T) {
 	peeled := common.BytesToHash(common.LeftPadBytes([]byte{0x11}, 32))
 	fwd := common.BytesToHash(common.LeftPadBytes([]byte{0x22}, 32))
 
-	rec := store.ReceiptRecord{
-		EvidencePreimage: litvm.EvidencePreimage{
+	rec := receiptstore.ReceiptRecord{
+		EvidencePreimage: litvmevidence.EvidencePreimage{
 			EpochID:               epochID,
 			Accuser:               accuser,
 			AccusedMaker:          accused,
@@ -130,7 +130,7 @@ func TestOperatorStack_ReceiptValidateAndDefense(t *testing.T) {
 		NextHopPubkey: "npub1defense",
 		Signature:     "sig-defense",
 	}
-	evidenceHash := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
+	evidenceHash := litvmevidence.ComputeEvidenceHash(rec.EvidencePreimage)
 	if _, err := s.SaveReceipt(rec); err != nil {
 		t.Fatal(err)
 	}
@@ -139,19 +139,19 @@ func TestOperatorStack_ReceiptValidateAndDefense(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	grievanceID := litvm.ComputeGrievanceID(accuser, accused, epochID, evidenceHash)
-	ev := &litvm.GrievanceEvent{
+	grievanceID := litvmevidence.ComputeGrievanceID(accuser, accused, epochID, evidenceHash)
+	ev := &litvmevidence.GrievanceOpened{
 		GrievanceID:  grievanceID,
 		Accuser:      accuser,
 		Accused:      accused,
-		EpochID:      epochID,
+		EpochID:      new(big.Int).Set(epochID),
 		EvidenceHash: evidenceHash,
 		Deadline:     big.NewInt(1 << 62),
 	}
-	if err := litvm.ValidateReceiptForGrievance(ev, got, accused); err != nil {
+	if err := litvmevidence.ValidateReceiptForGrievance(ev, got, accused); err != nil {
 		t.Fatal(err)
 	}
-	defense, err := litvm.BuildDefenseData(got)
+	defense, err := litvmevidence.BuildDefenseData(got)
 	if err != nil {
 		t.Fatal(err)
 	}

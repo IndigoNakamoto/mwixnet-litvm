@@ -7,7 +7,7 @@ import (
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -69,7 +69,7 @@ type StatusDeps struct {
 	BridgeEnabled bool
 	BridgeDir     string
 
-	Store *store.Store
+	Store *receiptstore.Store
 
 	AutoDefend       bool
 	AutoDefendDryRun bool

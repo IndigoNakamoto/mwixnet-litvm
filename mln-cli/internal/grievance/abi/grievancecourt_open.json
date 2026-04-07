@@ -1,0 +1,1 @@
+[{"inputs":[{"internalType":"address","name":"accused","type":"address"},{"internalType":"uint256","name":"epochId","type":"uint256"},{"internalType":"bytes32","name":"evidenceHash","type":"bytes32"}],"name":"openGrievance","outputs":[],"stateMutability":"payable","type":"function"}]

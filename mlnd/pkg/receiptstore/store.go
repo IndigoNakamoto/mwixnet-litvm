@@ -1,20 +1,22 @@
-package store
+package receiptstore
 
 import (
 	"database/sql"
 	"fmt"
 	"math/big"
+	"strings"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
 	"github.com/ethereum/go-ethereum/common"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// ReceiptRecord is the preimage plus hop receipt fields persisted for defense.
+// ReceiptRecord is the preimage plus hop receipt fields persisted for defense or accuser filing.
 type ReceiptRecord struct {
-	litvm.EvidencePreimage
+	litvmevidence.EvidencePreimage
 	NextHopPubkey string
 	Signature     string
+	SwapID        string // optional; when set, unique for lookup via GetBySwapID
 }
 
 // Store is a SQLite-backed evidence vault.
@@ -40,12 +42,24 @@ func NewStore(dbPath string) (*Store, error) {
 		forward_hash TEXT NOT NULL,
 		next_hop_pubkey TEXT NOT NULL,
 		signature TEXT NOT NULL,
+		swap_id TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_hop_receipts_swap_id
+		ON hop_receipts(swap_id) WHERE swap_id IS NOT NULL AND trim(swap_id) != '';
+	`
 
 	if _, err := db.Exec(schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("init schema: %w", err)
+	}
+
+	// Migration: older DBs without swap_id
+	if _, err := db.Exec(`ALTER TABLE hop_receipts ADD COLUMN swap_id TEXT`); err != nil {
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			_ = db.Close()
+			return nil, fmt.Errorf("migrate swap_id: %w", err)
+		}
 	}
 
 	return &Store{db: db}, nil
@@ -57,13 +71,14 @@ func (s *Store) SaveReceipt(r ReceiptRecord) (inserted bool, err error) {
 	if r.EpochID == nil {
 		return false, fmt.Errorf("SaveReceipt: EpochID is required")
 	}
-	evidenceHash := litvm.ComputeEvidenceHash(r.EvidencePreimage)
+	evidenceHash := litvmevidence.ComputeEvidenceHash(r.EvidencePreimage)
+	swapID := strings.TrimSpace(r.SwapID)
 
 	query := `
 		INSERT INTO hop_receipts (
 			evidence_hash, epoch_id, accuser, accused, hop_index,
-			peeled_commitment, forward_hash, next_hop_pubkey, signature
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			peeled_commitment, forward_hash, next_hop_pubkey, signature, swap_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''))
 		ON CONFLICT(evidence_hash) DO NOTHING;
 	`
 	res, err := s.db.Exec(query,
@@ -76,6 +91,7 @@ func (s *Store) SaveReceipt(r ReceiptRecord) (inserted bool, err error) {
 		r.ForwardCiphertextHash.Hex(),
 		r.NextHopPubkey,
 		r.Signature,
+		swapID,
 	)
 	if err != nil {
 		return false, err
@@ -94,8 +110,8 @@ func (s *Store) CountReceipts() (int64, error) {
 	return n, err
 }
 
-// GetByEvidenceHash implements litvm.ReceiptLookup.
-func (s *Store) GetByEvidenceHash(hash common.Hash) (*litvm.ReceiptForDefense, error) {
+// GetByEvidenceHash implements litvmevidence.ReceiptLookup.
+func (s *Store) GetByEvidenceHash(hash common.Hash) (*litvmevidence.ReceiptForDefense, error) {
 	query := `
 		SELECT epoch_id, accuser, accused, hop_index, peeled_commitment,
 		       forward_hash, next_hop_pubkey, signature
@@ -106,9 +122,9 @@ func (s *Store) GetByEvidenceHash(hash common.Hash) (*litvm.ReceiptForDefense, e
 
 	var (
 		epochStr, accuserHex, accusedHex string
-		hopIndex                        int64
-		peeledHex, forwardHex           string
-		nextHop, sig                    string
+		hopIndex                         int64
+		peeledHex, forwardHex            string
+		nextHop, sig                     string
 	)
 	err := row.Scan(&epochStr, &accuserHex, &accusedHex, &hopIndex, &peeledHex, &forwardHex, &nextHop, &sig)
 	if err != nil {
@@ -126,7 +142,52 @@ func (s *Store) GetByEvidenceHash(hash common.Hash) (*litvm.ReceiptForDefense, e
 		return nil, fmt.Errorf("invalid hop_index %d", hopIndex)
 	}
 
-	return &litvm.ReceiptForDefense{
+	return &litvmevidence.ReceiptForDefense{
+		EpochID:               epochID,
+		Accuser:               common.HexToAddress(accuserHex),
+		AccusedMaker:          common.HexToAddress(accusedHex),
+		HopIndex:              uint8(hopIndex),
+		PeeledCommitment:      common.HexToHash(peeledHex),
+		ForwardCiphertextHash: common.HexToHash(forwardHex),
+		NextHopPubkey:         nextHop,
+		Signature:             sig,
+	}, nil
+}
+
+// GetBySwapID returns a receipt row looked up by swap_id (trimmed).
+func (s *Store) GetBySwapID(swapID string) (*litvmevidence.ReceiptForDefense, error) {
+	id := strings.TrimSpace(swapID)
+	if id == "" {
+		return nil, fmt.Errorf("swap_id empty")
+	}
+	query := `
+		SELECT epoch_id, accuser, accused, hop_index, peeled_commitment,
+		       forward_hash, next_hop_pubkey, signature
+		FROM hop_receipts
+		WHERE swap_id = ?
+	`
+	row := s.db.QueryRow(query, id)
+	var (
+		epochStr, accuserHex, accusedHex string
+		hopIndex                         int64
+		peeledHex, forwardHex            string
+		nextHop, sig                     string
+	)
+	err := row.Scan(&epochStr, &accuserHex, &accusedHex, &hopIndex, &peeledHex, &forwardHex, &nextHop, &sig)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("no receipt found for swap_id %q", id)
+		}
+		return nil, err
+	}
+	epochID, ok := new(big.Int).SetString(epochStr, 10)
+	if !ok {
+		return nil, fmt.Errorf("invalid epoch_id decimal %q", epochStr)
+	}
+	if hopIndex < 0 || hopIndex > 255 {
+		return nil, fmt.Errorf("invalid hop_index %d", hopIndex)
+	}
+	return &litvmevidence.ReceiptForDefense{
 		EpochID:               epochID,
 		Accuser:               common.HexToAddress(accuserHex),
 		AccusedMaker:          common.HexToAddress(accusedHex),

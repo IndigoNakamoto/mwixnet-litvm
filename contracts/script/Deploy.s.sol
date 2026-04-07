@@ -22,6 +22,10 @@ contract Deploy is Script {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address interimJudge = vm.envOr("INTERIM_JUDGE", vm.addr(pk));
 
+        // Exit cooldown must exceed challenge window (+ optional slack) so hit-and-run exits cannot outrun grievance resolution.
+        uint256 cooldownChallengeSlack = vm.envOr("DEPLOY_MIN_COOLDOWN_CHALLENGE_SLACK", uint256(0));
+        require(cooldownPeriod > challengeWindow + cooldownChallengeSlack, "cooldown<=challenge+slack");
+
         vm.startBroadcast(pk);
 
         MwixnetRegistry registry = new MwixnetRegistry(minStake, cooldownPeriod);

@@ -1,8 +1,7 @@
-package litvm
+package litvmevidence
 
 import (
 	"math/big"
-	"reflect"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -31,64 +30,21 @@ func TestBuildDefenseData_roundTrip(t *testing.T) {
 	if len(data) != len(data2) || string(data) != string(data2) {
 		t.Fatal("BuildDefenseData not deterministic")
 	}
-	out, err := defensePackArgs.Unpack(data)
+	got, err := UnpackDefenseV1(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out) != 1 {
-		t.Fatalf("unpack len %d", len(out))
+	if got.EpochID.Cmp(r.EpochID) != 0 || got.Accuser != r.Accuser || got.AccusedMaker != r.AccusedMaker {
+		t.Fatalf("round trip addresses/epoch %+v", got)
 	}
-	assertUnpackedDefenseV1(t, out[0], r)
-}
-
-// geth unpacks the tuple as a struct with same field order as the ABI tuple.
-func assertUnpackedDefenseV1(t *testing.T, unpacked any, want *ReceiptForDefense) {
-	t.Helper()
-	rv := reflect.ValueOf(unpacked)
-	if rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-	}
-	if rv.Kind() != reflect.Struct || rv.NumField() < 9 {
-		t.Fatalf("unexpected unpack shape kind=%s numField=%d", rv.Kind(), rv.NumField())
-	}
-	if uint8(rv.Field(0).Uint()) != 1 {
-		t.Fatalf("version got %d", rv.Field(0).Uint())
-	}
-	epoch := rv.Field(1).Interface().(*big.Int)
-	if epoch.Cmp(want.EpochID) != 0 {
-		t.Fatalf("epochId %s", epoch.String())
-	}
-	if rv.Field(2).Interface().(common.Address) != want.Accuser {
-		t.Fatal("accuser")
-	}
-	if rv.Field(3).Interface().(common.Address) != want.AccusedMaker {
-		t.Fatal("accusedMaker")
-	}
-	if uint8(rv.Field(4).Uint()) != want.HopIndex {
+	if got.HopIndex != r.HopIndex {
 		t.Fatal("hopIndex")
 	}
-	if hashFromABI(rv.Field(5).Interface()) != want.PeeledCommitment {
-		t.Fatal("peeledCommitment")
+	if got.PeeledCommitment != r.PeeledCommitment || got.ForwardCiphertextHash != r.ForwardCiphertextHash {
+		t.Fatal("hashes")
 	}
-	if hashFromABI(rv.Field(6).Interface()) != want.ForwardCiphertextHash {
-		t.Fatal("forwardCiphertextHash")
-	}
-	if string(rv.Field(7).Interface().([]byte)) != want.NextHopPubkey {
-		t.Fatal("nextHopPubkey")
-	}
-	if string(rv.Field(8).Interface().([]byte)) != want.Signature {
-		t.Fatal("signature")
-	}
-}
-
-func hashFromABI(v any) common.Hash {
-	switch x := v.(type) {
-	case common.Hash:
-		return x
-	case [32]byte:
-		return common.Hash(x)
-	default:
-		return common.Hash{}
+	if got.NextHopPubkey != r.NextHopPubkey || got.Signature != r.Signature {
+		t.Fatal("utf8 fields")
 	}
 }
 
@@ -103,7 +59,7 @@ func TestValidateReceiptForGrievance_ok(t *testing.T) {
 	evHash := ComputeEvidenceHash(pre)
 	gid := ComputeGrievanceID(accuser, accused, epoch, evHash)
 
-	ev := &GrievanceEvent{
+	ev := &GrievanceOpened{
 		GrievanceID:  gid,
 		Accuser:      accuser,
 		Accused:      accused,
@@ -130,7 +86,7 @@ func TestValidateReceiptForGrievance_badHash(t *testing.T) {
 	epoch := big.NewInt(1)
 	accuser := common.HexToAddress("0x1")
 	accused := common.HexToAddress("0x2")
-	ev := &GrievanceEvent{
+	ev := &GrievanceOpened{
 		GrievanceID:  common.Hash{1},
 		Accuser:      accuser,
 		Accused:      accused,

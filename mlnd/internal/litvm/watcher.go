@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,29 +18,19 @@ import (
 // GrievanceOpenedEventSig is keccak256("GrievanceOpened(bytes32,address,address,uint256,bytes32,uint256)").
 var GrievanceOpenedEventSig = crypto.Keccak256Hash([]byte("GrievanceOpened(bytes32,address,address,uint256,bytes32,uint256)"))
 
-// GrievanceEvent is a decoded GrievanceOpened log.
-type GrievanceEvent struct {
-	GrievanceID  common.Hash
-	Accuser      common.Address
-	Accused      common.Address
-	EpochID      *big.Int
-	EvidenceHash common.Hash
-	Deadline     *big.Int
-}
-
 // Watcher subscribes to GrievanceOpened logs for a fixed accused (operator) address.
 type Watcher struct {
 	client       *ethclient.Client
 	courtAddr    common.Address
 	operatorAddr common.Address
-	receipts     ReceiptLookup
+	receipts     litvmevidence.ReceiptLookup
 	defender     *Defender
 	ops          *opslog.Log
 }
 
 // NewWatcher returns a watcher using an existing JSON-RPC client (caller typically dials once for ChainID / defend).
 // The caller owns client lifecycle (close on shutdown); ops may be nil.
-func NewWatcher(client *ethclient.Client, courtHex, operatorHex string, receipts ReceiptLookup, defender *Defender, ops *opslog.Log) (*Watcher, error) {
+func NewWatcher(client *ethclient.Client, courtHex, operatorHex string, receipts litvmevidence.ReceiptLookup, defender *Defender, ops *opslog.Log) (*Watcher, error) {
 	if client == nil {
 		return nil, fmt.Errorf("nil eth client")
 	}
@@ -120,8 +111,8 @@ func (w *Watcher) Start(ctx context.Context) error {
 	}
 }
 
-func (w *Watcher) handleReceiptFound(ctx context.Context, ev *GrievanceEvent, receipt *ReceiptForDefense) {
-	if err := ValidateReceiptForGrievance(ev, receipt, w.operatorAddr); err != nil {
+func (w *Watcher) handleReceiptFound(ctx context.Context, ev *litvmevidence.GrievanceOpened, receipt *litvmevidence.ReceiptForDefense) {
+	if err := litvmevidence.ValidateReceiptForGrievance(ev, receipt, w.operatorAddr); err != nil {
 		log.Printf("mlnd: receipt validation failed for grievance %s: %v", ev.GrievanceID.Hex(), err)
 		w.opsAppend(opslog.Warn, "receipt_validation_failed", "Receipt in vault does not match grievance correlators", map[string]string{
 			"grievanceId": ev.GrievanceID.Hex(),
@@ -154,7 +145,7 @@ func (w *Watcher) handleReceiptFound(ctx context.Context, ev *GrievanceEvent, re
 		})
 		return
 	}
-	if !ChainTimeBeforeDeadline(head, ev.Deadline) {
+	if !litvmevidence.ChainTimeBeforeDeadline(head, ev.Deadline) {
 		log.Printf("mlnd: skip defend %s: chain time %d >= deadline %s", ev.GrievanceID.Hex(), head.Time, ev.Deadline.String())
 		w.opsAppend(opslog.Warn, "defend_skipped_deadline", "Chain time is past grievance defense deadline", map[string]string{
 			"grievanceId": ev.GrievanceID.Hex(),
@@ -162,7 +153,7 @@ func (w *Watcher) handleReceiptFound(ctx context.Context, ev *GrievanceEvent, re
 		return
 	}
 
-	defenseData, err := BuildDefenseData(receipt)
+	defenseData, err := litvmevidence.BuildDefenseData(receipt)
 	if err != nil {
 		log.Printf("mlnd: build defenseData for %s: %v", ev.GrievanceID.Hex(), err)
 		w.opsAppend(opslog.Error, "defense_build_failed", "Failed to ABI-encode defenseData", map[string]string{
@@ -205,7 +196,7 @@ func (w *Watcher) opsAppend(level opslog.Level, code, msg string, data map[strin
 }
 
 // ParseGrievanceLog decodes a GrievanceOpened log (four topics, 96 bytes data).
-func ParseGrievanceLog(vLog types.Log) (*GrievanceEvent, error) {
+func ParseGrievanceLog(vLog types.Log) (*litvmevidence.GrievanceOpened, error) {
 	if len(vLog.Topics) != 4 {
 		return nil, fmt.Errorf("expected 4 topics, got %d", len(vLog.Topics))
 	}
@@ -213,7 +204,7 @@ func ParseGrievanceLog(vLog types.Log) (*GrievanceEvent, error) {
 		return nil, fmt.Errorf("expected at least 96 bytes data, got %d", len(vLog.Data))
 	}
 
-	return &GrievanceEvent{
+	return &litvmevidence.GrievanceOpened{
 		GrievanceID:  vLog.Topics[1],
 		Accuser:      common.BytesToAddress(vLog.Topics[2].Bytes()),
 		Accused:      common.BytesToAddress(vLog.Topics[3].Bytes()),

@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/config"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/grievance"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/identity"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/nostridentity"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
@@ -34,6 +35,8 @@ func main() {
 		runForger(os.Args[2:])
 	case "maker":
 		runMaker(os.Args[2:])
+	case "grievance":
+		runGrievance(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -51,6 +54,7 @@ Commands:
   pathfind  Pick an ordered 3-hop route from verified makers with Tor endpoints (min fee hint, stake tie-break; -self-included for N2=self)
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
   maker onboard  Plan or execute MwixnetRegistry deposit + registerMaker (LitVM maker onboarding)
+  grievance file Open a grievance on LitVM (openGrievance + bond; receipt from JSON or vault swap id)
 
 Environment (scout & pathfind):
   MLN_NOSTR_RELAYS          comma-separated wss:// relays
@@ -69,7 +73,96 @@ Environment (maker onboard):
   MLN_OPERATOR_ETH_KEY      64-hex LitVM key that signs txs and is the maker address (required)
   MLN_NOSTR_PUBKEY_HEX      64-hex x-only Nostr pubkey, or set MLN_NOSTR_NSEC (hex or nsec1…)
 
+Environment (grievance file):
+  MLN_LITVM_HTTP_URL        LitVM HTTP JSON-RPC (required)
+  MLN_GRIEVANCE_COURT_ADDR  GrievanceCourt contract (required)
+  MLN_ACCUSER_ETH_KEY       64-hex key for msg.sender (must match receipt accuser); else MLN_OPERATOR_ETH_KEY
+  MLN_GRIEVANCE_BOND_WEI    optional wei amount (decimal string); default 0.1 ether
+  MLN_RECEIPT_VAULT_PATH    optional SQLite path (hop_receipts); use with positional swap_id
+
 `)
+}
+
+func runGrievance(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "grievance: need subcommand (e.g. file)")
+		os.Exit(2)
+	}
+	switch args[0] {
+	case "file":
+		runGrievanceFile(args[1:])
+	default:
+		fmt.Fprintf(os.Stderr, "grievance: unknown subcommand %q\n", args[0])
+		os.Exit(2)
+	}
+}
+
+func runGrievanceFile(args []string) {
+	fs := flag.NewFlagSet("grievance file", flag.ExitOnError)
+	receiptPath := fs.String("receipt-json", "", "path to receipt JSON (same schema as mlnd bridge NDJSON)")
+	vaultPath := fs.String("vault", "", "SQLite vault path (default: MLN_RECEIPT_VAULT_PATH)")
+	dryRun := fs.Bool("dry-run", false, "print hashes only; do not broadcast")
+	_ = fs.Parse(args)
+	pos := fs.Args()
+
+	var src grievance.ReceiptSource
+	switch {
+	case *receiptPath != "":
+		src = grievance.ReceiptJSONFile{Path: *receiptPath}
+	case len(pos) >= 1:
+		db := strings.TrimSpace(*vaultPath)
+		if db == "" {
+			db = strings.TrimSpace(os.Getenv("MLN_RECEIPT_VAULT_PATH"))
+		}
+		if db == "" {
+			fmt.Fprintln(os.Stderr, "grievance file: need -receipt-json or (swap_id + -vault / MLN_RECEIPT_VAULT_PATH)")
+			os.Exit(2)
+		}
+		src = grievance.VaultSwapLookup{DBPath: db, SwapID: strings.TrimSpace(pos[0])}
+	default:
+		fmt.Fprintln(os.Stderr, "grievance file: provide -receipt-json PATH or SWAP_ID with vault")
+		os.Exit(2)
+	}
+
+	rpcURL, err := config.LitvmHTTPURLFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "config: %v\n", err)
+		os.Exit(2)
+	}
+	courtStr := strings.TrimSpace(os.Getenv("MLN_GRIEVANCE_COURT_ADDR"))
+	if courtStr == "" {
+		fmt.Fprintln(os.Stderr, "MLN_GRIEVANCE_COURT_ADDR is required")
+		os.Exit(2)
+	}
+	if !common.IsHexAddress(courtStr) && !strings.HasPrefix(courtStr, "0x") {
+		fmt.Fprintln(os.Stderr, "invalid MLN_GRIEVANCE_COURT_ADDR")
+		os.Exit(2)
+	}
+	if !strings.HasPrefix(courtStr, "0x") {
+		courtStr = "0x" + courtStr
+	}
+	courtAddr := common.HexToAddress(courtStr)
+
+	key, err := grievance.AccuserKeyFromEnv()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "accuser key: %v\n", err)
+		os.Exit(2)
+	}
+
+	ctx := context.Background()
+	err = grievance.RunFile(ctx, grievance.FileOpts{
+		RPCURL:      rpcURL,
+		Court:       courtAddr,
+		PrivateKey:  key,
+		BondWei:     grievance.BondWeiFromEnv(),
+		DryRun:      *dryRun,
+		Out:         os.Stdout,
+		SuggestFees: true,
+	}, src)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "grievance file: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func runMaker(args []string) {

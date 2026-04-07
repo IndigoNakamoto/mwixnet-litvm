@@ -94,6 +94,15 @@ func ScoutFromEnv() (relays []string, chainID, rpcURL, registry string, court st
 	return relays, chainID, rpcURL, registry, court, timeout, nil
 }
 
+// LitvmHTTPURLFromEnv returns MLN_LITVM_HTTP_URL (for commands that do not need Nostr/scout).
+func LitvmHTTPURLFromEnv() (string, error) {
+	rpcURL := strings.TrimSpace(os.Getenv("MLN_LITVM_HTTP_URL"))
+	if rpcURL == "" {
+		return "", fmt.Errorf("MLN_LITVM_HTTP_URL is required")
+	}
+	return rpcURL, nil
+}
+
 // ParseRegistryAddr normalizes a 0x address.
 func ParseRegistryAddr(s string) (common.Address, error) {
 	s = strings.TrimSpace(s)

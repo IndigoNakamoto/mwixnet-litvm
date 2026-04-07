@@ -1,11 +1,11 @@
-package store
+package receiptstore
 
 import (
 	"math/big"
 	"path/filepath"
 	"testing"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -26,7 +26,7 @@ func TestStore_saveAndGet_roundTrip(t *testing.T) {
 	forward := common.BytesToHash(common.LeftPadBytes(big.NewInt(0x2222).Bytes(), 32))
 
 	rec := ReceiptRecord{
-		EvidencePreimage: litvm.EvidencePreimage{
+		EvidencePreimage: litvmevidence.EvidencePreimage{
 			EpochID:               epochID,
 			Accuser:               accuser,
 			AccusedMaker:          accused,
@@ -36,9 +36,10 @@ func TestStore_saveAndGet_roundTrip(t *testing.T) {
 		},
 		NextHopPubkey: "npub1example",
 		Signature:     "deadbeef",
+		SwapID:        "swap-test-1",
 	}
 
-	ev := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
+	ev := litvmevidence.ComputeEvidenceHash(rec.EvidencePreimage)
 
 	if ins, err := s.SaveReceipt(rec); err != nil || !ins {
 		t.Fatalf("SaveReceipt: inserted=%v err=%v", ins, err)
@@ -64,7 +65,14 @@ func TestStore_saveAndGet_roundTrip(t *testing.T) {
 		t.Fatalf("receipt fields: %+v", got)
 	}
 
-	// Idempotent second insert
+	bySwap, err := s.GetBySwapID("swap-test-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bySwap.EpochID.Cmp(epochID) != 0 || bySwap.Accuser != accuser {
+		t.Fatalf("GetBySwapID: %+v", bySwap)
+	}
+
 	if ins, err := s.SaveReceipt(rec); err != nil || ins {
 		t.Fatalf("second SaveReceipt: inserted=%v err=%v", ins, err)
 	}

@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -14,10 +15,10 @@ func TestHandleReceiptFound_nilDefender_skipsBeforeRPC(t *testing.T) {
 	accused := common.HexToAddress("0x00000000000000000000000000000000000000bb")
 	peeled := common.HexToHash("0x1111111111111111111111111111111111111111111111111111111111111111")
 	fwd := common.HexToHash("0x2222222222222222222222222222222222222222222222222222222222222222")
-	pre := EvidencePreimage{EpochID: epoch, Accuser: accuser, AccusedMaker: accused, HopIndex: 0, PeeledCommitment: peeled, ForwardCiphertextHash: fwd}
-	evHash := ComputeEvidenceHash(pre)
-	gid := ComputeGrievanceID(accuser, accused, epoch, evHash)
-	ev := &GrievanceEvent{
+	pre := litvmevidence.EvidencePreimage{EpochID: epoch, Accuser: accuser, AccusedMaker: accused, HopIndex: 0, PeeledCommitment: peeled, ForwardCiphertextHash: fwd}
+	evHash := litvmevidence.ComputeEvidenceHash(pre)
+	gid := litvmevidence.ComputeGrievanceID(accuser, accused, epoch, evHash)
+	ev := &litvmevidence.GrievanceOpened{
 		GrievanceID:  gid,
 		Accuser:      accuser,
 		Accused:      accused,
@@ -25,7 +26,7 @@ func TestHandleReceiptFound_nilDefender_skipsBeforeRPC(t *testing.T) {
 		EvidenceHash: evHash,
 		Deadline:     big.NewInt(9999999999),
 	}
-	r := &ReceiptForDefense{
+	r := &litvmevidence.ReceiptForDefense{
 		EpochID:               new(big.Int).Set(epoch),
 		Accuser:               accuser,
 		AccusedMaker:          accused,
@@ -45,7 +46,7 @@ func TestHandleReceiptFound_nilDefender_skipsBeforeRPC(t *testing.T) {
 
 func TestHandleReceiptFound_validationError(t *testing.T) {
 	accused := common.HexToAddress("0x00000000000000000000000000000000000000bb")
-	ev := &GrievanceEvent{
+	ev := &litvmevidence.GrievanceOpened{
 		GrievanceID:  common.Hash{1},
 		Accuser:      common.HexToAddress("0xaa"),
 		Accused:      accused,
@@ -53,7 +54,7 @@ func TestHandleReceiptFound_validationError(t *testing.T) {
 		EvidenceHash: common.Hash{0xff},
 		Deadline:     big.NewInt(9),
 	}
-	r := &ReceiptForDefense{
+	r := &litvmevidence.ReceiptForDefense{
 		EpochID:               big.NewInt(1),
 		Accuser:               common.HexToAddress("0xaa"),
 		AccusedMaker:          accused,

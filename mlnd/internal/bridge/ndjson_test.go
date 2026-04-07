@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/litvmevidence"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -38,7 +38,7 @@ func TestParseReceiptLine_ok(t *testing.T) {
 	if rec.HopIndex != 0 || rec.NextHopPubkey != "npub1test" || rec.Signature != "sig1" {
 		t.Fatalf("fields %+v", rec)
 	}
-	ev := litvm.ComputeEvidenceHash(rec.EvidencePreimage)
+	ev := litvmevidence.ComputeEvidenceHash(rec.EvidencePreimage)
 	if ev == (common.Hash{}) {
 		t.Fatal("zero evidence hash")
 	}

@@ -14,7 +14,7 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/litvm"
 	mlnnostr "github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"golang.org/x/sync/errgroup"
@@ -33,7 +33,7 @@ func main() {
 	if dbPath == "" {
 		dbPath = "mlnd.db"
 	}
-	dbStore, err := store.NewStore(dbPath)
+	dbStore, err := receiptstore.NewStore(dbPath)
 	if err != nil {
 		log.Fatalf("database: %v", err)
 	}
@@ -66,6 +66,24 @@ func main() {
 		}
 	}
 
+	accuserAddrEnv := strings.TrimSpace(os.Getenv("MLND_ACCUSER_ADDR"))
+	accuserResolver, derivedAccuser, err := litvm.LoadAccuserResolverFromEnv(ctx, client, courtAddr, accuserAddrEnv)
+	if err != nil {
+		log.Fatalf("accuser resolver config: %v", err)
+	}
+	var accuserWatcher *litvm.AccuserWatcher
+	if accuserResolver != nil {
+		if accuserResolver.IsDryRun() {
+			log.Println("mlnd: accuser auto-resolve enabled (DRY-RUN — no resolve txs)")
+		} else {
+			log.Println("mlnd: accuser auto-resolve enabled (will submit resolveGrievance after deadline if Open)")
+		}
+		accuserWatcher, err = litvm.NewAccuserWatcher(client, courtAddr, derivedAccuser, accuserResolver, olog)
+		if err != nil {
+			log.Fatalf("init accuser watcher: %v", err)
+		}
+	}
+
 	watcher, err := litvm.NewWatcher(client, courtAddr, operatorAddr, dbStore, defender, olog)
 	if err != nil {
 		log.Fatalf("init watcher: %v", err)
@@ -91,6 +109,11 @@ func main() {
 	g.Go(func() error {
 		return watcher.Start(gctx)
 	})
+	if accuserWatcher != nil {
+		g.Go(func() error {
+			return accuserWatcher.Start(gctx)
+		})
+	}
 	if bc != nil {
 		g.Go(func() error {
 			return bc.Run(gctx)

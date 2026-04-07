@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/store"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 )
 
 func TestCoinswapdRun_contextCancel(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "cancel.db")
-	s, err := store.NewStore(dbPath)
+	s, err := receiptstore.NewStore(dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}

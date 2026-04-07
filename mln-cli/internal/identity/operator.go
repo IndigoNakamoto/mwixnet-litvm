@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"strings"
 
@@ -8,17 +9,22 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// AddressFromHexPrivateKey derives the LitVM maker address from a secp256k1 private key (same as Ethereum EOA).
-func AddressFromHexPrivateKey(hexKey string) (common.Address, error) {
+// ParsePrivateKeyHex parses a 64-hex-character secp256k1 key (optional 0x).
+func ParsePrivateKeyHex(hexKey string) (*ecdsa.PrivateKey, error) {
 	h := strings.TrimSpace(hexKey)
 	h = strings.TrimPrefix(h, "0x")
 	h = strings.TrimPrefix(h, "0X")
 	if len(h) != 64 {
-		return common.Address{}, fmt.Errorf("identity: expect 64 hex chars for secp256k1 private key, got %d", len(h))
+		return nil, fmt.Errorf("identity: expect 64 hex chars for secp256k1 private key, got %d", len(h))
 	}
-	key, err := crypto.HexToECDSA(h)
+	return crypto.HexToECDSA(h)
+}
+
+// AddressFromHexPrivateKey derives the LitVM maker address from a secp256k1 private key (same as Ethereum EOA).
+func AddressFromHexPrivateKey(hexKey string) (common.Address, error) {
+	key, err := ParsePrivateKeyHex(hexKey)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("identity: parse private key: %w", err)
+		return common.Address{}, err
 	}
 	return crypto.PubkeyToAddress(key.PublicKey), nil
 }
