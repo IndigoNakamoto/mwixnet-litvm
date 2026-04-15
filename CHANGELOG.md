@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- **LitVM testnet (chain 4441):** Deployed `MwixnetRegistry` + `GrievanceCourt`; public RPC/WS and addresses in [`README.md`](README.md); committed [`deploy/litvm-addresses.generated.env`](deploy/litvm-addresses.generated.env) for `mlnd` / taker env merge — 2026-04-15.
 - **QA:** Ran permanent regression anchors (`E2E_MWEB_FULL=1 ./scripts/e2e-mweb-handoff-stub.sh`, `python3 nostr/validate_fixtures.py`, `python3 nostr/check_wire_helpers.py`) — 2026-04-03.
 - **Real funded MWEB handoff:** `E2E_MWEB_FUNDED=1` script path, bootstrap `MLND_SWAP_X25519_PUB_HEX` for `swapX25519PubHex` in routes, and `coinswapd-research -mweb-dev-clear-pending-after-batch` (DEV ONLY) for operator `pendingOnions=0` smoke — [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md), [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md) §2.7a.
 - **QA:** Re-ran `python3 nostr/validate_fixtures.py` and `python3 nostr/check_wire_helpers.py` (Nostr wire hygiene; mln-pm quick win).

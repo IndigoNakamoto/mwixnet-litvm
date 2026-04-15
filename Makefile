@@ -29,7 +29,7 @@ deploy-local:
 broadcast-litvm:
 	./scripts/broadcast-litvm-testnet.sh
 
-# After broadcast: writes deploy/litvm-addresses.generated.env (gitignored) for merge into deploy/.env.testnet.
+# After broadcast: writes deploy/litvm-addresses.generated.env for merge into deploy/.env.testnet.
 record-litvm-deploy:
 	python3 "$(MK_ROOT)/scripts/record-litvm-deploy.py" --write "$(MK_ROOT)/deploy/litvm-addresses.generated.env"
 
