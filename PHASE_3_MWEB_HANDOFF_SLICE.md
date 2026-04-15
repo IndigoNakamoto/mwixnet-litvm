@@ -8,7 +8,7 @@ This is a **sub-milestone** toward README **Phase 3** (full end-to-end integrati
 
 Runbook, **`HTTP_PROXY` / `socks5h://`** details (Go `net/http` vs `ALL_PROXY`), 1-hop then 3-hop checklist, and README Phase 3 **gate** wording: **[`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md)**.
 
-**Preflight:** [`scripts/tor-preflight.sh`](scripts/tor-preflight.sh) or **`make tor-preflight`**.
+**Preflight:** [`scripts/tor-preflight.sh`](scripts/tor-preflight.sh) or **`make tor-preflight`**. **Operator bundle (Tor + export template + optional onion JSON-RPC):** [`scripts/phase3-operator-preflight.sh`](scripts/phase3-operator-preflight.sh) or **`make phase3-operator-preflight`**. **Linear playbook (Terminal 1–4):** [`research/PHASE_3_OPERATOR_PLAYBOOK.md`](research/PHASE_3_OPERATOR_PLAYBOOK.md). **Part B expanded steps:** [`research/PHASE_3_OPERATOR_PARTB_STEPBYSTEP.md`](research/PHASE_3_OPERATOR_PARTB_STEPBYSTEP.md). **Checklist:** [`research/PHASE_3_OPERATOR_CHECKLIST.md`](research/PHASE_3_OPERATOR_CHECKLIST.md).
 
 ## Completion (stub + full CLI path)
 

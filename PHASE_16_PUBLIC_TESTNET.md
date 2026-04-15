@@ -63,6 +63,10 @@ sequenceDiagram
   S-->>T: HTTP_200_ok
 ```
 
+### README Phase 3 gate (LitVM half)
+
+README **Phase 3** requires **public LitVM** grievance/slash deployment in addition to live `.onion` multi-hop ([`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md) gate). When LitVM publishes RPC, run **section 0** below (`make broadcast-litvm`, `make record-litvm-deploy`, operator compose, taker env alignment). Operator sequencing with MWEB/Tor: [`research/PHASE_3_OPERATOR_CHECKLIST.md`](research/PHASE_3_OPERATOR_CHECKLIST.md).
+
 ## Layer map (onboarding)
 
 *Sources: [`AGENTS.md`](AGENTS.md) (layer boundaries); [`PRODUCT_SPEC.md`](PRODUCT_SPEC.md) section 9 (P0–P3 roadmap and in-repo implementation status aligned to those layers).*

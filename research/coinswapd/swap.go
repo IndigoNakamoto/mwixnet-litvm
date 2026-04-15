@@ -162,6 +162,10 @@ func (s *swapService) forward() error {
 	nodeIdx := s.nodeIdx()
 	commitsCopy := slices.Clone(commits)
 
+	// Inter-hop JSON-RPC uses go-ethereum rpc.Dial → net/http DefaultTransport, which honors
+	// ProxyFromEnvironment (HTTP_PROXY, HTTPS_PROXY, NO_PROXY — not ALL_PROXY). For Tor .onion
+	// peers use e.g. HTTP_PROXY=socks5h://127.0.0.1:9050 and NO_PROXY for local RPC.
+	// See research/PHASE_3_TOR_OPERATOR_LAB.md.
 	client, err := rpc.Dial(node.Url)
 	if err != nil {
 		s.recordSwapForwardFailure(epoch, accuser, swapID, ops, nodeIdx, commitsCopy, payload, node, "dial", err)
@@ -331,6 +335,7 @@ func (s *swapService) backward(
 	}
 	cipher.XORKeyStream(data.Bytes(), data.Bytes())
 
+	// Same proxy env as swap_forward (HTTP_PROXY / socks5h for .onion); see comment above rpc.Dial in forward().
 	client, err := rpc.Dial(node.Url)
 	if err != nil {
 		return fmt.Errorf("swap_backward: rpc.Dial previous hop (peer index %d): %w", s.nodeIndex-1, err)

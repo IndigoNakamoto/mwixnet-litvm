@@ -1,6 +1,6 @@
 # Phase 9: Enablement and Hardening (Operator Packaging)
 
-This document is the operational guide for deploying an MLN maker node: the administrative daemon (`mlnd`), the MWEB privacy engine (`coinswapd` when you run it), Nostr discovery, and LitVM. **Do not guess** RPC URLs, chain IDs, or contract addresses; copy them from [official LitVM documentation](https://docs.litvm.com/) and [`research/LITVM.md`](research/LITVM.md).
+This document is the operational guide for deploying an MLN maker node: the administrative daemon (`mlnd`), the MWEB privacy engine (`coinswapd` when you run it), Nostr discovery, and LitVM. **Do not guess** RPC URLs, chain IDs, or contract addresses; copy them from [official LitVM documentation](https://docs.litvm.com/) and [`research/LITVM.md`](research/LITVM.md). For live `.onion` multi-hop sequencing (Phase 3 operators), see [`research/PHASE_3_OPERATOR_CHECKLIST.md`](research/PHASE_3_OPERATOR_CHECKLIST.md).
 
 ## 1. Quick start (Docker Compose)
 

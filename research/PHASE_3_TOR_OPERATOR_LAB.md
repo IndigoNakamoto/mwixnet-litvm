@@ -1,6 +1,6 @@
 # Phase 3 — Live Tor operator lab (coinswapd + MLN)
 
-This note is the **operator runbook** for advancing from Phase 3a (cleartext / stub) toward README **Phase 3** (live `.onion`, multi-hop P2P). Canonical handoff wire remains [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) and [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
+This note is the **operator runbook** for advancing from Phase 3a (cleartext / stub) toward README **Phase 3** (live `.onion`, multi-hop P2P). **Step-by-step terminals (long playbook):** [`PHASE_3_OPERATOR_PLAYBOOK.md`](PHASE_3_OPERATOR_PLAYBOOK.md). **Checklist:** [`PHASE_3_OPERATOR_CHECKLIST.md`](PHASE_3_OPERATOR_CHECKLIST.md). Canonical handoff wire remains [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) and [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
 
 ## Preflight: Tor SOCKS
 
