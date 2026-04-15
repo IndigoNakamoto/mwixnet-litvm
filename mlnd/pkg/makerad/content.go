@@ -6,7 +6,14 @@ const (
 	TagTMakerAd = "mln-maker-ad"
 )
 
-// Content is the decoded JSON object in the Nostr event content field (wire v1).
+// Reachability carries sealed mix dial hints (wire v2 draft, research/NOSTR_MLN.md).
+// When non-nil, Tor and SwapX25519PubHex must be empty at the outer JSON layer.
+type Reachability struct {
+	Scheme     string `json:"scheme"`
+	Ciphertext string `json:"ciphertext"`
+}
+
+// Content is the decoded JSON object in the Nostr event content field (wire v1 or v2 draft).
 type Content struct {
 	V     int    `json:"v"`
 	Litvm LitVM  `json:"litvm"`
@@ -15,6 +22,8 @@ type Content struct {
 	// SwapX25519PubHex is 64 lowercase hex digits (32-byte Curve25519 pubkey) for coinswap onion ECDH; see research/COINSWAPD_MLN_FORK_SPEC.md.
 	SwapX25519PubHex string   `json:"swapX25519PubHex,omitempty"`
 	Capabilities     []string `json:"capabilities,omitempty"`
+	// Reachability is optional wire v2; see research/NOSTR_MLN.md "Maker ad wire v2 (draft)".
+	Reachability *Reachability `json:"reachability,omitempty"`
 }
 
 // LitVM carries deployment pointers; chainId is a decimal string (e.g. "31337").

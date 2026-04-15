@@ -1,0 +1,33 @@
+# nostr-rs-relay config for MLN E2E stack (deploy/docker-compose.e2e.yml).
+# AUTH is DISABLED by default so existing E2E tests keep working without changes.
+#
+# To test NIP-42 AUTH hardening (maker-ad DoS resistance):
+#   1. Uncomment the [authorization] section below.
+#   2. Add the x-only pubkeys of your makers and taker to pubkey_whitelist.
+#   3. Mount this file into the relay container (see docker-compose.e2e.yml).
+#   4. Set MLND_NOSTR_AUTH=true in each maker's env file.
+#   5. Set MLN_NOSTR_AUTH_NSEC=<taker_nsec> when running mln-cli scout.
+#
+# See also: research/NOSTR_MLN.md "Relay policy" section.
+
+[info]
+relay_url = "ws://localhost:7080"
+name = "mln-e2e-relay"
+description = "MLN local E2E Nostr relay"
+
+[database]
+data_directory = "/usr/src/app/db"
+
+[network]
+port = 8080
+address = "0.0.0.0"
+
+# --- NIP-42 AUTH (uncomment to enable) ---
+# [authorization]
+# nip42_auth = true
+# pubkey_whitelist = [
+#   "maker1_x-only_pubkey_hex_here",
+#   "maker2_x-only_pubkey_hex_here",
+#   "maker3_x-only_pubkey_hex_here",
+#   "taker_x-only_pubkey_hex_here",
+# ]

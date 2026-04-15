@@ -12,6 +12,6 @@ globs:
 
 # MLN Nostr wire (rule)
 
-- **Normative wire:** **`research/NOSTR_MLN.md`** — kinds **31250–31251**, tags, `content` JSON, `nostrKeyHash` binding.
+- **Normative wire:** **`research/NOSTR_MLN.md`** — kinds **31250–31251**, tags, `content` JSON, `nostrKeyHash` binding. **Draft v2** (sealed `reachability` for kind **31250**) is documented there but not yet required for Scout/pathfind.
 - **CI:** **`.github/workflows/nostr-fixtures.yml`**; validate with **`nostr/validate_fixtures.py`** when changing fixtures.
 - For **test commands and workflow expectations**, coordinate with **`.cursor/skills/mln-qa/SKILL.md`**.

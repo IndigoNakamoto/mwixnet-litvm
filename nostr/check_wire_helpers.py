@@ -49,6 +49,24 @@ def main() -> int:
     }
     vf.validate_event(maker_event)
 
+    v2_content = w.maker_ad_v2_sealed_content_json(
+        chain,
+        reg,
+        court,
+        ciphertext="nip44v2-placeholder-not-valid-ciphertext",
+        capabilities=["mweb-coinswap-v0"],
+    )
+    maker2 = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
+    v2_event = {
+        "kind": w.KIND_MAKER_AD,
+        "tags": [
+            ["d", w.d_tag_maker_ad(chain, maker2)],
+            ["t", w.TAG_T_MAKER_AD],
+        ],
+        "content": v2_content,
+    }
+    vf.validate_event(v2_event)
+
     gid = "0x" + "aa" * 32
     g_content = w.grievance_pointer_content_json(
         chain,

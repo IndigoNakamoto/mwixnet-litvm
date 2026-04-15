@@ -7,10 +7,11 @@ import (
 
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/nostr"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/internal/opslog"
-	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/receiptstore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	gnostr "github.com/nbd-wtf/go-nostr"
 )
 
 // EnginePillar is MWEB bridge + receipt vault surface.
@@ -24,12 +25,12 @@ type EnginePillar struct {
 
 // DaemonInfo is how mlnd is configured (no secrets).
 type DaemonInfo struct {
-	AutoDefend          bool     `json:"autoDefend"`
-	AutoDefendDryRun    bool     `json:"autoDefendDryRun"`
-	NostrBroadcaster    bool     `json:"nostrBroadcaster"`
-	CoinswapdBridge     bool     `json:"coinswapdBridge"`
-	AutoDefendWarning   string   `json:"autoDefendWarning,omitempty"`
-	RelaysConfigured    []string `json:"relaysConfigured,omitempty"`
+	AutoDefend        bool     `json:"autoDefend"`
+	AutoDefendDryRun  bool     `json:"autoDefendDryRun"`
+	NostrBroadcaster  bool     `json:"nostrBroadcaster"`
+	CoinswapdBridge   bool     `json:"coinswapdBridge"`
+	AutoDefendWarning string   `json:"autoDefendWarning,omitempty"`
+	RelaysConfigured  []string `json:"relaysConfigured,omitempty"`
 }
 
 // NetworkStatus aggregates Nostr relay health and ad verification.
@@ -46,12 +47,12 @@ type ConnectionHints struct {
 
 // Status is the full GET /api/v1/status payload.
 type Status struct {
-	Chain              ChainPillar              `json:"chain"`
-	Network            NetworkStatus            `json:"network"`
-	Engine             EnginePillar             `json:"engine"`
-	Daemon             DaemonInfo               `json:"daemon"`
-	Connection         ConnectionHints          `json:"connection"`
-	GrievanceNarrative *GrievanceNarrativeView  `json:"grievanceNarrative,omitempty"`
+	Chain              ChainPillar             `json:"chain"`
+	Network            NetworkStatus           `json:"network"`
+	Engine             EnginePillar            `json:"engine"`
+	Daemon             DaemonInfo              `json:"daemon"`
+	Connection         ConnectionHints         `json:"connection"`
+	GrievanceNarrative *GrievanceNarrativeView `json:"grievanceNarrative,omitempty"`
 }
 
 // StatusDeps bundles inputs for BuildStatus.
@@ -65,6 +66,10 @@ type StatusDeps struct {
 	Relays       []string
 
 	Broadcaster *nostr.Broadcaster
+
+	// NostrAuthSecHex + NostrAuthPubHex enable NIP-42 AUTH for dashboard relay self-check.
+	NostrAuthSecHex string
+	NostrAuthPubHex string
 
 	BridgeEnabled bool
 	BridgeDir     string
@@ -134,7 +139,11 @@ func BuildStatus(ctx context.Context, d StatusDeps) Status {
 		return out
 	}
 
-	ev, relayURL, err := FetchLatestMakerAdForDTag(ctx, d.Relays, dTag, d.ChainID, d.RegistryAddr, d.CourtAddr)
+	var fetchOpts []gnostr.PoolOption
+	if d.NostrAuthSecHex != "" && d.NostrAuthPubHex != "" {
+		fetchOpts = append(fetchOpts, AuthSigner(d.NostrAuthSecHex, d.NostrAuthPubHex))
+	}
+	ev, relayURL, err := FetchLatestMakerAdForDTag(ctx, d.Relays, dTag, d.ChainID, d.RegistryAddr, d.CourtAddr, fetchOpts...)
 	if err != nil {
 		out.Network.Error = err.Error()
 		return out

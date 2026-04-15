@@ -118,6 +118,7 @@ The repo delivers a **coherent split** across layers: Solidity for registry and 
 
 - Verifies Schnorr signatures and filters by deployment tags (`chainId`, registry, optional court) — aligns with `research/NOSTR_MLN.md` intent.
 - **Relays are trusted for availability and censorship** — expected for Nostr; document for operators.
+- **Cleartext Tor / mix keys in v1 kind 31250** are visible to **any relay reader**; see **draft v2** sealed reachability in [`NOSTR_MLN.md`](NOSTR_MLN.md) (“Maker ad wire v2 (draft)”).
 
 **Pathfind**
 
@@ -202,6 +203,7 @@ The codebase is a **credible research and integration scaffold**: **`mlnd`**’s
 | **Scout + registry verification** | Spoofing | **Relay + fake events** | Publishes events that fail Schnorr or registry checks | None for “verified” set | Schnorr verify; `eth_call` to registry | **Low** for verified path |
 | **Scout + sybil makers** | Tampering | **Many funded makers** | Flood relays with cheap registered makers | Bad routes, censorship of good ads | Min stake on LitVM; fee/stake policy in pathfind | **Medium** — economic not technical |
 | **Nostr relays** | DoS / censorship | **Relay operator** | Drop or delay 31250/31251 | Poor discovery; stuck routes | Multi-relay; user-configured | **Medium** — inherent to Nostr |
+| **Cleartext `tor` / `swapX25519PubHex` in public kind 31250 (v1)** | DoS / availability | **Anyone** scraping relays | Target advertised `.onion` mix APIs (SYN / slowloris / RPC spam) during epochs | Failed batches; collapsed anonymity set if makers drop | **NIP-42 AUTH** relay hardening (`MLND_NOSTR_AUTH` / `MLN_NOSTR_AUTH_NSEC`); draft v2 sealed reachability; private relays; sidecar rate limits ([`NOSTR_MLN.md`](NOSTR_MLN.md) relay policy + v2 draft) | **Medium–High** — AUTH raises the bar from "anyone with a scraper" to "anyone with an allowed key"; **High** remains on public relays without AUTH or allowlist |
 | **`mln-cli` Forger → sidecar** | Tampering / info disclosure | **LAN attacker / malicious sidecar** | MITM cleartext HTTP to non-loopback URL | Fake “ok”; exfil route + dest + amount | Wallet warns on non-localhost HTTP; CLI has no equivalent | **High** if user bypasses warning or uses CLI remotely over HTTP |
 | **`mln-sidecar` HTTP** | Tampering / DoS | **Network peer** if port exposed | POST arbitrary swaps; hammer endpoint | Fake success; resource exhaustion | Validation of JSON body; timeouts | **High** if bound `0.0.0.0` without firewall; **Low** on loopback-only |
 | **Desktop `settings.json`** | Info disclosure | **Malware, forensics, backup** | Read `OperatorEthPrivateKeyHex` | Impersonate maker on LitVM; self-route abuse | Dir `0o700`, file `0o600`; comment warns user | **High** — plaintext secret on disk |

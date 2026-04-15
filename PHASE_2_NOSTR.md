@@ -2,13 +2,15 @@
 
 **Status:** **complete** for **v1** kinds **31250** (`mln_maker_ad`) and **31251** (`mln_grievance_pointer`) — normative spec, golden fixtures, Go clients, Python CLIs, and CI validation.
 
+**Draft v2 (kind 31250 only):** sealed `reachability` for DoS-hardening is specified and fixture-validated in [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md); **Scout still expects cleartext `tor` for pathfind** until a decrypting client path lands.
+
 **Canonical wire:** [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md) (kinds, NIP-33 `d` tag, `content` JSON, `nostrKeyHash` binding to [`MwixnetRegistry`](contracts/src/MwixnetRegistry.sol)).
 
 ## What ships in this repo
 
 | Area | Role |
 | ---- | ---- |
-| [`nostr/fixtures/valid/`](nostr/fixtures/valid/) | Golden JSON events (maker ad full + minimal, grievance pointer). |
+| [`nostr/fixtures/valid/`](nostr/fixtures/valid/) | Golden JSON events (maker ad full + minimal + **v2 sealed draft**, grievance pointer). |
 | [`nostr/validate_fixtures.py`](nostr/validate_fixtures.py) | Structural validation (tags, `litvm` block, hex shapes). |
 | [`nostr/check_wire_helpers.py`](nostr/check_wire_helpers.py) | Asserts [`scripts/mln_nostr_wire.py`](scripts/mln_nostr_wire.py) output passes the same rules. |
 | [`.github/workflows/nostr-fixtures.yml`](.github/workflows/nostr-fixtures.yml) | CI on `nostr/**`, `scripts/mln_nostr_wire.py`, and this workflow. |

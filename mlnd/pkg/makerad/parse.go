@@ -9,6 +9,25 @@ import (
 	gnostr "github.com/nbd-wtf/go-nostr"
 )
 
+func validateV2Content(c *Content) error {
+	if c.Reachability != nil {
+		if strings.TrimSpace(c.Tor) != "" || strings.TrimSpace(c.SwapX25519PubHex) != "" {
+			return fmt.Errorf("makerad: v2 sealed reachability forbids cleartext tor/swapX25519PubHex")
+		}
+		if c.Reachability.Scheme != "nip44-v2" {
+			return fmt.Errorf("makerad: unsupported reachability.scheme %q", c.Reachability.Scheme)
+		}
+		if len(strings.TrimSpace(c.Reachability.Ciphertext)) < 8 {
+			return fmt.Errorf("makerad: reachability.ciphertext too short")
+		}
+		return nil
+	}
+	if strings.TrimSpace(c.Tor) == "" && strings.TrimSpace(c.SwapX25519PubHex) == "" {
+		return fmt.Errorf("makerad: v2 requires reachability or non-empty tor/swapX25519PubHex")
+	}
+	return nil
+}
+
 // DTag returns the NIP-33 d tag mln:v1:<chainId>:<operatorLower>.
 func DTag(chainID, operatorLower string) string {
 	return fmt.Sprintf("mln:v1:%s:%s", chainID, operatorLower)
@@ -84,7 +103,14 @@ func ParseAd(ev *gnostr.Event) (*ParsedAd, error) {
 	if err := json.Unmarshal([]byte(ev.Content), &content); err != nil {
 		return nil, fmt.Errorf("makerad: content JSON: %w", err)
 	}
-	if content.V != 1 {
+	switch content.V {
+	case 1:
+		// ok
+	case 2:
+		if err := validateV2Content(&content); err != nil {
+			return nil, err
+		}
+	default:
 		return nil, fmt.Errorf("makerad: unsupported content version %d", content.V)
 	}
 

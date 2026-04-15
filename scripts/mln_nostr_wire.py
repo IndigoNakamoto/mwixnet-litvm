@@ -54,6 +54,31 @@ def litvm_block(chain_id: str, registry: str, grievance_court: str) -> dict[str,
 RE_SWAP_X25519_PUB = re.compile(r"^[a-f0-9]{64}$")
 
 
+def maker_ad_v2_sealed_content_json(
+    chain_id: str,
+    registry: str,
+    grievance_court: str,
+    *,
+    ciphertext: str,
+    fees: dict[str, Any] | None = None,
+    capabilities: list[str] | None = None,
+) -> str:
+    """Wire v2 draft: NIP-44-shaped sealed reachability (see research/NOSTR_MLN.md)."""
+    ct = ciphertext.strip()
+    if len(ct) < 8:
+        raise ValueError("ciphertext must be a non-trivial string (min 8 chars for fixtures)")
+    body: dict[str, Any] = {
+        "v": 2,
+        "litvm": litvm_block(chain_id, registry, grievance_court),
+        "reachability": {"scheme": "nip44-v2", "ciphertext": ct},
+    }
+    if fees is not None:
+        body["fees"] = fees
+    if capabilities is not None:
+        body["capabilities"] = capabilities
+    return json.dumps(body, separators=(",", ":"))
+
+
 def maker_ad_content_json(
     chain_id: str,
     registry: str,

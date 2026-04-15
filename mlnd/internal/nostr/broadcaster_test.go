@@ -175,6 +175,89 @@ func TestBuildMakerAdEvent_includesSwapX25519(t *testing.T) {
 	}
 }
 
+func TestNewBroadcaster_derivesPublicKey(t *testing.T) {
+	sec := strings.Repeat("3a", 32)
+	b := NewBroadcaster(BroadcasterConfig{AuthEnabled: true}, nil, sec, 0, log.New(io.Discard, "", 0))
+	if b.pubHex == "" {
+		t.Fatal("pubHex should be derived from secHex")
+	}
+	if len(b.pubHex) != 64 {
+		t.Fatalf("pubHex length %d, want 64", len(b.pubHex))
+	}
+}
+
+func TestAuthKeys_returnsMaterialWhenEnabled(t *testing.T) {
+	sec := strings.Repeat("3a", 32)
+	b := NewBroadcaster(BroadcasterConfig{AuthEnabled: true}, nil, sec, 0, log.New(io.Discard, "", 0))
+	s, p := b.AuthKeys()
+	if s != sec {
+		t.Fatalf("secHex: got %q want %q", s, sec)
+	}
+	if p != b.pubHex {
+		t.Fatalf("pubHex: got %q want %q", p, b.pubHex)
+	}
+}
+
+func TestAuthKeys_returnsEmptyWhenDisabled(t *testing.T) {
+	sec := strings.Repeat("3a", 32)
+	b := NewBroadcaster(BroadcasterConfig{AuthEnabled: false}, nil, sec, 0, log.New(io.Discard, "", 0))
+	s, p := b.AuthKeys()
+	if s != "" || p != "" {
+		t.Fatalf("expected empty keys when AUTH disabled, got sec=%q pub=%q", s, p)
+	}
+}
+
+func TestAuthKeys_nilBroadcaster(t *testing.T) {
+	var b *Broadcaster
+	s, p := b.AuthKeys()
+	if s != "" || p != "" {
+		t.Fatalf("expected empty keys from nil broadcaster, got sec=%q pub=%q", s, p)
+	}
+}
+
+func TestLoadBroadcasterFromEnv_authEnabled(t *testing.T) {
+	sec := strings.Repeat("3a", 32)
+	t.Setenv("MLND_NOSTR_RELAYS", "wss://example.com")
+	t.Setenv("MLND_NOSTR_NSEC", sec)
+	t.Setenv("MLND_LITVM_CHAIN_ID", "31337")
+	t.Setenv("MLND_REGISTRY_ADDR", "0x5fbdb2315678afecb367f032d93f642f64180aa3")
+	t.Setenv("MLND_COURT_ADDR", "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512")
+	t.Setenv("MLND_OPERATOR_ADDR", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+	t.Setenv("MLND_NOSTR_AUTH", "true")
+	bc, err := LoadBroadcasterFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bc == nil {
+		t.Fatal("expected non-nil broadcaster")
+	}
+	if !bc.cfg.AuthEnabled {
+		t.Fatal("expected AuthEnabled=true")
+	}
+	s, p := bc.AuthKeys()
+	if s == "" || p == "" {
+		t.Fatal("expected non-empty auth keys when AUTH is on")
+	}
+}
+
+func TestLoadBroadcasterFromEnv_authInvalid(t *testing.T) {
+	sec := strings.Repeat("3a", 32)
+	t.Setenv("MLND_NOSTR_RELAYS", "wss://example.com")
+	t.Setenv("MLND_NOSTR_NSEC", sec)
+	t.Setenv("MLND_LITVM_CHAIN_ID", "31337")
+	t.Setenv("MLND_REGISTRY_ADDR", "0x5fbdb2315678afecb367f032d93f642f64180aa3")
+	t.Setenv("MLND_COURT_ADDR", "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512")
+	t.Setenv("MLND_OPERATOR_ADDR", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+	t.Setenv("MLND_NOSTR_AUTH", "notabool")
+	_, err := LoadBroadcasterFromEnv()
+	if err == nil {
+		t.Fatal("expected error for invalid MLND_NOSTR_AUTH")
+	}
+	if !strings.Contains(err.Error(), "MLND_NOSTR_AUTH") {
+		t.Fatalf("error should mention MLND_NOSTR_AUTH: %v", err)
+	}
+}
+
 func uint64Ptr(u uint64) *uint64 {
 	return &u
 }

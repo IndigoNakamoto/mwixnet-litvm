@@ -144,6 +144,7 @@ func main() {
 		reg := requireEVMAddr("MLND_REGISTRY_ADDR", os.Getenv("MLND_REGISTRY_ADDR"))
 		chainID := strings.TrimSpace(os.Getenv("MLND_LITVM_CHAIN_ID"))
 		relays := splitRelays(strings.TrimSpace(os.Getenv("MLND_NOSTR_RELAYS")))
+		authSec, authPub := bc.AuthKeys()
 		deps := dashboard.StatusDeps{
 			EthClient:        client,
 			RegistryAddr:     reg,
@@ -152,6 +153,8 @@ func main() {
 			ChainID:          chainID,
 			Relays:           relays,
 			Broadcaster:      bc,
+			NostrAuthSecHex:  authSec,
+			NostrAuthPubHex:  authPub,
 			BridgeEnabled:    bridgeCoinswapdEnabled(),
 			BridgeDir:        strings.TrimSpace(os.Getenv("MLND_BRIDGE_RECEIPTS_DIR")),
 			Store:            dbStore,

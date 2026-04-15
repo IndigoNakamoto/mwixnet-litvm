@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/config"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/grievance"
@@ -20,6 +18,8 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/registry"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/scout"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func main() {
@@ -79,6 +79,7 @@ Environment (scout & pathfind):
   MLN_REGISTRY_ADDR         MwixnetRegistry address
   MLN_GRIEVANCE_COURT_ADDR  optional; if set, must match ad content
   MLN_SCOUT_TIMEOUT         optional subscription timeout (e.g. 45s)
+  MLN_NOSTR_AUTH_NSEC       optional; Nostr key (nsec1 or hex) for NIP-42 relay AUTH (see NOSTR_MLN.md relay policy)
   MLN_OPERATOR_ETH_KEY      optional; 64-hex LitVM maker private key — scout marks matching row "(local)";
                               required with pathfind -self-included (fixes N2 to that maker)
 
@@ -258,6 +259,7 @@ func runScout(args []string) {
 		GrievanceCourt:  court,
 		Timeout:         timeout,
 		QuietRejections: *quiet,
+		AuthNsec:        strings.TrimSpace(os.Getenv("MLN_NOSTR_AUTH_NSEC")),
 	}
 
 	ctx := context.Background()
@@ -330,6 +332,7 @@ func loadScoutConfig() (scout.Config, error) {
 		RegistryAddr:   regAddr,
 		GrievanceCourt: court,
 		Timeout:        timeout,
+		AuthNsec:       strings.TrimSpace(os.Getenv("MLN_NOSTR_AUTH_NSEC")),
 	}, nil
 }
 

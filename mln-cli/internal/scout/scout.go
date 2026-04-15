@@ -10,6 +10,7 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mlnd/pkg/makerad"
 	"github.com/ethereum/go-ethereum/common"
 	gnostr "github.com/nbd-wtf/go-nostr"
+	"github.com/nbd-wtf/go-nostr/nip19"
 )
 
 // Config drives Nostr fetch + LitVM verification.
@@ -21,6 +22,9 @@ type Config struct {
 	GrievanceCourt  string // optional; if set, must match content.litvm.grievanceCourt (lowercase)
 	Timeout         time.Duration
 	QuietRejections bool
+	// AuthNsec is an optional Nostr private key (nsec1 or 64 hex) for NIP-42 relay AUTH.
+	// When set, Scout authenticates to relays that require it before subscribing.
+	AuthNsec string
 }
 
 // VerifiedMaker is a maker that passed signature, wire, deployment filter, and registry checks.
@@ -60,6 +64,38 @@ func normAddr(a string) string {
 	return s
 }
 
+func parseAuthKey(raw string) (secHex, pubHex string, err error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", "", fmt.Errorf("empty auth key")
+	}
+	if strings.HasPrefix(raw, "nsec1") {
+		prefix, val, err := nip19.Decode(raw)
+		if err != nil {
+			return "", "", err
+		}
+		if prefix != "nsec" {
+			return "", "", fmt.Errorf("expected nsec, got %q", prefix)
+		}
+		sk, ok := val.(string)
+		if !ok || len(sk) != 64 {
+			return "", "", fmt.Errorf("invalid nsec decode")
+		}
+		secHex = sk
+	} else {
+		key := strings.TrimPrefix(strings.TrimPrefix(raw, "0x"), "0X")
+		if len(key) != 64 {
+			return "", "", fmt.Errorf("expected 64 hex chars or nsec1…")
+		}
+		secHex = strings.ToLower(key)
+	}
+	pubHex, err = gnostr.GetPublicKey(secHex)
+	if err != nil {
+		return "", "", fmt.Errorf("derive pubkey: %w", err)
+	}
+	return secHex, pubHex, nil
+}
+
 // Run collects maker ads from relays, dedupes by operator (latest created_at), verifies, and returns structured results.
 func Run(ctx context.Context, cfg Config) (*Result, error) {
 	if len(cfg.Relays) == 0 {
@@ -80,7 +116,18 @@ func Run(ctx context.Context, cfg Config) (*Result, error) {
 		Tags:  gnostr.TagMap{"t": []string{makerad.TagTMakerAd}},
 	}
 
-	pool := gnostr.NewSimplePool(subCtx)
+	var poolOpts []gnostr.PoolOption
+	if cfg.AuthNsec != "" {
+		secHex, pubHex, err := parseAuthKey(cfg.AuthNsec)
+		if err != nil {
+			return nil, fmt.Errorf("scout: auth key: %w", err)
+		}
+		poolOpts = append(poolOpts, gnostr.WithAuthHandler(func(ev *gnostr.Event) error {
+			ev.PubKey = pubHex
+			return ev.Sign(secHex)
+		}))
+	}
+	pool := gnostr.NewSimplePool(subCtx, poolOpts...)
 	ch := pool.SubManyEose(subCtx, cfg.Relays, gnostr.Filters{filter})
 
 	// Latest event per operator hex (lowercase).

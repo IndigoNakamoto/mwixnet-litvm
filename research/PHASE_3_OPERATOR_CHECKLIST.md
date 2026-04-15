@@ -48,6 +48,7 @@ For **each** of three makers:
 - [ ] **Tor hidden service** exposes maker JSON-RPC (port you publish in the ad, e.g. `8334`).
 - [ ] **`mlnd`** env: **`MLND_WS_URL`**, **`MLND_COURT_ADDR`**, **`MLND_REGISTRY_ADDR`**, **`MLND_OPERATOR_ADDR`**, **`MLND_LITVM_CHAIN_ID`**, **`MLND_NOSTR_RELAYS`**, **`MLND_NOSTR_NSEC`** (if publishing ads).
 - [ ] **`MLND_TOR_ONION`** (or equivalent) so kind **31250** content carries the **same** Tor **HTTP** URL takers need (scheme + host + port). **`mln-cli pathfind`** requires **non-empty `tor`** on verified makers.
+- [ ] **`MLND_NOSTR_AUTH=true`** when publishing to **NIP-42 AUTH-required relays** (prevents public scraping of `.onion` endpoints). Takers must set **`MLN_NOSTR_AUTH_NSEC`** to authenticate. See [`NOSTR_MLN.md`](NOSTR_MLN.md) relay policy.
 - [ ] Optional: **`MLND_SWAP_X25519_PUB_HEX`** so routes include **`swapX25519PubHex`** per hop ([PHASE_3_MWEB_HANDOFF_SLICE.md](../PHASE_3_MWEB_HANDOFF_SLICE.md)).
 - [ ] Makers registered on the **same** registry the taker Scout/pathfind uses (local Anvil for lab, or public LitVM when deployed).
 

@@ -94,6 +94,20 @@ Then build and run the desktop app (`make build-mln-wallet` and run the binary, 
 
 To exercise **`-mode=rpc`** (forwarding to **`mweb_getBalance`** / **`mweb_submitRoute`**) without official LitVM testnet, use **[`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md)**, **[`deploy/docker-compose.e2e.sidecar-rpc.yml`](deploy/docker-compose.e2e.sidecar-rpc.yml)**, and **`./scripts/e2e-mweb-handoff-stub.sh`** (host stub **`bin/mw-rpc-stub`** on **`:8546`** via `host.docker.internal`). For **stub golden receipt `accusedMaker` = first-hop operator** and **maker auto-defend** ordering (start **`mlnd`** before **`grievance file`**, shared vault DB), see Phase 3’s **Correlator-aligned receipts and maker auto-defend** section and **`scripts/grievance-correlated-stub-e2e.sh`**.
 
+## Optional: NIP-42 AUTH relay testing
+
+To test maker-ad DoS hardening with authenticated relay access:
+
+1. Edit `deploy/nostr-rs-relay.toml`: uncomment `[authorization]`, set `nip42_auth = true`, add maker + taker x-only pubkeys to `pubkey_whitelist`.
+2. Uncomment the `volumes:` mount in the `nostr` service of `deploy/docker-compose.e2e.yml`.
+3. Set `MLND_NOSTR_AUTH=true` in each maker env file (`deploy/e2e.maker*.env`).
+4. Bring up the stack: `docker compose -f deploy/docker-compose.e2e.yml up -d && docker compose -f deploy/docker-compose.e2e.yml --profile makers up -d`
+5. Run Scout with AUTH: `MLN_NOSTR_AUTH_NSEC=<taker_hex_or_nsec> mln-cli scout -json`
+
+Verify makers publish successfully (`docker logs deploy-maker1-1` shows `AUTH OK` + `published kind=31250`) and Scout receives events. Without `MLN_NOSTR_AUTH_NSEC`, Scout should fail to subscribe (relay closes with `auth-required:`).
+
+See [`research/NOSTR_MLN.md`](research/NOSTR_MLN.md) relay policy section and [`deploy/nostr-rs-relay.toml`](deploy/nostr-rs-relay.toml).
+
 ## Security note
 
 `e2e-bootstrap.sh` uses **well-known Anvil keys** and fixed Nostr test secrets. They are for **local development only**; never use them on a public network or mainnet.

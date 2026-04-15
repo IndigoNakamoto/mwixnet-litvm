@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,9 @@ type BroadcasterConfig struct {
 	ClientVersion  string
 	// SwapX25519PubHex is optional 64 lowercase hex digits (32-byte Curve25519 pubkey).
 	SwapX25519PubHex string
+	// AuthEnabled enables NIP-42 AUTH after relay connect. When true, broadcaster
+	// will fail fast (backoff) if AUTH is rejected by the relay.
+	AuthEnabled bool
 }
 
 // errRelayBackoff means this relay URL is in exponential backoff; skip until next tick.
@@ -49,8 +53,8 @@ type RelayPublishLine struct {
 
 // LastPublishSnapshot is the most recent maker-ad publish attempt.
 type LastPublishSnapshot struct {
-	At     time.Time            `json:"at"`
-	Relays []RelayPublishLine   `json:"relays"`
+	At     time.Time          `json:"at"`
+	Relays []RelayPublishLine `json:"relays"`
 }
 
 // Broadcaster republishes replaceable maker ads on an interval.
@@ -58,6 +62,7 @@ type Broadcaster struct {
 	cfg      BroadcasterConfig
 	relays   []string
 	secHex   string // 64-char hex private key for gnostr.Event.Sign
+	pubHex   string // x-only public key hex (derived from secHex)
 	interval time.Duration
 	log      *log.Logger
 	Ops      *opslog.Log
@@ -79,10 +84,12 @@ func NewBroadcaster(cfg BroadcasterConfig, relays []string, secHex string, inter
 	if interval <= 0 {
 		interval = 30 * time.Minute
 	}
+	pubHex, _ := gnostr.GetPublicKey(secHex)
 	return &Broadcaster{
 		cfg:      cfg,
 		relays:   relays,
 		secHex:   secHex,
+		pubHex:   pubHex,
 		interval: interval,
 		log:      lg,
 	}
@@ -178,6 +185,15 @@ func LoadBroadcasterFromEnv() (*Broadcaster, error) {
 			}
 		}
 	}
+	var authEnabled bool
+	if s := strings.TrimSpace(os.Getenv("MLND_NOSTR_AUTH")); s != "" {
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			return nil, fmt.Errorf("MLND_NOSTR_AUTH: %w", err)
+		}
+		authEnabled = v
+	}
+
 	cfg := BroadcasterConfig{
 		ChainID:          chainID,
 		Registry:         regNorm,
@@ -190,6 +206,7 @@ func LoadBroadcasterFromEnv() (*Broadcaster, error) {
 		ClientName:       "mlnd",
 		ClientVersion:    "0",
 		SwapX25519PubHex: swapHex,
+		AuthEnabled:      authEnabled,
 	}
 
 	return NewBroadcaster(cfg, relays, secHex, interval, log.Default()), nil
@@ -338,6 +355,15 @@ func (b *Broadcaster) Config() BroadcasterConfig {
 	return b.cfg
 }
 
+// AuthKeys returns the NIP-42 signing material when AUTH is enabled.
+// Returns empty strings if AUTH is off or broadcaster is nil.
+func (b *Broadcaster) AuthKeys() (secHex, pubHex string) {
+	if b == nil || !b.cfg.AuthEnabled {
+		return "", ""
+	}
+	return b.secHex, b.pubHex
+}
+
 // LastPublish returns the most recent publish round summary.
 func (b *Broadcaster) LastPublish() LastPublishSnapshot {
 	if b == nil {
@@ -419,6 +445,19 @@ func (b *Broadcaster) ensureRelay(ctx context.Context, relayURL string) (*gnostr
 	if err := r.Connect(connCtx); err != nil {
 		b.forgetRelayAfterFailure(relayURL)
 		return nil, err
+	}
+
+	if b.cfg.AuthEnabled {
+		secHex, pubHex := b.secHex, b.pubHex
+		if err := r.Auth(connCtx, func(ev *gnostr.Event) error {
+			ev.PubKey = pubHex
+			return ev.Sign(secHex)
+		}); err != nil {
+			_ = r.Close()
+			b.forgetRelayAfterFailure(relayURL)
+			return nil, fmt.Errorf("NIP-42 AUTH rejected: %w", err)
+		}
+		b.log.Printf("mlnd nostr: AUTH OK on %s", relayURL)
 	}
 
 	b.relayMu.Lock()

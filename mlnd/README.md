@@ -140,6 +140,7 @@ Optional:
 | `MLND_TOR_PORT` | If set and `MLND_TOR_ONION` has no port, the port is appended (e.g. `18081`) |
 | `MLND_FEE_MIN_SAT` / `MLND_FEE_MAX_SAT` | If both set, adds `fees` object (`sat_per_hop`) |
 | `MLND_SWAP_X25519_PUB_HEX` | Optional **64** lowercase hex digits (32-byte Curve25519 pubkey) for `content.swapX25519PubHex` in the maker ad (see [`research/COINSWAPD_MLN_FORK_SPEC.md`](../research/COINSWAPD_MLN_FORK_SPEC.md)) |
+| `MLND_NOSTR_AUTH` | Set to `true` to enable **NIP-42 AUTH** after relay connect. Broadcaster signs a kind-22242 challenge using `MLND_NOSTR_NSEC` and fails fast (backoff) if AUTH is rejected. Use with relays that require authentication to prevent public scraping of `.onion` endpoints from maker ads. See [`research/NOSTR_MLN.md`](../research/NOSTR_MLN.md) relay policy. Default `false`. |
 
 Wire format: [`research/NOSTR_MLN.md`](../research/NOSTR_MLN.md). Relay smoke flow: [`research/E2E_NOSTR_DEMO.md`](../research/E2E_NOSTR_DEMO.md).
 

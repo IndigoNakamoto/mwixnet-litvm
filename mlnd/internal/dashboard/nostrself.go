@@ -10,6 +10,14 @@ import (
 	gnostr "github.com/nbd-wtf/go-nostr"
 )
 
+// AuthSigner builds a NIP-42 AUTH handler from a Nostr private key hex + pubkey hex.
+func AuthSigner(secHex, pubHex string) gnostr.WithAuthHandler {
+	return func(ev *gnostr.Event) error {
+		ev.PubKey = pubHex
+		return ev.Sign(secHex)
+	}
+}
+
 // NetworkPillarSelfCheck is relay visibility + binding for this operator’s replaceable ad.
 type NetworkPillarSelfCheck struct {
 	DTag                    string `json:"dTag"`
@@ -28,7 +36,8 @@ type NetworkPillarSelfCheck struct {
 }
 
 // FetchLatestMakerAdForDTag returns the newest matching kind-31250 event from relays, or nil if none.
-func FetchLatestMakerAdForDTag(ctx context.Context, relays []string, dTag, chainID, registryHex, courtHex string) (*gnostr.Event, string, error) {
+// poolOpts are passed to SimplePool (e.g. WithAuthHandler for NIP-42 relays).
+func FetchLatestMakerAdForDTag(ctx context.Context, relays []string, dTag, chainID, registryHex, courtHex string, poolOpts ...gnostr.PoolOption) (*gnostr.Event, string, error) {
 	if len(relays) == 0 {
 		return nil, "", fmt.Errorf("no relays")
 	}
@@ -47,7 +56,7 @@ func FetchLatestMakerAdForDTag(ctx context.Context, relays []string, dTag, chain
 		},
 	}
 
-	pool := gnostr.NewSimplePool(subCtx)
+	pool := gnostr.NewSimplePool(subCtx, poolOpts...)
 	ch := pool.SubManyEose(subCtx, relays, gnostr.Filters{filter})
 
 	var best *gnostr.Event
