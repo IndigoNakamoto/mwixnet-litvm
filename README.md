@@ -83,7 +83,7 @@ For NDJSON bridge layout, auto-defend key practice, Nostr relays, and paired `co
 
 ### Next steps (pickup after a break)
 
-1. **Live Tor lab (Phase 3 operators)** — Before multi-hop `.onion` `coinswapd` debugging, run **`./scripts/tor-preflight.sh`** (or **`make tor-preflight`**) and read [`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md) (`HTTP_PROXY` + **`socks5h://`** on **coinswapd**, not only `ALL_PROXY`).
+1. **Live Tor lab (Phase 3 operators)** — Linear playbook: [`research/PHASE_3_OPERATOR_PLAYBOOK.md`](research/PHASE_3_OPERATOR_PLAYBOOK.md). Checklist + preflight: [`research/PHASE_3_OPERATOR_CHECKLIST.md`](research/PHASE_3_OPERATOR_CHECKLIST.md); **`make phase3-operator-preflight`** (Tor + `HTTP_PROXY` / `NO_PROXY` template + optional **`PHASE3_ONION_JSONRPC_URL`**); deep runbook [`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md) (`socks5h://` on **coinswapd**, not only `ALL_PROXY`).
 2. **LitVM testnet** — When [official RPC and chain ID](https://docs.litvm.com/get-started-on-testnet/add-to-wallet) are published, follow [`PHASE_16_PUBLIC_TESTNET.md`](PHASE_16_PUBLIC_TESTNET.md) section 0: fund deployer, `make broadcast-litvm`, `make record-litvm-deploy`, merge `deploy/litvm-addresses.generated.env` into `deploy/.env.testnet`, then `docker compose -f deploy/docker-compose.testnet.yml up -d` (or use `forge script` + verify from [`contracts/README.md`](contracts/README.md)).
 3. **Judicial layer** — Phase 15 economics and locks are implemented in [`GrievanceCourt`](contracts/src/GrievanceCourt.sol) and [`MwixnetRegistry`](contracts/src/MwixnetRegistry.sol) ([`PHASE_15_ECONOMIC_HARDENING.md`](PHASE_15_ECONOMIC_HARDENING.md)). Contracts remain **not audited**; on-chain **`defenseData` verification** and formal review are still open.
 4. **`coinswapd` fork** — Harden and validate **`mweb_submitRoute`** / **`mweb_getBalance`** in the tracked **[`research/coinswapd/`](research/coinswapd/)** tree so **`mln-sidecar -mode=rpc`** reliably hands off MLN route JSON to the real MWEB engine (see [`mln-sidecar/README.md`](mln-sidecar/README.md), [`research/COINSWAPD_MLN_FORK_SPEC.md`](research/COINSWAPD_MLN_FORK_SPEC.md), [`research/COINSWAPD_TEARDOWN.md`](research/COINSWAPD_TEARDOWN.md)).
@@ -110,6 +110,8 @@ This repository holds the **product specification**, research notes, and Cursor 
 | [`Makefile`](Makefile) | Contracts (`contracts-build`, `contracts-test`, `deploy-local`, `broadcast-litvm`, `record-litvm-deploy`), operator smoke (`test-operator-smoke`, `test-full-stack`), `mlnd` / CLI / wallet / sidecar / `mw-rpc-stub` / `coinswapd-research` builds, Docker images — see phase playbooks below for context |
 | [`PHASE_2_NOSTR.md`](PHASE_2_NOSTR.md) | Phase 2: Nostr wire v1 (kinds 31250–31251), [`nostr/fixtures/`](nostr/fixtures/), CI validation, Scout deployment filters, address rotation |
 | [`PHASE_3_MWEB_HANDOFF_SLICE.md`](PHASE_3_MWEB_HANDOFF_SLICE.md) | Phase 3a: `mln-sidecar -mode=rpc` + `mweb_*` stub or **`coinswapd-research`**; **completed swap path**; **`E2E_MWEB_FUNDED=1`** funded **`coinswapd`** runbook; **PR + `v*` regression anchors** (`E2E_MWEB_FULL=1`, optional **`MWEB_RPC_BACKEND=coinswapd`**); Tor URL normalization; gaps vs live P2P / LitVM |
+| [`research/PHASE_3_OPERATOR_PLAYBOOK.md`](research/PHASE_3_OPERATOR_PLAYBOOK.md) | Phase 3 step-by-step playbook (Terminal 1–4, Part A local then Part B Tor) |
+| [`research/PHASE_3_OPERATOR_CHECKLIST.md`](research/PHASE_3_OPERATOR_CHECKLIST.md) | Phase 3 operator sequencing: Tor/proxy, 3× makers, production-shaped `pendingOnions`, LitVM gate |
 | [`research/PHASE_3_TOR_OPERATOR_LAB.md`](research/PHASE_3_TOR_OPERATOR_LAB.md) | Live Tor + multi-hop `coinswapd` lab: **`scripts/tor-preflight.sh`**, **`HTTP_PROXY`/`socks5h`**, 1-hop then 3-hop checklist; README Phase 3 gate (with public LitVM) |
 | [`PHASE_5_NOSTR_TOR_BRIDGE.md`](PHASE_5_NOSTR_TOR_BRIDGE.md) | Phase 5: Nostr relay behavior, Tor URL clarity, receipt bridge scaffold (`mlnd`) |
 | [`PHASE_6_BRIDGE_INTEGRATION.md`](PHASE_6_BRIDGE_INTEGRATION.md) | Phase 6: NDJSON receipt bridge → `mlnd` SQLite, identity threading vs `coinswapd` |
@@ -154,4 +156,4 @@ The MLN **`mweb_*`** JSON-RPC extensions live in the **tracked** in-repo fork **
 
 ## License
 
-Not specified; add a `LICENSE` when you publish.
+This repository is licensed under the [MIT License](LICENSE). Submodules and vendored dependencies under `contracts/lib/` and similar paths retain their own licenses.
