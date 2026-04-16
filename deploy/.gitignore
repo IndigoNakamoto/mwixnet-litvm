@@ -5,3 +5,12 @@ e2e.maker2.env
 e2e.maker3.env
 e2e.wallet-settings.generated.json
 e2e.mweb-handoff.route.json
+
+# Tier 2 / Tier 3 per-box secrets (see MAKER_BOX_SETUP.md; template committed as .example)
+tier2.maker-box.env
+tier2.maker1.env
+tier2.maker2.env
+tier2.maker3.env
+tier2.taker.env
+.maker-box.pids/
+.maker-box.logs/

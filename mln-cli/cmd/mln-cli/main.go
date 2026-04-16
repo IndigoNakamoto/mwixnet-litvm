@@ -51,6 +51,8 @@ func main() {
 		runMaker(os.Args[2:])
 	case "grievance":
 		runGrievance(os.Args[2:])
+	case "doctor":
+		runDoctor(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -70,6 +72,7 @@ Commands:
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
   maker onboard  Plan or execute MwixnetRegistry deposit + registerMaker (LitVM maker onboarding)
   grievance file Open a grievance on LitVM (openGrievance + bond; receipt from JSON or vault swap id)
+  doctor    Environment preflight: env vars, LitVM RPC, Nostr relay, optional sidecar, live scout
 
 Environment (scout & pathfind):
   MLN_NOSTR_RELAYS          comma-separated wss:// relays

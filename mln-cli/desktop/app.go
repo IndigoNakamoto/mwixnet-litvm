@@ -5,6 +5,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -143,6 +146,54 @@ func (a *App) Send(routeJSON string, dest string, amountSat uint64, sidecarURL s
 		AmountSat:   amountSat,
 		SidecarURL:  strings.TrimSpace(sidecarURL),
 	})
+}
+
+// LocalLabResult summarizes a Tier 1 stub-lab invocation for the UI.
+type LocalLabResult struct {
+	ExitCode int    `json:"exitCode"`
+	TailLog  string `json:"tailLog"`
+	ScriptPath string `json:"scriptPath"`
+}
+
+// RunLocalLab executes the Tier 1 stub lab (scripts/e2e-mweb-handoff-stub.sh with E2E_MWEB_FULL=1)
+// against the workspace rooted at repoRoot. If repoRoot is empty, the method looks for the script
+// relative to the current working directory (typical when the wallet is launched from the repo).
+//
+// This is a convenience for first-time users: it drives the same path the `make e2e-tier1` target
+// uses, but from inside the desktop app. It requires Docker and the same prerequisites as the
+// script itself; errors are surfaced in the returned LocalLabResult.TailLog.
+func (a *App) RunLocalLab(repoRoot string) (*LocalLabResult, error) {
+	root := strings.TrimSpace(repoRoot)
+	if root == "" {
+		cwd, _ := os.Getwd()
+		root = cwd
+	}
+	script := filepath.Join(root, "scripts", "e2e-mweb-handoff-stub.sh")
+	if _, err := os.Stat(script); err != nil {
+		return nil, fmt.Errorf("tier 1 script not found at %s — pass repoRoot or launch mln-wallet from the repo root", script)
+	}
+
+	ctx, cancel := context.WithTimeout(a.ctx, 10*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "bash", script)
+	cmd.Env = append(os.Environ(), "E2E_MWEB_FULL=1")
+	cmd.Dir = root
+	out, err := cmd.CombinedOutput()
+
+	tail := string(out)
+	if len(tail) > 4000 {
+		tail = "…\n" + tail[len(tail)-4000:]
+	}
+	exit := 0
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			exit = ee.ExitCode()
+		} else {
+			return &LocalLabResult{ExitCode: -1, TailLog: tail + "\n" + err.Error(), ScriptPath: script}, nil
+		}
+	}
+	return &LocalLabResult{ExitCode: exit, TailLog: tail, ScriptPath: script}, nil
 }
 
 func (a *App) loadValidated() (config.NetworkSettings, error) {

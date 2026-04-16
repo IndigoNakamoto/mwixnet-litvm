@@ -4,7 +4,7 @@ FOUNDRY_IMAGE ?= ghcr.io/foundry-rs/foundry:latest
 MK_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 CONTRACTS := $(MK_ROOT)/contracts
 
-.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local broadcast-litvm record-litvm-deploy test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-research-coinswapd tor-preflight phase3-operator-preflight build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr
+.PHONY: contracts-build contracts-test contracts-test-match contracts-fmt deploy-local broadcast-litvm record-litvm-deploy test-grievance test-full-stack test-operator-smoke testnet-smoke build build-mln-cli build-mln-sidecar build-mw-rpc-stub build-research-coinswapd tor-preflight phase3-operator-preflight phase3-funded-preflight phase3-tier2-setup build-mln-wallet-frontend build-mln-wallet docker-build listen-makers listen-demo test-full-stack-with-nostr e2e-tier1 e2e-status
 
 # Optional: narrow tests, e.g. `make contracts-test-match MATCH=EvidenceGoldenVectorsTest`
 MATCH ?=
@@ -106,6 +106,25 @@ listen-makers:
 
 listen-demo:
 	python3 scripts/mln-nostr-demo.py --relay wss://relay.damus.io
+
+# Tier 1 single-host stub lab — validates scout → pathfind → forger → mweb_* against mw-rpc-stub.
+# See .cursor/plans/e2e-coinswap-tiered-review and PHASE_3_MWEB_HANDOFF_SLICE.md.
+e2e-tier1:
+	E2E_MWEB_FULL=1 "$(MK_ROOT)/scripts/e2e-mweb-handoff-stub.sh"
+
+# Post-bootstrap status table (verified makers, stake, Tor endpoints, last ad age).
+# Reads deploy/e2e.generated.env by default; override with MLN_* env.
+e2e-status:
+	"$(MK_ROOT)/scripts/e2e-status.sh"
+
+# Tier 3 funded-path preflight: validates env + calls mweb_getBalance and exact-UTXO precondition.
+# See research/PHASE_3_OPERATOR_CHECKLIST.md section D.
+phase3-funded-preflight:
+	"$(MK_ROOT)/scripts/phase3-funded-env-check.sh"
+
+# Tier 2 maker-env generator (LitVM chain 4441 + curated relay). Writes deploy/tier2.maker{1,2,3}.env.
+phase3-tier2-setup:
+	"$(MK_ROOT)/scripts/phase3-tier2-setup.sh"
 
 test-full-stack-with-nostr:
 	@echo "=== Full MLN Stack with live Nostr demo ==="

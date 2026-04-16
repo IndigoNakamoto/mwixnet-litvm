@@ -96,6 +96,18 @@ export function Send(routeJSON, dest, amountSat, sidecarURL) {
   return a.Send(routeJSON, dest, amountSat, sidecarURL)
 }
 
+export function RunLocalLab(repoRoot) {
+  const a = app()
+  if (!a) {
+    return Promise.resolve({
+      exitCode: 0,
+      scriptPath: '(dev mock)',
+      tailLog: '[dev mock] would run scripts/e2e-mweb-handoff-stub.sh with E2E_MWEB_FULL=1',
+    })
+  }
+  return a.RunLocalLab(repoRoot || '')
+}
+
 export function FetchMwebBalance(sidecarURL) {
   const a = app()
   if (!a) {

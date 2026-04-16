@@ -53,6 +53,25 @@ export default function App() {
   const [mwebBalance, setMwebBalance] = useState(null)
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [balanceErr, setBalanceErr] = useState('')
+  const [labLog, setLabLog] = useState('')
+  const [labBusy, setLabBusy] = useState(false)
+
+  const runLocalLab = async () => {
+    if (!window.confirm('Run the Tier 1 local lab? This starts Docker (Anvil + Nostr + sidecar + 3 makers) and drives a stub coinswap end-to-end. Requires Docker running.')) {
+      return
+    }
+    setLabBusy(true)
+    setLabLog('Starting Tier 1 stub lab (scripts/e2e-mweb-handoff-stub.sh)…')
+    try {
+      const r = await AppGo.RunLocalLab('')
+      const head = r.exitCode === 0 ? 'OK — Tier 1 lab passed' : `FAILED (exit ${r.exitCode})`
+      setLabLog(`${head}\nscript: ${r.scriptPath}\n\n${r.tailLog || '(no output)'}`)
+    } catch (e) {
+      setLabLog(`error: ${String(e.message || e)}`)
+    } finally {
+      setLabBusy(false)
+    }
+  }
 
   const refreshBalance = useCallback(async () => {
     setBalanceLoading(true)
@@ -380,7 +399,15 @@ export default function App() {
           <button type="button" className="primary" disabled={busy} onClick={runBuildRoute}>
             Build route
           </button>
+          <button type="button" disabled={labBusy} onClick={runLocalLab} title="Drives scripts/e2e-mweb-handoff-stub.sh with E2E_MWEB_FULL=1 (requires Docker).">
+            {labBusy ? 'Running local lab…' : 'Run local lab'}
+          </button>
         </div>
+        {labLog && (
+          <pre className="hint" style={{ marginTop: '0.75rem', whiteSpace: 'pre-wrap', maxHeight: '240px', overflow: 'auto' }}>
+            {labLog}
+          </pre>
+        )}
         {scoutSummary && (
           <p className="ok" style={{ marginTop: '0.75rem' }}>
             Verified: {scoutSummary.verified?.length ?? 0}, rejected events: {scoutSummary.rejected?.length ?? 0}
