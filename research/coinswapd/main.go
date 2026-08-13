@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,8 @@ var (
 
 	// MLN / local E2E: skip config.AliveNodes identity match (random -k is never in the public mesh list).
 	mlnLocalTaker = flag.Bool("mln-local-taker", false, "skip swap-mesh node probe; force node 0 (peers come from mweb_submitRoute only)")
+	mlnDirectory = flag.String("mln-directory", "", "permissioned mixnet hop JSON; skip public mesh and pin mlnPeers")
+	mlnHopIndex  = flag.Int("mln-hop-index", -1, "this process hop index 0..2 (required with -mln-directory)")
 
 	// DEV ONLY: after mweb_runBatch's performSwap, delete any onions still in the local DB (no chain finalize).
 	// Enables pendingOnions=0 smoke on a host without live swap_forward/swap_backward peers. Never use in production.
@@ -110,7 +113,11 @@ func main() {
 	}
 
 	ss := &swapService{}
-	if *mlnLocalTaker {
+	if strings.TrimSpace(*mlnDirectory) != "" {
+		if err = applyMLNDirectory(ss, strings.TrimSpace(*mlnDirectory), *mlnHopIndex, *mlnLocalTaker, serverKey.PublicKey()); err != nil {
+			return
+		}
+	} else if *mlnLocalTaker {
 		ss.nodeIndex = 0
 		ss.nodes = nil
 		fmt.Println("mln-local-taker: skipping getNodes (use for MLN mweb_* / scripts; peers from mweb_submitRoute)")

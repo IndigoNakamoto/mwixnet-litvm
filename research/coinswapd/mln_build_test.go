@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdh"
 	"crypto/rand"
+	"encoding/gob"
 	"encoding/hex"
 	"testing"
 
@@ -117,6 +118,99 @@ func TestMWOnionMath(t *testing.T) {
 				t.Fatal("last hop: peelOnions-equivalent MW checks failed")
 			}
 		}
+	}
+}
+
+// TestOnionGobRoundtripVerifySig is the persist path used by saveOnion/loadOnions.
+// performSwap re-validates after gob; a roundtrip that breaks VerifySig silently drops the mix.
+func TestOnionGobRoundtripVerifySig(t *testing.T) {
+	t.Parallel()
+
+	privs := make([]*ecdh.PrivateKey, mlnroute.ExpectedHops)
+	pubs := make([]*ecdh.PublicKey, mlnroute.ExpectedHops)
+	rawHex := make([]string, mlnroute.ExpectedHops)
+	for i := range privs {
+		var err error
+		privs[i], err = ecdh.X25519().GenerateKey(rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pubs[i] = privs[i].PublicKey()
+		rawHex[i] = hex.EncodeToString(pubs[i].Bytes())
+	}
+
+	var scanKey, spendKey mw.SecretKey
+	for {
+		if _, err := rand.Read(scanKey[:]); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := rand.Read(spendKey[:]); err != nil {
+			t.Fatal(err)
+		}
+		if secretScalarOK(&scanKey) && secretScalarOK(&spendKey) {
+			break
+		}
+	}
+	kc := &mweb.Keychain{Scan: &scanKey, Spend: &spendKey}
+	dest := ltcutil.NewAddressMweb(kc.Address(0), &chaincfg.MainNetParams)
+
+	amount := uint64(10_000_000)
+	req := mlnroute.Request{
+		Destination: dest.String(),
+		Amount:      amount,
+		Route: []mlnroute.Hop{
+			{Tor: "http://a.onion", FeeMinSat: testHopFeeSat, SwapX25519PubHex: rawHex[0]},
+			{Tor: "http://b.onion", FeeMinSat: testHopFeeSat, SwapX25519PubHex: rawHex[1]},
+			{Tor: "http://c.onion", FeeMinSat: testHopFeeSat, SwapX25519PubHex: rawHex[2]},
+		},
+	}
+
+	var blind mw.BlindingFactor
+	for {
+		if _, err := rand.Read(blind[:]); err != nil {
+			t.Fatal(err)
+		}
+		if kernelScalarOK(&blind) {
+			break
+		}
+	}
+	var oid chainhash.Hash
+	if _, err := rand.Read(oid[:]); err != nil {
+		t.Fatal(err)
+	}
+	coin := &mweb.Coin{
+		SpendKey: kc.SpendKey(0),
+		Blind:    &blind,
+		Value:    amount,
+		OutputId: &oid,
+	}
+
+	o, err := buildOnionFromMLNRoute(&req, pubs, coin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !o.VerifySig() {
+		t.Fatal("VerifySig before gob")
+	}
+
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(o); err != nil {
+		t.Fatal(err)
+	}
+	var loaded *onion.Onion
+	if err := gob.NewDecoder(bytes.NewReader(buf.Bytes())).Decode(&loaded); err != nil {
+		t.Fatal(err)
+	}
+	if loaded == nil {
+		t.Fatal("gob decoded nil onion")
+	}
+	if !loaded.VerifySig() {
+		t.Fatal("VerifySig after gob roundtrip")
+	}
+	if _, next, err := loaded.Peel(privs[0]); err != nil {
+		t.Fatalf("peel after gob: %v", err)
+	} else if next == nil {
+		t.Fatal("peel after gob: nil remainder")
 	}
 }
 

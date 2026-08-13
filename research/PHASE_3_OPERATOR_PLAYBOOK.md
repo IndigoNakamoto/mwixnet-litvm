@@ -90,11 +90,42 @@ grep '^MLN_' deploy/e2e.generated.env | head
 
 You will reuse the same variable names when you move to funded **`coinswapd`** or Tor labs.
 
-**Part A done.** You have validated the integration contract. Part B adds Tor and real maker RPCs.
+**Part A done.** You have validated the integration contract. **Part B0** is the mixnet product (permissioned directory, no Scout). Part B below is the older Scout/`mlnd` path (3-gov), parked until Proof A passes.
 
 ---
 
-## Part B — Tor + three makers + taker (four-terminal habit)
+## Part B0 — Permissioned mixnet (Proof A; no Scout, no `mlnd`, no LitVM)
+
+**Proof A** (lab shuffle): three Tor hidden services on **one host** (or three processes you run). Shows peel → `swap_forward` → `swap_backward` → **one aggregated MWEB tx**, and the dest wallet **scans a new same-value coin**. It does **not** show “one honest mixer.”
+
+**Proof B** (stranger / 1 LTC / published first hop / 1-of-N honest) is a **later** bar. Do not claim it from Proof A. **Do not** put CoinSwap in the Mac wallet until a dated `LIVE_COINSWAP_ATTEMPT_*.md` is a pass.
+
+The taker is a **client** (sidecar + local onion build). Users do not run a mixnode to mix.
+
+### Mixnodes
+
+Each hop is **`coinswapd-research` + Tor HS only**. Copy [`deploy/mixnet.directory.example.json`](../deploy/mixnet.directory.example.json): replace `tor` and `swapX25519PubHex`; keep **one** `amountSat` and `feeMinSat` that covers the `backward()` floor (example uses **10000** sat/hop). Mixnodes are **not** on the public `getNodes` mesh: start hops 1–2 with **`-mln-directory FILE -mln-hop-index N`** (and hop 0 / taker with **`-mln-local-taker`**, optionally the same directory at index 0). **`-k`** public hex must match that hop’s `swapX25519PubHex`.
+
+```bash
+make phase3-operator-preflight
+make build-research-coinswapd build-mln-sidecar build-mln-cli
+# three mixnodes: -k matching directory, -a ltcmweb1… fee address, HS on the published port
+# taker client: -mln-local-taker, scan/spend secrets, exact amountSat UTXO
+source ~/mln-taker-proxy.sh   # HTTP_PROXY=socks5h://127.0.0.1:9050 on coinswapd
+./bin/mln-sidecar -mode=rpc -rpc-url http://127.0.0.1:8546 -port 8080
+./bin/mln-cli route from-directory -directory deploy/mixnet.directory.json -out route.json
+./bin/mln-cli forger -route-json route.json -dry-run=false \
+  -dest "$E2E_MWEB_DEST" -amount "$DIR_AMOUNT_SAT" \
+  -coinswapd-url http://127.0.0.1:8080/v1/swap -trigger-batch
+```
+
+Submit during the window; mix at slot end (`mweb_runBatch` or UTC midnight). **Product bar:** dest scans a new same-value coin. **`pendingOnions == 0`** without dev-clear is hygiene. Log must contain **no** LitVM, Nostr, or `mlnd`.
+
+If queued onions differ in value, `performSwap` **rejects the batch** (one denomination per aggregated tx).
+
+---
+
+## Part B — Tor + three makers + taker (Scout-era; 3-gov, parked)
 
 **Verbose step-by-step (Tor HS lines, port table, taker/maker order):** [PHASE_3_OPERATOR_PARTB_STEPBYSTEP.md](PHASE_3_OPERATOR_PARTB_STEPBYSTEP.md).
 
@@ -184,7 +215,7 @@ Then (adjust flags to your `route.json`, dest, amount, sidecar URL):
   -trigger-batch -wait-batch
 ```
 
-**README Phase 3 success bar:** **`pendingOnions`** returns to **0** **without** **`E2E_MWEB_FUNDED_DEV_CLEAR`** or **`-mweb-dev-clear-pending-after-batch`**. If you only see **0** with dev-clear, you are still on the Phase 3a smoke path, not the full gate.
+**README Phase 3-mix success bar:** dest wallet scans a **new same-value MWEB coin**. **`pendingOnions`** returning to **0** **without** **`E2E_MWEB_FUNDED_DEV_CLEAR`** is operator hygiene, not the product bar. If you only see **0** with dev-clear, you are still on the Phase 3a smoke path.
 
 ### Step 6 — Terminals 2–4: if something hangs
 

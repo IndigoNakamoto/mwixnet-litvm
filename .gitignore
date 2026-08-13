@@ -28,6 +28,13 @@ data/
 
 # Phase 16 testnet operator env (copy from deploy/.env.testnet.example)
 deploy/.env.testnet
+deploy/tier2.maker-box.env
+deploy/tier2.maker*.env
+deploy/tier2.taker.env
+
+# Permissioned mixnet operator files (Proof A). Copy from examples; never commit secrets.
+deploy/mixnet.directory.json
+deploy/mixnet.operator.env
 
 # coinswapd-research Neutrino / block data when run from repo root (do not commit)
 /neutrino.db

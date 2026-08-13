@@ -3,6 +3,8 @@ package mlnroute
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Golden bodies: mln-sidecar POST /v1/swap (e2e-mweb-handoff-stub.sh) and mln-sidecar → mweb_submitRoute use the same object.
@@ -39,6 +41,44 @@ func TestValidate_sidecarJSONWithAllSwapKeys(t *testing.T) {
 	}
 	if err := Validate(&req); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// forgerJSONNoLitVM is the mixnet happy-path body: three hops + dest + amount + keys, no epochId/accuser/swapId/operator.
+const forgerJSONNoLitVM = `{
+  "route": [
+    {"tor":"http://n1.onion:8334","feeMinSat":10000,"swapX25519PubHex":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+    {"tor":"http://n2.onion:8334","feeMinSat":10000,"swapX25519PubHex":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"},
+    {"tor":"http://n3.onion:8334","feeMinSat":10000,"swapX25519PubHex":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  ],
+  "destination":"ltcmweb1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqs2d0y0",
+  "amount":10000000
+}`
+
+func TestValidate_forgerJSONOmitsLitVM_accepted(t *testing.T) {
+	t.Parallel()
+	var req Request
+	if err := json.Unmarshal([]byte(forgerJSONNoLitVM), &req); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(&req); err != nil {
+		t.Fatalf("mweb_submitRoute must accept mixnet JSON without LitVM fields: %v", err)
+	}
+	if req.EpochID != "" || req.Accuser != "" || req.SwapID != "" {
+		t.Fatalf("unexpected LitVM fields: %+v", req)
+	}
+	for i, h := range req.Route {
+		if h.Operator != "" {
+			t.Fatalf("hop %d operator should be empty, got %q", i, h.Operator)
+		}
+	}
+	ops, err := PeerOperatorsFromRequest(&req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var zero [3]common.Address
+	if ops != zero {
+		t.Fatalf("operators: %+v", ops)
 	}
 }
 

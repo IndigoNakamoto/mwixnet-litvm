@@ -109,7 +109,7 @@ From `main.go` main loop:
 - **Swap execution:** once per day when local time crosses **23:00 → 00:00** (`tPrev.Hour() == 23 && t.Hour() == 0`).
 - **Refresh node list:** **00:00 → 01:00** (`getNodes`).
 
-So the “anonymity set” is **whatever valid onions are persisted in the DB at midnight**, not a configurable min batch size in code.
+So the “anonymity set” is **whatever valid onions are persisted in the DB at midnight**, not a configurable min batch size in code. **v1 mixnet policy:** `performSwap` **rejects** the batch if recorded `mweb_submitRoute` amounts are not all equal (one denomination per aggregated tx; mixed 1.0 and 5.0 do not form a set).
 
 ---
 

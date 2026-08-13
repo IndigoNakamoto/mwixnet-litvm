@@ -115,7 +115,7 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 		return nil, err
 	}
 
-	if err := m.ss.acceptOnionAndSetMLNRoute(o, mlNodesFromRequest(&req, rawKeys)); err != nil {
+	if err := m.ss.acceptOnionAndSetMLNRoute(o, mlNodesFromRequest(&req, rawKeys), req.Amount); err != nil {
 		if errors.Is(err, errNotNodeZero) {
 			return nil, mlnroute.InvalidParams(err.Error())
 		}
@@ -220,12 +220,19 @@ func mlNodesFromRequest(req *mlnroute.Request, rawKeys [][]byte) []config.Node {
 	return nodes
 }
 
-// acceptOnionAndSetMLNRoute validates, persists, and pins routing peers for the next forward/backward pass.
-func (s *swapService) acceptOnionAndSetMLNRoute(o *onion.Onion, peers []config.Node) error {
+// acceptOnionAndSetMLNRoute validates, persists, pins routing peers, and records the route amount for same-value batches.
+func (s *swapService) acceptOnionAndSetMLNRoute(o *onion.Onion, peers []config.Node, amountSat uint64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(peers) == mlnroute.ExpectedHops {
 		s.mlnPeers = peers
 	}
-	return s.acceptOnionLocked(o)
+	if err := s.acceptOnionLocked(o); err != nil {
+		return err
+	}
+	if err := saveOnionAmount(db, o, amountSat); err != nil {
+		_ = deleteOnion(db, o)
+		return fmt.Errorf("save onion amount: %w", err)
+	}
+	return nil
 }

@@ -85,6 +85,46 @@ func TestSubmitRoute_SuccessAndBody(t *testing.T) {
 	}
 }
 
+func TestSubmitRoute_omitsLitVMFieldsWhenMetaNil(t *testing.T) {
+	t.Parallel()
+
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		gotBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	route := &pathfind.Route{
+		Hops: [3]scout.VerifiedMaker{
+			{Tor: "http://n1.onion:8334", FeeMinSat: 10000, SwapX25519PubHex: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+			{Tor: "http://n2.onion:8334", FeeMinSat: 10000, SwapX25519PubHex: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"},
+			{Tor: "http://n3.onion:8334", FeeMinSat: 10000, SwapX25519PubHex: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+		},
+		FeeSumSat: 30000,
+	}
+	c := NewSidecarClient(srv.URL)
+	if _, err := c.SubmitRoute(context.Background(), route, "ltcmweb1qq", 10_000_000, nil); err != nil {
+		t.Fatal(err)
+	}
+	s := string(gotBody)
+	if strings.Contains(s, "epochId") || strings.Contains(s, "accuser") || strings.Contains(s, "swapId") || strings.Contains(s, `"operator"`) {
+		t.Fatalf("forger mixnet body must omit LitVM fields, got %s", s)
+	}
+	var payload RequestPayload
+	if err := json.Unmarshal(gotBody, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Amount != 10_000_000 || len(payload.Route) != 3 {
+		t.Fatalf("payload = %+v", payload)
+	}
+}
+
 func TestSubmitRoute_HTTPError(t *testing.T) {
 	t.Parallel()
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -92,5 +93,37 @@ func TestMWEBJSONRPCMethodNames(t *testing.T) {
 	}
 	if lr != nil {
 		t.Fatalf("expected null last receipt, got %+v", lr)
+	}
+}
+
+func TestMWEBJSONRPC_submitRouteForgerJSONOmitsLitVM(t *testing.T) {
+	t.Parallel()
+	raw := []byte(`{"route":[{"tor":"http://n1.onion:8334","feeMinSat":10000,"swapX25519PubHex":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},{"tor":"http://n2.onion:8334","feeMinSat":10000,"swapX25519PubHex":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"},{"tor":"http://n3.onion:8334","feeMinSat":10000,"swapX25519PubHex":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"destination":"ltcmweb1qq","amount":10000000}`)
+	var req mlnroute.Request
+	if err := json.Unmarshal(raw, &req); err != nil {
+		t.Fatal(err)
+	}
+	if err := mlnroute.Validate(&req); err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if req.EpochID != "" || req.Accuser != "" || req.SwapID != "" {
+		t.Fatalf("litvm fields present: %+v", req)
+	}
+
+	srv := rpc.NewServer()
+	if err := srv.RegisterName("mweb", &mwebRPCStub{}); err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(http.HandlerFunc(srv.ServeHTTP))
+	t.Cleanup(ts.Close)
+	c, err := rpc.Dial(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(c.Close)
+
+	var submitted interface{}
+	if err := c.CallContext(context.Background(), &submitted, "mweb_submitRoute", req); err != nil {
+		t.Fatalf("mweb_submitRoute without LitVM fields: %v", err)
 	}
 }

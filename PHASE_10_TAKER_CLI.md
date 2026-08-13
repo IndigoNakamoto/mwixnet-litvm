@@ -84,6 +84,13 @@ Uses the **same environment variables** as Scout, runs discovery, then prints an
 
 You need **at least three** verified makers.
 
+**Permissioned mixnet (no Scout / LitVM):** copy [`deploy/mixnet.directory.example.json`](deploy/mixnet.directory.example.json) and:
+
+```bash
+./bin/mln-cli route from-directory -directory deploy/mixnet.directory.json -out route.json
+# stderr prints amountSat — pass that to forger -amount
+```
+
 **Self-included middle hop (Phase 14):** `pathfind -self-included` or `route build -self-included` fixes **N2** to the maker derived from **`MLN_OPERATOR_ETH_KEY`** (64-hex LitVM operator ECDSA key). See [`PHASE_14_SELF_INCLUSION.md`](PHASE_14_SELF_INCLUSION.md).
 
 ## Phase 10.3: Forger

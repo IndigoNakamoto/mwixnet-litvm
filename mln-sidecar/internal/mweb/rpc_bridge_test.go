@@ -159,6 +159,49 @@ func TestRPCBridge_HandleSwap_success(t *testing.T) {
 	}
 }
 
+func TestRPCBridge_HandleSwap_omitsLitVMFieldsAccepted(t *testing.T) {
+	t.Parallel()
+	var captured string
+	stub := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "read", http.StatusBadRequest)
+			return
+		}
+		captured = string(body)
+		var req jsonRPCReq
+		if err := json.Unmarshal(body, &req); err != nil {
+			http.Error(w, "json", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      json.RawMessage(req.ID),
+			"result":  map[string]bool{"accepted": true},
+		})
+	}))
+	t.Cleanup(stub.Close)
+
+	b := NewRPCBridge(stub.URL)
+	key := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	req := &SwapRequest{
+		Route: []HopInput{
+			{Tor: "http://n1.onion:8334", FeeMinSat: 10000, SwapX25519PubHex: key},
+			{Tor: "http://n2.onion:8334", FeeMinSat: 10000, SwapX25519PubHex: key},
+			{Tor: "http://n3.onion:8334", FeeMinSat: 10000, SwapX25519PubHex: key},
+		},
+		Destination: "ltcmweb1qq",
+		Amount:      10_000_000,
+	}
+	if _, err := b.HandleSwap(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(captured, "epochId") || strings.Contains(captured, "accuser") || strings.Contains(captured, `"operator"`) {
+		t.Fatalf("mweb_submitRoute params must omit LitVM fields, got %s", captured)
+	}
+}
+
 func TestRPCBridge_HandleSwap_rpcError(t *testing.T) {
 	t.Parallel()
 	stub := newMwebStubServer(t, "insufficient funds", nil)

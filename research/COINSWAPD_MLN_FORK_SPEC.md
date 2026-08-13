@@ -149,11 +149,11 @@ The minimal MLN POST originally carried only **`tor`** + **`feeMinSat`**. Layere
 
 | Approach | Description | Use |
 | -------- | ----------- | --- |
-| **A. Extend MLN JSON** | Makers advertise **`swapX25519PubHex`** in Nostr `mln_maker_ad` content; scout copies it into the route; forger POSTs it. | **Production target** (implemented in this repo wire). |
+| **A. Extend MLN JSON** | Makers advertise **`swapX25519PubHex`** in Nostr `mln_maker_ad` content; scout copies it into the route; forger POSTs it. | Later **3-gov** public networks. |
 | **B. Resolver in fork** | Fork dials Tor/HTTPS to each maker and fetches a key document. | Optional; higher operational complexity. |
-| **C. Config map** | Local file: Tor URL → pubkey. | **Milestone 1** fork development and CI. |
+| **C. Config map** | Local file: Tor URL → pubkey (see [`deploy/mixnet.directory.example.json`](../deploy/mixnet.directory.example.json)). | **Phase 3-mix default.** Permissioned hops; `mln-cli route from-directory`. |
 
-**Recommendation:** Implement **C** first to unblock `mweb_submitRoute` ↔ `onion.Onion` plumbing; require **A** for public networks. **B** only if you need key rotation without republishing Nostr ads.
+**Recommendation:** Use **C** for the mixnet product (published hop list, no Scout). **A** is for later **3-gov** public networks. **B** only if you need key rotation without republishing ads or a directory.
 
 ---
 

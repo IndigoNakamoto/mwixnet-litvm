@@ -1,0 +1,21 @@
+{
+  "notes": "Permissioned mixnet hop list (Approach C). Lab amountSat is 0.1 LTC; Proof B uses 100000000 (1 LTC). feeMinSat 10000 covers coinswapd backward() weight floor for 3 hops / 4 outputs (see research/coinswapd TestHopFeeCoversBackwardMinimum). Placeholders only — replace tor and swapX25519PubHex with operator keys. No secrets.",
+  "amountSat": 10000000,
+  "hops": [
+    {
+      "tor": "http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.onion:8334",
+      "swapX25519PubHex": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "feeMinSat": 10000
+    },
+    {
+      "tor": "http://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.onion:8334",
+      "swapX25519PubHex": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+      "feeMinSat": 10000
+    },
+    {
+      "tor": "http://cccccccccccccccccccccccccccccccccccccccccccccccccccccccc.onion:8334",
+      "swapX25519PubHex": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "feeMinSat": 10000
+    }
+  ]
+}

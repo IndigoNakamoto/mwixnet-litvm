@@ -29,6 +29,18 @@ Fork integration spec (wire contract, onion build checklist, optional `swapX2551
 - **`GET /v1/route/status`** — in `mock`, empty queue; in `rpc`, `mweb_getRouteStatus` (**502** on RPC error).
 - **`POST /v1/route/batch`** — in `mock`, no-op success; in `rpc`, `mweb_runBatch` (**502** on RPC error).
 
+### Frozen taker contract (later Tauri / any wallet)
+
+The Mac wallet is a **taker client of this HTTP API**. It must not run `mlnd`, Scout, or Solidity. **Do not** implement CoinSwap UI there until a dated `LIVE_COINSWAP_ATTEMPT_*.md` is a **Proof A pass**.
+
+| Call | Meaning |
+|------|---------|
+| `POST /v1/swap` | Submit route/onion (no `epochId` / `accuser` / `operator` on the mixnet happy path). |
+| `GET /v1/route/status` | `pendingOnions` = **operator hygiene** (local queue). Not “output appeared.” |
+| `GET /v1/balance` | Taker scan-key balance; useful after cutover if dest is the same wallet. |
+
+**Product bar:** the dest wallet **scans a new same-value MWEB coin**. Poll that (dest scan / spendable), not an empty onion queue.
+
 ## Run
 
 ```bash

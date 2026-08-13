@@ -14,6 +14,7 @@ import (
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/forger"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/grievance"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/identity"
+	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/mixnetdir"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/nostridentity"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/pathfind"
 	"github.com/IndigoNakamoto/mwixnet-litvm/mln-cli/internal/registry"
@@ -34,13 +35,15 @@ func main() {
 		runPathfind(os.Args[2:])
 	case "route":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "route: need subcommand (e.g. build)")
+			fmt.Fprintln(os.Stderr, "route: need subcommand (e.g. build, from-directory)")
 			usage()
 			os.Exit(2)
 		}
 		switch os.Args[2] {
 		case "build":
 			runRouteBuild(os.Args[3:])
+		case "from-directory":
+			runRouteFromDirectory(os.Args[3:])
 		default:
 			fmt.Fprintf(os.Stderr, "route: unknown subcommand %q\n", os.Args[2])
 			os.Exit(2)
@@ -69,6 +72,7 @@ Commands:
   scout     Discover kind-31250 maker ads, verify LitVM registry state
   pathfind  Pick an ordered 3-hop route from verified makers with Tor endpoints (min fee hint, stake tie-break; -self-included for N2=self)
   route build  Run scout + pathfind and write route JSON (default route.json) for forger -route-json
+  route from-directory  Build route.json from a permissioned hop list (no Scout, no LitVM)
   forger    Validate route (-dry-run) or POST route JSON to local coinswapd MLN sidecar
   maker onboard  Plan or execute MwixnetRegistry deposit + registerMaker (LitVM maker onboarding)
   grievance file Open a grievance on LitVM (openGrievance + bond; receipt from JSON or vault swap id)
@@ -433,6 +437,32 @@ func runRouteBuild(args []string) {
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stderr, "route build: wrote %s\n", *outPath)
+}
+
+func runRouteFromDirectory(args []string) {
+	fs := flag.NewFlagSet("route from-directory", flag.ExitOnError)
+	dirPath := fs.String("directory", "", "path to mixnet hop directory JSON (see deploy/mixnet.directory.example.json)")
+	outPath := fs.String("out", "route.json", "path to write pathfind.Route JSON (for forger -route-json)")
+	_ = fs.Parse(args)
+	if strings.TrimSpace(*dirPath) == "" {
+		fmt.Fprintln(os.Stderr, "route from-directory: -directory is required")
+		os.Exit(2)
+	}
+	d, err := mixnetdir.Load(*dirPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+	raw, err := mixnetdir.MarshalRouteJSON(d)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "route from-directory: json: %v\n", err)
+		os.Exit(1)
+	}
+	if err := os.WriteFile(*outPath, raw, 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "route from-directory: write %s: %v\n", *outPath, err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "route from-directory: wrote %s amountSat=%d (pass to forger -amount; no LitVM fields)\n", *outPath, d.AmountSat)
 }
 
 func runForger(args []string) {

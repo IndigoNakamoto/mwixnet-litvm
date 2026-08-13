@@ -50,19 +50,39 @@ func (s *swapService) performSwap() error {
 	}
 
 	s.onions = map[mw.Commitment]*onionEtc{}
+	var amts []onionAmt
 	for _, onion := range onions {
+		if onion == nil {
+			fmt.Println("performSwap: dropping nil onion from DB")
+			continue
+		}
 		if err = validateOnion(onion); err != nil {
+			fmt.Println("performSwap: dropping invalid onion:", err)
 			if err = deleteOnion(db, onion); err != nil {
 				return err
 			}
 			continue
 		}
 
+		amt, ok, aerr := loadOnionAmount(db, onion)
+		if aerr != nil {
+			return aerr
+		}
+		amts = append(amts, onionAmt{value: amt, ok: ok})
+
 		input, _ := inputFromOnion(onion)
 		s.onions[input.Commitment] = &onionEtc{
 			Onion:      onion,
 			StealthSum: input.OutputPubKey.Sub(input.InputPubKey),
 		}
+	}
+
+	if len(onions) > 0 && len(s.onions) == 0 {
+		return fmt.Errorf("performSwap: loaded %d onion(s) but none passed validate", len(onions))
+	}
+
+	if err := requireSameDenomination(amts); err != nil {
+		return err
 	}
 
 	return s.forward()
@@ -77,6 +97,7 @@ func (s *swapService) peelOnions() (
 	for commit, o := range s.onions {
 		hop, onion, err := o.Onion.Peel(serverKey)
 		if err != nil {
+			fmt.Println("peelOnions: peel failed:", err)
 			delete(s.onions, commit)
 			continue
 		}
@@ -161,6 +182,8 @@ func (s *swapService) forward() error {
 	ops := s.mlnPeerOperators
 	nodeIdx := s.nodeIdx()
 	commitsCopy := slices.Clone(commits)
+
+	fmt.Println("swap_forward: dialing hop", s.nodeIndex+2, "at", node.Url, "onions", len(commits))
 
 	// Inter-hop JSON-RPC uses go-ethereum rpc.Dial → net/http DefaultTransport, which honors
 	// ProxyFromEnvironment (HTTP_PROXY, HTTPS_PROXY, NO_PROXY — not ALL_PROXY). For Tor .onion

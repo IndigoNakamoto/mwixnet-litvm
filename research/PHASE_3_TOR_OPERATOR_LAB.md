@@ -1,6 +1,6 @@
 # Phase 3 — Live Tor operator lab (coinswapd + MLN)
 
-This note is the **operator runbook** for advancing from Phase 3a (cleartext / stub) toward README **Phase 3** (live `.onion`, multi-hop P2P). **Step-by-step terminals (long playbook):** [`PHASE_3_OPERATOR_PLAYBOOK.md`](PHASE_3_OPERATOR_PLAYBOOK.md). **Checklist:** [`PHASE_3_OPERATOR_CHECKLIST.md`](PHASE_3_OPERATOR_CHECKLIST.md). Canonical handoff wire remains [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) and [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
+This note is the **operator runbook** for advancing from Phase 3a (cleartext / stub) toward README **Phase 3-mix** (live `.onion`, multi-hop P2P). **Phase 3-gov** (Nostr + LitVM court) is parked until Proof A passes. **Step-by-step terminals:** [`PHASE_3_OPERATOR_PLAYBOOK.md`](PHASE_3_OPERATOR_PLAYBOOK.md) (Part B0 = permissioned directory, no Scout). **Checklist:** [`PHASE_3_OPERATOR_CHECKLIST.md`](PHASE_3_OPERATOR_CHECKLIST.md). Canonical handoff wire remains [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) and [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md).
 
 ## Preflight: Tor SOCKS
 
@@ -47,8 +47,8 @@ You may still set **`ALL_PROXY`** for other tools in the same shell (e.g. `curl`
 ## Warm-up: 1-hop, then 3-hop
 
 1. **1-hop / proxy sanity:** With one maker’s `.onion` RPC reachable through Tor, confirm **`rpc.Dial`-equivalent** behavior by hitting that HTTP JSON-RPC (e.g. a trivial method) **with `HTTP_PROXY=socks5h://…` set** in the same environment you use for `coinswapd`.
-2. **3-hop lab:** Three makers, distinct `.onion` endpoints, Nostr discovery + **`mln-cli pathfind`** route including **`swapX25519PubHex`** per hop; then **`mweb_getBalance`** → **`mweb_submitRoute`** → **`mweb_runBatch`** → poll **`mweb_getRouteStatus`**.
-3. **Success bar:** **`pendingOnions == 0` without `-mweb-dev-clear-pending-after-batch`** (real finalize / `SendTransaction` after live **`swap_forward` / `swap_backward`**). Dev-clear is **DEV ONLY** — see [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) §2.7a.
+2. **3-hop lab (Proof A):** Three mixnodes, distinct `.onion` endpoints, hop **directory** (not Scout) including **`swapX25519PubHex`** and **`feeMinSat`**; then **`mweb_getBalance`** → **`mweb_submitRoute`** (no LitVM fields) → **`mweb_runBatch`**. Product bar: dest wallet scans a **new same-value coin**.
+3. **Operator hygiene:** **`pendingOnions == 0` without `-mweb-dev-clear-pending-after-batch`** (real finalize / `SendTransaction` after live **`swap_forward` / `swap_backward`**). Dev-clear is **DEV ONLY** — see [`COINSWAPD_MLN_FORK_SPEC.md`](COINSWAPD_MLN_FORK_SPEC.md) §2.7a.
 
 ## Failure triage (no secret logging)
 
@@ -56,11 +56,6 @@ You may still set **`ALL_PROXY`** for other tools in the same shell (e.g. `curl`
 - **`swap_forward:` / `swap_backward:` errors in logs:** see [`swap.go`](../research/coinswapd/swap.go); avoid pasting full onions + payloads into public tickets if they correlate real runs.
 - **Sidecar / Docker:** [`deploy/docker-compose.e2e.sidecar-rpc.yml`](../deploy/docker-compose.e2e.sidecar-rpc.yml) uses `host.docker.internal` for **host** JSON-RPC; **taker `coinswapd`** must still dial **maker** onions — proxy env belongs on **`coinswapd`**, not only the sidecar.
 
-## README Phase 3 checkbox (gate)
+## README Phase 3-mix vs 3-gov
 
-Do **not** mark README Phase 3 complete until **both**:
-
-1. Live **`.onion` multi-hop** completes **without** dev-clear (this doc).
-2. **Public LitVM** grievance/slash path scope is agreed and deployed per [`PHASE_16_PUBLIC_TESTNET.md`](../PHASE_16_PUBLIC_TESTNET.md) when RPC is available.
-
-Until then, keep running regression anchors from [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md) (**`E2E_MWEB_FULL=1`**, optional **`MWEB_RPC_BACKEND=coinswapd`** smoke).
+Do **not** mark **3-mix** complete until Proof A (lab shuffle + dest coin) is recorded as a pass. **3-gov** (public LitVM grievance) is **not** a mix gate. Until then, keep regression anchors from [`PHASE_3_MWEB_HANDOFF_SLICE.md`](../PHASE_3_MWEB_HANDOFF_SLICE.md) (**`E2E_MWEB_FULL=1`**, optional **`MWEB_RPC_BACKEND=coinswapd`** smoke).
