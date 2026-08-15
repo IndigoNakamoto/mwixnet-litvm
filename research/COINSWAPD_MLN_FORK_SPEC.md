@@ -212,6 +212,10 @@ Pedersen commitments, Bulletproofs, `wire.MwebOutput` / kernel assembly live und
 
 Default startup calls **`getNodes()`** / **`config.AliveNodes`**: the process’s **`-k`** X25519 public key must match one of the [hardcoded mesh rows](coinswapd/config/nodes.go) (or the probe fails). That is wrong for **MLN `mweb_*`** smoke, where **`-k`** is usually random and **peers** come only from **`mweb_submitRoute`**. The fork flag **`-mln-local-taker`** skips that probe, sets **node index 0**, and skips the hourly **`getNodes()`** refresh — use for local E2E and taker-only JSON-RPC; **omit** when running as a registered public mesh operator.
 
+### 5.4a Proof B taker (`-mln-submit-remote`)
+
+Implies **`-mln-local-taker`**. After `buildOnionFromMLNRoute`, Dial directory hop 0 and call JSON-RPC **`swap_swap`** (go-ethereum v1.14 name for `Swap`; same casing rule as **`swap_forward`**). Do **not** `saveOnion` on the taker. Optional **`-mln-directory`** pins hop URLs without requiring **`-k`** to match hop 0. Mixnode hop 0 uses **`-mln-directory -mln-hop-index 0`** without scan/spend; `Swap` **keeps** directory `mlnPeers` (length 3). Operator **`mweb_runBatch`** runs on hop 0, not the taker sidecar.
+
 ---
 
 ## 6. Type mapping (MLN JSON → `onion.Onion`)

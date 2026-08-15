@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ltcmweb/coinswapd/config"
 	"github.com/ltcmweb/coinswapd/mlnroute"
 	"github.com/ltcmweb/coinswapd/onion"
@@ -31,6 +32,8 @@ type mwebService struct {
 
 	// When true, RunBatch deletes any onions still in the DB after performSwap (no finalize). See main flag.
 	devClearPendingAfterBatch bool
+	// submitRemote: after buildOnionFromMLNRoute, Dial hop 0 swap_Swap instead of saveOnion.
+	submitRemote bool
 }
 
 func decodeSecretKeyHex(label, s string) (*mw.SecretKey, error) {
@@ -115,7 +118,18 @@ func (m *mwebService) SubmitRoute(ctx context.Context, req mlnroute.Request) (in
 		return nil, err
 	}
 
-	if err := m.ss.acceptOnionAndSetMLNRoute(o, mlNodesFromRequest(&req, rawKeys), req.Amount); err != nil {
+	peers := mlNodesFromRequest(&req, rawKeys)
+	if m.submitRemote {
+		if err := m.ss.swapSwapRemote(o, peers); err != nil {
+			return nil, mlnroute.Internal(err.Error())
+		}
+		return map[string]interface{}{
+			"accepted": true,
+			"detail":   "onion sent to hop 0 via swap_Swap (not queued on this taker)",
+		}, nil
+	}
+
+	if err := m.ss.acceptOnionAndSetMLNRoute(o, peers, req.Amount); err != nil {
 		if errors.Is(err, errNotNodeZero) {
 			return nil, mlnroute.InvalidParams(err.Error())
 		}
@@ -210,6 +224,34 @@ func (m *mwebService) GetLastReceipt(ctx context.Context) (*LastReceiptResponse,
 		SwapID:              swapID,
 		ForwardFailureClass: cls,
 	}, nil
+}
+
+// swapSwapRemote pins directory peers from the route and sends the onion to hop 0 (no local queue).
+func (s *swapService) swapSwapRemote(o *onion.Onion, peers []config.Node) error {
+	if o == nil {
+		return fmt.Errorf("mln-submit-remote: nil onion")
+	}
+	if len(peers) != mlnroute.ExpectedHops {
+		return fmt.Errorf("mln-submit-remote: need %d hops, got %d", mlnroute.ExpectedHops, len(peers))
+	}
+	hop0 := strings.TrimSpace(peers[0].Url)
+	if hop0 == "" {
+		return fmt.Errorf("mln-submit-remote: hop 0 tor URL is empty")
+	}
+	s.mu.Lock()
+	s.mlnPeers = peers
+	s.mu.Unlock()
+
+	// Taker→hop0 JSON-RPC uses net/http DefaultTransport (HTTP_PROXY / socks5h for .onion).
+	client, err := rpc.Dial(hop0)
+	if err != nil {
+		return fmt.Errorf("mln-submit-remote: rpc.Dial hop 0: %w", err)
+	}
+	defer client.Close()
+	if err := client.Call(nil, "swap_swap", *o); err != nil {
+		return fmt.Errorf("mln-submit-remote: swap_swap hop 0: %w", err)
+	}
+	return nil
 }
 
 func mlNodesFromRequest(req *mlnroute.Request, rawKeys [][]byte) []config.Node {

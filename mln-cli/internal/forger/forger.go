@@ -251,7 +251,7 @@ func ExecuteCLIWithBatch(ctx context.Context, route *pathfind.Route, sidecarURL,
 		}
 	}
 	if batch == nil || !batch.WaitPendingZero {
-		fmt.Fprintln(w, "Tip: use -trigger-batch / -wait-batch for POST /v1/route/batch and GET /v1/route/status; full P2P hops still need live maker RPCs.")
+		fmt.Fprintln(w, "Tip: Proof A local hop 0 may use -trigger-batch. Proof B: omit it; dest coin is the pass bar, not pendingOnions.")
 	}
 	return nil
 }

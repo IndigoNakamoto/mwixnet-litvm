@@ -39,6 +39,9 @@ func (s *swapService) performSwap() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.submitRemote {
+		return nil
+	}
 	if s.nodeIndex != 0 {
 		return nil
 	}

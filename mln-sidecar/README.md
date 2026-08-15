@@ -31,13 +31,16 @@ Fork integration spec (wire contract, onion build checklist, optional `swapX2551
 
 ### Frozen taker contract (later Tauri / any wallet)
 
-The Mac wallet is a **taker client of this HTTP API**. It must not run `mlnd`, Scout, or Solidity. **Do not** implement CoinSwap UI there until a dated `LIVE_COINSWAP_ATTEMPT_*.md` is a **Proof A pass**.
+The Mac wallet is a **taker client of this HTTP API**. It must not run `mlnd`, Scout, or Solidity. Mixnodes do **not** serve `/v1/swap` with the taker’s scan/spend keys.
+
+**Proof B:** sidecar `-rpc-url` is **local taker** `coinswapd` (`-mln-submit-remote`). That process `swap_swap`s hop 0 over Tor. Hop 0 operator triggers **`mweb_runBatch`** (or UTC midnight), not the taker `-trigger-batch`.
 
 | Call | Meaning |
 |------|---------|
-| `POST /v1/swap` | Submit route/onion (no `epochId` / `accuser` / `operator` on the mixnet happy path). |
-| `GET /v1/route/status` | `pendingOnions` = **operator hygiene** (local queue). Not “output appeared.” |
+| `POST /v1/swap` | Submit route (no `epochId` / `accuser` / `operator` on the mixnet happy path). Taker-local `mweb_submitRoute` may forward the onion to hop 0. |
+| `GET /v1/route/status` | `pendingOnions` = **local** queue hygiene. On a Proof B taker this stays 0 (onion is on hop 0). Not “output appeared.” |
 | `GET /v1/balance` | Taker scan-key balance; useful after cutover if dest is the same wallet. |
+| `POST /v1/route/batch` | Proof A local hop 0 only. Proof B: call `mweb_runBatch` on **hop 0** ([`scripts/mixnode-run-batch.sh`](../scripts/mixnode-run-batch.sh)). |
 
 **Product bar:** the dest wallet **scans a new same-value MWEB coin**. Poll that (dest scan / spendable), not an empty onion queue.
 

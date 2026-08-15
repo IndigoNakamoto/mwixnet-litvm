@@ -58,6 +58,17 @@ func TestLoadMLNDirectoryPeers(t *testing.T) {
 	if err := applyMLNDirectory(ss, path, 2, true, privs[2].PublicKey()); err == nil {
 		t.Fatal("expected local-taker vs hop-index conflict")
 	}
+
+	taker := &swapService{}
+	if err := pinMLNDirectoryForTaker(taker, path); err != nil {
+		t.Fatal(err)
+	}
+	if !taker.submitRemote || taker.nodeIndex != 0 || len(taker.mlnPeers) != 3 {
+		t.Fatalf("taker pin: remote=%v idx=%d peers=%d", taker.submitRemote, taker.nodeIndex, len(taker.mlnPeers))
+	}
+	if taker.mlnPeers[0].Url != "http://a.onion:8334" {
+		t.Fatalf("taker hop0 url=%s", taker.mlnPeers[0].Url)
+	}
 }
 
 func TestLoadMLNDirectoryPeers_rejectMixedCaseHex(t *testing.T) {

@@ -99,3 +99,18 @@ func applyMLNDirectory(ss *swapService, path string, hopIndex int, localTaker bo
 	fmt.Println("mln-directory: hop", hopIndex+1, "of", len(peers), "(public mesh probe skipped)")
 	return nil
 }
+
+// pinMLNDirectoryForTaker loads hop URLs/keys for a Proof B taker client.
+// This process is not a mixnode: -k is not checked against the directory.
+func pinMLNDirectoryForTaker(ss *swapService, path string) error {
+	peers, err := loadMLNDirectoryPeers(path)
+	if err != nil {
+		return err
+	}
+	ss.nodes = peers
+	ss.mlnPeers = peers
+	ss.nodeIndex = 0
+	ss.submitRemote = true
+	fmt.Println("mln-submit-remote: taker client; hop 0", peers[0].Url, "(not a mixnode)")
+	return nil
+}

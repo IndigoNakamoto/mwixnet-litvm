@@ -98,13 +98,13 @@ You will reuse the same variable names when you move to funded **`coinswapd`** o
 
 **Proof A** (lab shuffle): three Tor hidden services on **one host** (or three processes you run). Shows peel → `swap_forward` → `swap_backward` → **one aggregated MWEB tx**, and the dest wallet **scans a new same-value coin**. It does **not** show “one honest mixer.”
 
-**Proof B** (stranger / 1 LTC / published first hop / 1-of-N honest) is a **later** bar. Do not claim it from Proof A. **Do not** put CoinSwap in the Mac wallet until a dated `LIVE_COINSWAP_ATTEMPT_*.md` is a pass.
+**Proof B** (stranger / 1 LTC / published first hop / 1-of-N honest) is **Part B1**. Do not claim it from Proof A.
 
-The taker is a **client** (sidecar + local onion build). Users do not run a mixnode to mix.
+The taker is a **client**. Proof A lab put scan/spend on hop 0 (`-mln-local-taker`); a published group must not.
 
 ### Mixnodes
 
-Each hop is **`coinswapd-research` + Tor HS only**. Copy [`deploy/mixnet.directory.example.json`](../deploy/mixnet.directory.example.json): replace `tor` and `swapX25519PubHex`; keep **one** `amountSat` and `feeMinSat` that covers the `backward()` floor (example uses **10000** sat/hop). Mixnodes are **not** on the public `getNodes` mesh: start hops 1–2 with **`-mln-directory FILE -mln-hop-index N`** (and hop 0 / taker with **`-mln-local-taker`**, optionally the same directory at index 0). **`-k`** public hex must match that hop’s `swapX25519PubHex`.
+Each hop is **`coinswapd-research` + Tor HS only**. Copy [`deploy/mixnet.directory.example.json`](../deploy/mixnet.directory.example.json): replace `tor` and `swapX25519PubHex`; keep **one** `amountSat` and `feeMinSat` that covers the `backward()` floor (example uses **10000** sat/hop). Mixnodes are **not** on the public `getNodes` mesh: **`-mln-directory FILE -mln-hop-index N`**. **`-k`** public hex must match that hop’s `swapX25519PubHex`. **Proof A lab** also used **`-mln-local-taker`** on hop 0 with scan/spend — do not copy that for Proof B.
 
 ```bash
 make phase3-operator-preflight
@@ -122,6 +122,50 @@ source ~/mln-taker-proxy.sh   # HTTP_PROXY=socks5h://127.0.0.1:9050 on coinswapd
 Submit during the window; mix at slot end (`mweb_runBatch` or UTC midnight). **Product bar:** dest scans a new same-value coin. **`pendingOnions == 0`** without dev-clear is hygiene. Log must contain **no** LitVM, Nostr, or `mlnd`.
 
 If queued onions differ in value, `performSwap` **rejects the batch** (one denomination per aggregated tx).
+
+---
+
+## Part B1 — Proof B (published hop 0; software unblocked, live pass waits on hosts)
+
+**Bar:** stranger / **1 LTC** (`amountSat=100000000`) / **published first hop** / 1-of-N honest. Dest scans **99970000 sat** with example `feeMinSat` 10000×3. **Not** `pendingOnions==0`. Do not overwrite [`LIVE_COINSWAP_ATTEMPT_2026-08-12-proof-a-pass.md`](../LIVE_COINSWAP_ATTEMPT_2026-08-12-proof-a-pass.md).
+
+**Taker is not a hop.** Proof A queued the onion on `-mln-local-taker` hop 0 (scan/spend on the mix process). Proof B:
+
+| Process | Flags | Wallet keys |
+| -------- | ----- | ----------- |
+| Mixnode hop 0 | `-mln-directory FILE -mln-hop-index 0` (no `-mln-local-taker`) | **none** — accepts `swap_swap` |
+| Mixnodes 1–2 | `-mln-directory FILE -mln-hop-index 1\|2` | none |
+| Taker | `-mln-local-taker -mln-submit-remote` (optional `-mln-directory` for hop URLs only; `-k` is **not** hop 0) | scan/spend |
+
+`swap_Swap` on a directory hop **keeps** `mlnPeers` (does not fall back to the public mesh).
+
+```bash
+# each mixnode host
+cp deploy/mixnet.hop.env.example deploy/mixnet.hop.env   # chmod 600; MIX_K, fee dest, index, port
+# copy mixnet.directory.json (gitignored) with this hop’s .onion + pub
+make build-research-coinswapd
+./scripts/mixnode-start.sh
+
+# taker Mac (sidecar → local coinswapd, not hop 0)
+export HTTP_PROXY=socks5h://127.0.0.1:9050
+./bin/coinswapd-research -mln-local-taker -mln-submit-remote \
+  -mln-directory deploy/mixnet.directory.json \
+  -mweb-scan-secret … -mweb-spend-secret … -a "$E2E_MWEB_DEST" -l 8546
+./bin/mln-sidecar -mode=rpc -rpc-url http://127.0.0.1:8546 -port 8080
+./bin/mln-cli route from-directory -directory deploy/mixnet.directory.json -out route.json
+./bin/mln-cli forger -route-json route.json -dry-run=false \
+  -dest "$E2E_MWEB_DEST" -amount 100000000 \
+  -coinswapd-url http://127.0.0.1:8080/v1/swap
+# omit -trigger-batch
+
+# hop 0 operator (or UTC midnight on hop 0)
+MIXNODE_RPC_URL=http://127.0.0.1:8334 ./scripts/mixnode-run-batch.sh
+# status: curl hop 0 mweb_getRouteStatus (pendingOnions is hygiene)
+```
+
+**Live pass** waits until three hop hosts are named and dest scans the new coin. Record a new `LIVE_COINSWAP_ATTEMPT_*.md` labeled **Proof B**.
+
+**Other computers from this Mac** (only this machine has the repo + MWEB wallet today): [PHASE_3_PROOF_B_HOSTS.md](PHASE_3_PROOF_B_HOSTS.md) — build a hop binary, Tor HS on each host, pack `mixnode-start.sh` + directory + hop env, taker submit without `-trigger-batch`, hop 0 `mixnode-run-batch.sh`.
 
 ---
 

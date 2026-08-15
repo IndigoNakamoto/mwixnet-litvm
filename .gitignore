@@ -32,9 +32,10 @@ deploy/tier2.maker-box.env
 deploy/tier2.maker*.env
 deploy/tier2.taker.env
 
-# Permissioned mixnet operator files (Proof A). Copy from examples; never commit secrets.
+# Permissioned mixnet operator files (Proof A/B). Copy from examples; never commit secrets.
 deploy/mixnet.directory.json
 deploy/mixnet.operator.env
+deploy/mixnet.hop.env
 
 # coinswapd-research Neutrino / block data when run from repo root (do not commit)
 /neutrino.db

@@ -1,5 +1,5 @@
 {
-  "notes": "Permissioned mixnet hop list (Approach C). Lab amountSat is 0.1 LTC; Proof B uses 100000000 (1 LTC). feeMinSat 10000 covers coinswapd backward() weight floor for 3 hops / 4 outputs (see research/coinswapd TestHopFeeCoversBackwardMinimum). Placeholders only — replace tor and swapX25519PubHex with operator keys. No secrets.",
+  "notes": "Permissioned mixnet hop list (Approach C). Proof A lab amountSat is 0.1 LTC (10000000). Proof B uses 100000000 (1 LTC). feeMinSat 10000 covers coinswapd backward() weight floor for 3 hops / 4 outputs (see research/coinswapd TestHopFeeCoversBackwardMinimum). Placeholders only — replace tor and swapX25519PubHex with operator keys. No secrets. Hop 0 is a mixnode (swap_swap), not the taker.",
   "amountSat": 10000000,
   "hops": [
     {

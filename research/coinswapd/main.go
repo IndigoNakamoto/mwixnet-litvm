@@ -46,9 +46,10 @@ var (
 	mwebPubkeyMap   = flag.String("mweb-pubkey-map", "", "JSON file: {\"https://maker...\":\"64hex\",...} for swap keys (Approach C)")
 
 	// MLN / local E2E: skip config.AliveNodes identity match (random -k is never in the public mesh list).
-	mlnLocalTaker = flag.Bool("mln-local-taker", false, "skip swap-mesh node probe; force node 0 (peers come from mweb_submitRoute only)")
-	mlnDirectory = flag.String("mln-directory", "", "permissioned mixnet hop JSON; skip public mesh and pin mlnPeers")
-	mlnHopIndex  = flag.Int("mln-hop-index", -1, "this process hop index 0..2 (required with -mln-directory)")
+	mlnLocalTaker   = flag.Bool("mln-local-taker", false, "skip swap-mesh node probe; force node 0 (peers come from mweb_submitRoute only)")
+	mlnSubmitRemote = flag.Bool("mln-submit-remote", false, "Proof B taker: build onion locally then swap_Swap to directory hop 0 (implies -mln-local-taker; do not queue locally)")
+	mlnDirectory    = flag.String("mln-directory", "", "permissioned mixnet hop JSON; skip public mesh and pin mlnPeers")
+	mlnHopIndex     = flag.Int("mln-hop-index", -1, "this process hop index 0..2 (required with -mln-directory unless -mln-submit-remote)")
 
 	// DEV ONLY: after mweb_runBatch's performSwap, delete any onions still in the local DB (no chain finalize).
 	// Enables pendingOnions=0 smoke on a host without live swap_forward/swap_backward peers. Never use in production.
@@ -113,7 +114,15 @@ func main() {
 	}
 
 	ss := &swapService{}
-	if strings.TrimSpace(*mlnDirectory) != "" {
+	if *mlnSubmitRemote {
+		*mlnLocalTaker = true
+		ss.submitRemote = true
+	}
+	if *mlnSubmitRemote && strings.TrimSpace(*mlnDirectory) != "" {
+		if err = pinMLNDirectoryForTaker(ss, strings.TrimSpace(*mlnDirectory)); err != nil {
+			return
+		}
+	} else if strings.TrimSpace(*mlnDirectory) != "" {
 		if err = applyMLNDirectory(ss, strings.TrimSpace(*mlnDirectory), *mlnHopIndex, *mlnLocalTaker, serverKey.PublicKey()); err != nil {
 			return
 		}
@@ -145,6 +154,7 @@ func main() {
 		spendKey:                  spendKey,
 		pubkeyMap:                 pubmap,
 		devClearPendingAfterBatch: *mwebDevClearPendingAfterBatch,
+		submitRemote:              *mlnSubmitRemote,
 	}
 
 	rpcServer := rpc.NewServer()
@@ -204,6 +214,8 @@ type swapService struct {
 	onions    map[mw.Commitment]*onionEtc
 	// mlnPeers, when length is 3, overrides nodes for swap_forward / swap_backward routing (MLN dynamic route).
 	mlnPeers []config.Node
+	// submitRemote: Proof B taker client. mweb_submitRoute Dials hop 0 swap_Swap; performSwap is a no-op.
+	submitRemote bool
 	// LitVM route metadata from MLN HTTP / mweb_submitRoute (for future hop-failure receipt emission; see PHASE_6).
 	mlnEpochID string
 	mlnAccuser string
@@ -251,13 +263,19 @@ func (s *swapService) acceptOnionLocked(o *onion.Onion) error {
 func (s *swapService) Swap(onion onion.Onion) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// Vanilla swap_Swap uses config topology, not a prior MLN route.
-	s.mlnPeers = nil
+	s.clearVanillaSwapMetaLocked()
+	return s.acceptOnionLocked(&onion)
+}
+
+// clearVanillaSwapMetaLocked drops LitVM route metadata. Directory mlnPeers (len 3) stay pinned.
+func (s *swapService) clearVanillaSwapMetaLocked() {
+	if len(s.mlnPeers) != mlnDirectoryHops {
+		s.mlnPeers = nil
+	}
 	s.mlnEpochID = ""
 	s.mlnAccuser = ""
 	s.mlnSwapID = ""
 	s.mlnPeerOperators = [3]common.Address{}
-	return s.acceptOnionLocked(&onion)
 }
 
 func (s *swapService) setMLNRouteMeta(epochID, accuser, swapID string) {

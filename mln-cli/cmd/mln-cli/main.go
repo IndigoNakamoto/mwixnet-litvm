@@ -472,8 +472,8 @@ func runForger(args []string) {
 	dest := fs.String("dest", "", "destination MWEB address (required with -dry-run=false)")
 	amount := fs.Uint64("amount", 0, "amount to swap in satoshis (required with -dry-run=false)")
 	sidecarURL := fs.String("coinswapd-url", "http://127.0.0.1:8080/v1/swap", "MLN extension URL of local coinswapd sidecar")
-	triggerBatch := fs.Bool("trigger-batch", false, "after submit, POST /v1/route/batch (forwards to mweb_runBatch on coinswapd)")
-	waitBatch := fs.Bool("wait-batch", false, "poll GET /v1/route/status until pendingOnions==0 or -batch-timeout")
+	triggerBatch := fs.Bool("trigger-batch", false, "after submit, POST /v1/route/batch (Proof A local hop 0 only; Proof B: hop 0 operator runs mweb_runBatch / scripts/mixnode-run-batch.sh)")
+	waitBatch := fs.Bool("wait-batch", false, "poll GET /v1/route/status until pendingOnions==0 (taker-local queue; not Proof B dest-coin success)")
 	batchPoll := fs.Duration("batch-poll", 2*time.Second, "poll interval for -wait-batch")
 	batchTimeout := fs.Duration("batch-timeout", 2*time.Minute, "max wait for pendingOnions==0 with -wait-batch")
 	vaultPath := fs.String("vault", "", "SQLite receipt vault path (default MLN_RECEIPT_EPOCH_ID + MLN_ACCUSER_ETH_KEY required)")
@@ -553,6 +553,10 @@ func runForger(args []string) {
 			EpochID: epoch,
 			Accuser: addr.Hex(),
 		}
+	}
+
+	if *triggerBatch {
+		fmt.Fprintln(os.Stderr, "forger: -trigger-batch hits the taker sidecar. Proof B: omit it; hop 0 operator runs mweb_runBatch (scripts/mixnode-run-batch.sh) or waits for UTC midnight.")
 	}
 
 	if err := forger.ExecuteCLIWithBatch(ctx, &route, *sidecarURL, *dest, *amount, batch, vault, os.Stderr); err != nil {
